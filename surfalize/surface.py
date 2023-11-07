@@ -150,10 +150,8 @@ def no_nonmeasured_points(function):
             
             
 # TODO Rotation function -> Detect orientation using FFT
-# TODO Depth function
 # TODO Profile function, Average profile function
 # TODO Image export
-# TODO Potential profile class -> Profile roughness parameters
 class Surface:
     
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'period', 'homogeneity', 'depth')

@@ -82,7 +82,6 @@ def _vk4_extract_offsets(in_file):
 
     :param in_file: open file obj, must be vk4 file
     """
-    log.debug("Entering extract_offsets()")
 
     offsets = dict()
     in_file.seek(12)
@@ -104,10 +103,9 @@ def _vk4_extract_offsets(in_file):
     # not sure if reserved is necessary
     offsets['reserved'] = struct.unpack('<I', in_file.read(4))[0]
 
-    log.debug("Exiting extract_offsets()")
     return offsets
 
-def extract_measurement_conditions(offset_dict, in_file):
+def _vk4_extract_measurement_conditions(offset_dict, in_file):
     measurement_conditions = dict()
     measurement_conditions['name'] = 'measurement_conditions'
     in_file.seek(offset_dict['meas_conds'])
@@ -257,7 +255,7 @@ def load_vk4(filepath):
     with open(filepath, 'rb') as file:
         offsets = _vk4_extract_offsets(file)
         img_data = _vk4_extract_img_data(offsets, 'height', file)
-        measurement_conditions = vk4extract.extract_measurement_conditions(offsets, file)
+        measurement_conditions = _vk4_extract_measurement_conditions(offsets, file)
 
     step_x = measurement_conditions['x_length_per_pixel'] / 1000000
     step_y = measurement_conditions['y_length_per_pixel'] / 1000000
