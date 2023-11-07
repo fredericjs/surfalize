@@ -5,8 +5,8 @@ from Cython.Build import cythonize
 # Define your Cython extension module
 extensions = [
     Extension(
-        'surfalize.calculations',  # Replace with the path to your Cython module
-        sources=['surfalize/calculations.pyx'],  # Replace with the path to your .pyx file
+        'calculations',  # Replace with the path to your Cython module
+        sources=['calculations.pyx'],  # Replace with the path to your .pyx file
     ),
 ]
 

@@ -1,8 +1,10 @@
 # Standard imports
+from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-from functools import lru_cache
+from functools import lru_cache, wraps
+
 # Scipy stack
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,9 +25,9 @@ except ImportError:
     tqdm = lambda x, *args, **kwargs: x
 
 # Custom imports
-import vk4extract
+from . fileloader import load_file
 try:
-    from calculations import surface_area
+    from .calculations import surface_area
     CYTHON_DEFINED = True
 except ImportError:
     logger.warning('Could not import cythonized code. Surface area calculation unavailable.')
@@ -68,7 +70,7 @@ class Batch:
         ----------
         filepaths: list of filepaths
         """
-        self._filepaths = filepaths
+        self._filepaths = [Path(file) for file in filepaths]
         self._load_surfaces()
         
     def _load_surfaces(self):
@@ -89,13 +91,13 @@ class Batch:
     def roughness_parameters(self, parameters=None):
         if parameters is None:
             parameters = list(Surface.AVAILABLE_PARAMETERS)
-        df = pd.DataFrame({'filepath': [os.path.basename(file) for file in self._filepaths]})
+        df = pd.DataFrame({'filepath': [file.name for file in self._filepaths]})
         df = df.set_index('filepath')
         df[list(parameters)] = np.nan
         for file, surface in tqdm(self._surfaces.items(), desc='Calculating parameters'):
             results = surface.roughness_parameters(parameters)
             for k, v in results.items():
-                df.loc[os.path.basename(file)][k] = v
+                df.loc[file.name][k] = v
         return df.reset_index()
 
 
@@ -132,7 +134,16 @@ class Profile:
         ax.plot(np.linspace(0, self._length_um, self._data.size), self._data, c='k')
         plt.show()
         
-    
+           
+def no_nonmeasured_points(function):
+    @wraps(function)
+    def wrapper_function(self, *args, **kwargs):
+        if self._nonmeasured_points_exist:
+            raise ValueError("Non-measured points must be filled before any other operation.")
+        return function(self, *args, **kwargs)
+    return wrapper_function
+            
+            
 # TODO Rotation function -> Detect orientation using FFT
 # TODO Depth function
 # TODO Profile function, Average profile function
@@ -140,7 +151,7 @@ class Profile:
 # TODO Potential profile class -> Profile roughness parameters
 class Surface:
     
-    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'period', 'homogeneity')
+    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'period', 'homogeneity', 'depth')
     
     def __init__(self, height_data, step_x, step_y, width_um, height_um):
         self._data = height_data
@@ -148,6 +159,9 @@ class Surface:
         self._step_y = step_y
         self._width_um = width_um
         self._height_um = height_um
+        # True if non-measured points exist on the surface
+        self._nonmeasured_points_exist = np.any(np.isnan(self._data))
+        
         
     def __repr__(self):
         return f'{self.__class__.__name__}({self._width_um:.2f} x {self._height_um:.2f} µm²)'
@@ -157,19 +171,26 @@ class Surface:
     
     @classmethod
     def load(cls, filepath):
-        with open(filepath, 'rb') as file:
-            offsets = vk4extract.extract_offsets(file)
-            img_data = vk4extract.extract_img_data(offsets, 'height', file)
-            measurement_conditions = vk4extract.extract_measurement_conditions(offsets, file)
-            
-            step_x = measurement_conditions['x_length_per_pixel'] / 1000000
-            step_y = measurement_conditions['y_length_per_pixel'] / 1000000
-            
-            width_um = img_data['width'] * step_x
-            height_um = img_data['height'] * step_y
-            data = img_data['data'].reshape(img_data['height'], img_data['width']) / 10000
-        return cls(data, step_x, step_y, width_um, height_um)
+        return cls(*load_file(filepath))
     
+    def fill_nonmeasured(self, method='nearest', inplace=False):
+        if not self._nonmeasured_points_exist:
+            return self
+        values = self._data.ravel()
+        mask = ~np.isnan(values)
+
+        grid_x, grid_y = np.meshgrid(np.arange(self._data.shape[1]), np.arange(self._data.shape[0]))
+        points = np.column_stack([grid_x.ravel(), grid_y.ravel()])
+
+        data_interpolated = griddata(points[mask], values[mask], (grid_x, grid_y), method=method)
+        
+        if inplace:
+            self._data = data_interpolated
+            self._nonmeasured_points_exist = False
+            return self
+        return Surface(data_interpolated, self._step_x, self._step_y, self._width_um, self._height_um)
+    
+    @no_nonmeasured_points
     def level(self, inplace=False):
         self.period.cache_clear() # Clear the LRU cache of the period method
         x, y = np.meshgrid(np.arange(self._data.shape[1]), np.arange(self._data.shape[0]))
@@ -192,6 +213,7 @@ class Surface:
             return self
         return Surface(leveled_data, self._step_x, self._step_y, self._width_um, self._height_um)
     
+    @no_nonmeasured_points
     def filter(self, cutoff, *, mode, cutoff2=None, inplace=False):
         """
         Filters the surface by means of Fourier Transform.
@@ -269,6 +291,7 @@ class Surface:
         return Surface(data, self._step_x, self._step_y, width_um, height_um)
     
     @lru_cache
+    @no_nonmeasured_points
     def period(self):
         # Get rid of the zero peak in the DFT for data that features a substantial offset in the z-direction by centering
         # the values around the mean
@@ -296,44 +319,56 @@ class Surface:
     def projected_area(self):
         return (self._width_um - self._step_x) * (self._height_um - self._step_y)
     
+    @no_nonmeasured_points
     def surface_area(self):
         if not CYTHON_DEFINED:
             raise NotImplementedError("Surface area calculation is based on cython code. Compile cython code to run this"
                                       "method")
         return surface_area(self._data, self._step_x, self._step_y)
     
+    @no_nonmeasured_points
     def Sa(self):
         return np.abs(self._data - self._data.mean()).sum() / self._data.size
     
+    @no_nonmeasured_points
     def Sq(self):
         return np.sqrt(((self._data - self._data.mean()) ** 2).sum() / self._data.size)
     
+    @no_nonmeasured_points
     def Sp(self):
         return (self._data - self._data.mean()).max()
     
+    @no_nonmeasured_points
     def Sv(self):
         return np.abs((self._data - self._data.mean()).min())
     
+    @no_nonmeasured_points
     def Sz(self):
         return self.Sp() + self.Sv()
     
+    @no_nonmeasured_points
     def Ssk(self):
         return ((self._data - self._data.mean()) ** 3).sum() / self._data.size / self.Sq()**3
     
+    @no_nonmeasured_points
     def Sku(self):
         return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Sq()**4
     
+    @no_nonmeasured_points
     def Sdr(self):
         return (self.surface_area() / self.projected_area() -1) * 100
     
     # EXPERIMENTAL -> Does not work correctly
+    @no_nonmeasured_points
     def _Sdq(self):
         A = self._data.shape[0] * self._data.shape[1]
         diff_x = np.diff(self._data, axis=1, append=0) / self._step_x
         diff_y = np.diff(self._data, axis=0, append=0) / self._step_y
         return np.sqrt(np.sum(diff_x**2 + diff_y**2) / A)
     
+    @no_nonmeasured_points
     def homogeneity(self):
+        logger.warning("Homogeneity calculation is possibly wrong!")
         period = self.period()
         cell_length = int(period / self._height_um * self._data.shape[0])
         ncells = int(self._data.shape[0] / cell_length) * int(self._data.shape[1] / cell_length)
@@ -379,6 +414,7 @@ class Surface:
                 raise ValueError(f'Parameter "{parameter}" is undefined.')
         return results
     
+    @no_nonmeasured_points
     def abbott_curve(self):
         zmin = self._data.min()
         zmax = self._data.max()
@@ -403,11 +439,12 @@ class Surface:
         ax2.set_xlabel('Material ratio (%)')
 
         plt.show()
-        
+    
+    @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=False, plot=False):
         f = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
 
-        size = self._data.shape[0]
+        size, length = self._data.shape
         if nprofiles > size:
             raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size}')
 
@@ -442,35 +479,34 @@ class Surface:
                 ax.set_xlim(xp.min(), xp.max())
 
             # Loop over each interval
-            for j in range(nintervals):
-                idxlow = (0.25 + j) * period_sin + x0
-                idxhigh = (0.75 + j) * period_sin + x0
+            for j in range(nintervals*2):
+                idx = (0.25 + 0.5*j) * period_sin + x0        
 
-                # Loop over valleys and peaks
-                for k, idx in enumerate((idxlow, idxhigh)):
+                idx_min = int(idx) - int(period_sin * sampling_width/2)
+                idx_max = int(idx) + int(period_sin * sampling_width/2)
+                if idx_min < 0 or idx_max > length-1:
+                    depths_line[j] = np.nan
+                    continue
+                depth_mean = line[idx_min:idx_max+1].mean()
+                depth_median = np.median(line[idx_min:idx_max+1])
+                depths_line[j] = depth_median
+                # For plotting
+                if plot and i == 4:          
+                    rx = xp[idx_min:idx_max+1].min()
+                    ry = line[idx_min:idx_max+1].min()
+                    rw = xp[idx_max] - xp[idx_min+1]
+                    rh = np.abs(line[idx_min:idx_max+1].min() - line[idx_min:idx_max+1].max())
+                    rect = Rectangle((rx, ry), rw, rh, facecolor='tab:orange')
+                    ax.plot([rx, rx+rw], [depth_mean, depth_mean], c='r')
+                    ax.plot([rx, rx+rw], [depth_median, depth_median], c='g')
+                    ax.add_patch(rect)   
 
-                    idx_min = int(idx) - int(period_sin * sampling_width/2)
-                    idx_max = int(idx) + int(period_sin * sampling_width/2)
-                    depth_mean = line[idx_min:idx_max+1].mean()
-                    depth_median = np.median(line[idx_min:idx_max+1])
-                    depths_line[j*2+k] = depth_median
-                    # For plotting
-                    if plot and i == 4:          
-                        rx = xp[idx_min:idx_max+1].min()
-                        ry = line[idx_min:idx_max+1].min()
-                        rw = xp[idx_max] - xp[idx_min+1]
-                        rh = np.abs(line[idx_min:idx_max+1].min() - line[idx_min:idx_max+1].max())
-                        rect = Rectangle((rx, ry), rw, rh, facecolor='tab:orange')
-                        ax.plot([rx, rx+rw], [depth_mean, depth_mean], c='r')
-                        ax.plot([rx, rx+rw], [depth_median, depth_median], c='g')
-                        ax.add_patch(rect)   
-                        
             # Subtract peaks and valleys from eachother by slicing with 2 step
             depths[i*nintervals:(i+1)*nintervals] = np.abs(depths_line[0::2] - depths_line[1::2])
 
         if retstd:
-            return depths.mean(), depths.std()
-        return depths.mean()
+            return np.nanmean(depths), np.nanstd(depths)
+        return np.nanmean(depths)
     
     def show(self):
         fig, ax = plt.subplots(dpi=150)
