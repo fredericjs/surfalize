@@ -36,6 +36,6 @@ setup(
         'matplotlib>=3.1.1',
         'pandas>=1.0.1',
         'scipy>=1.4.1',
-    ]
+    ],
     ext_modules=(ext_modules,)  # Include the Cython extension modules
 )
