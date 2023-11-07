@@ -78,6 +78,11 @@ class Batch:
         for file in tqdm(self._filepaths, desc='Loading files'):
             self._surfaces[file] = Surface.load(file)
             
+    def fill_nonmeasured(self, mode='nearest'):
+        for surface in tqdm(self._surfaces.values(), desc='Filling non-measured points'):
+            surface.fill_nonmeasured(mode=mode, inplace=True)
+        return self
+            
     def level(self):
         for surface in tqdm(self._surfaces.values(), desc='Leveling'):
             surface.level(inplace=True)
