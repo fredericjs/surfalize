@@ -473,11 +473,11 @@ class Surface:
     
     @no_nonmeasured_points
     def Sa(self):
-        return np.abs(self._data - self._data.mean()).sum() / self._data.size
+        return (np.abs(self._data - self._data.mean()).sum() / self._data.size)
     
     @no_nonmeasured_points
     def Sq(self):
-        return np.sqrt(((self._data - self._data.mean()) ** 2).sum() / self._data.size)
+        return np.sqrt(((self._data - self._data.mean()) ** 2).sum() / self._data.size).round(8)
     
     @no_nonmeasured_points
     def Sp(self):
@@ -513,7 +513,6 @@ class Surface:
     
     @no_nonmeasured_points
     def homogeneity(self):
-        logger.warning("Homogeneity calculation is possibly wrong!")
         period = self.period()
         cell_length = int(period / self._height_um * self._data.shape[0])
         ncells = int(self._data.shape[0] / cell_length) * int(self._data.shape[1] / cell_length)
@@ -522,31 +521,35 @@ class Surface:
         sku = np.zeros(ncells)
         sdr = np.zeros(ncells)
         for i in range(int(self._data.shape[0] / cell_length)):
-            for j in range(int(self._data.shape[1] / cell_length)): 
+            for j in range(int(self._data.shape[1] / cell_length)):
                 idx = i * int(self._data.shape[1] / cell_length) + j
-                data = self._data[cell_length * i:cell_length*(i+1), cell_length * j:cell_length*(j+1)]
-                cell_surface = Surface(data, self._step_x, self._step_y, cell_length * self._step_x, cell_length * self._step_y)
+                data = self._data[cell_length * i:cell_length * (i + 1), cell_length * j:cell_length * (j + 1)]
+                cell_surface = Surface(data, self._step_x, self._step_y, cell_length * self._step_x,
+                                       cell_length * self._step_y)
                 sa[idx] = cell_surface.Sa()
                 ssk[idx] = cell_surface.Ssk()
                 sku[idx] = cell_surface.Sku()
                 sdr[idx] = cell_surface.Sdr()
-        sa = np.sort(sa)
-        ssk = np.sort(np.abs(ssk))
-        sku = np.sort(sku)
-        sdr = np.sort(sdr)
+        sa = np.sort(sa.round(8))
+        ssk = np.sort(np.abs(ssk).round(8))
+        sku = np.sort(sku.round(8))
+        sdr = np.sort(sdr.round(8))
 
         h = []
         for param in (sa, ssk, sku, sdr):
+            if np.all(param == 0):
+                h.append(1)
+                continue
             x, step = np.linspace(0, 1, ncells, retstep=True)
             lorenz = np.cumsum(np.abs(param))
             lorenz = (lorenz - lorenz.min()) / lorenz.max()
             y = lorenz.min() + (lorenz.max() - lorenz.min()) * x
-            total = np.trapz(y, dx=step) 
+            total = np.trapz(y, dx=step)
             B = np.trapz(lorenz, dx=step)
             A = total - B
             gini = A / total
             h.append(1 - gini)
-        return np.mean(h)
+        return np.mean(h).round(4)
     
     def roughness_parameters(self, parameters=None):
         if parameters is None:
