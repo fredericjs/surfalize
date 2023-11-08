@@ -26,6 +26,7 @@ except ImportError:
     logger.warning('Could not import cythonized code. Surface area calculation unavailable.')
     CYTHON_DEFINED = False
 
+# Deprecate
 def _period_from_profile(profile):
     """
     Extracts the period in pixel units from a surface profile using the Fourier transform.
@@ -60,6 +61,27 @@ class Profile:
         self._step = step
         self._length_um = length_um
         
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self._length_um:.2f} µm)'
+    
+    def _repr_png_(self):
+        self.show()
+        
+    def period(self):
+        fft = np.abs(np.fft.fft(self._data))
+        freq = np.fft.fftfreq(self._data.shape[0], d=self._step)
+        peaks, properties = find_peaks(fft.flatten(), distance=10, prominence=10)
+        # Find the prominence of the peaks
+        prominences = properties['prominences']
+        # Sort in descendin'g order by computing sorting indices
+        sorted_indices = np.argsort(prominences)[::-1]
+        # Sort peaks in descending order
+        peaks_sorted = peaks[sorted_indices]
+        # Rearrange prominences based on the sorting of peaks
+        prominences_sorted = prominences[sorted_indices]
+        period = 1/np.abs(freq[peaks_sorted[0]])
+        period
+        
     def Ra(self):
         return np.abs(self._data - self._data.mean()).sum() / self._data.size
     
@@ -81,8 +103,62 @@ class Profile:
     def Rku(self):
         return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Rq()**4
     
+    def depth(self, sampling_width=0.2, plot=False, retstd=False):
+        f = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
+
+        period_px = int(self.period() / self._step)
+        nintervals = int(self._data.shape[0] / period_px)
+        xp = np.arange(self._data.shape[0])
+        # Define initial guess for fit parameters
+        p0=((self._data.max() - self._data.min())/2, period_px, 0, self._data.mean())
+        # Fit the data to the general sine function
+        popt, pcov = curve_fit(f, xp, self._data, p0=p0)
+        # Extract the refined period estimate from the sine function period
+        period_sin = popt[1]
+        # Extract the lateral shift of the sine fit
+        x0 = popt[2]
+
+        depths_line = np.zeros(nintervals * 2)
+
+        if plot:
+            fig, ax = plt.subplots(figsize=(16,4))
+            ax.plot(xp, self._data, lw=1.5, c='k', alpha=0.7)
+            ax.plot(xp, f(xp, *popt), c='orange', ls='--')
+            ax.set_xlim(xp.min(), xp.max())
+
+        # Loop over each interval
+        for i in range(nintervals*2):
+            idx = (0.25 + 0.5*i) * period_sin + x0        
+
+            idx_min = int(idx) - int(period_sin * sampling_width/2)
+            idx_max = int(idx) + int(period_sin * sampling_width/2)
+            if idx_min < 0 or idx_max > self._data.shape[0]-1:
+                depths_line[i] = np.nan
+                continue
+            depth_mean = self._data[idx_min:idx_max+1].mean()
+            depth_median = np.median(self._data[idx_min:idx_max+1])
+            depths_line[i] = depth_median
+            # For plotting
+            if plot:          
+                rx = xp[idx_min:idx_max+1].min()
+                ry = self._data[idx_min:idx_max+1].min()
+                rw = xp[idx_max] - xp[idx_min+1]
+                rh = np.abs(self._data[idx_min:idx_max+1].min() - self._data[idx_min:idx_max+1].max())
+                rect = plt.Rectangle((rx, ry), rw, rh, facecolor='tab:orange')
+                ax.plot([rx, rx+rw], [depth_mean, depth_mean], c='r')
+                ax.plot([rx, rx+rw], [depth_median, depth_median], c='g')
+                ax.add_patch(rect)   
+
+        # Subtract peaks and valleys from eachother by slicing with 2 step
+        depths = np.abs(depths_line[0::2] - depths_line[1::2])
+
+        if retstd:
+            return np.nanmean(depths), np.nanstd(depths)
+        return np.nanmean(depths)
+    
     def show(self):
         fig, ax = plt.subplots(figsize=(10, 3))
+        ax.set_xlim(0, self._length_um)
         ax.plot(np.linspace(0, self._length_um, self._data.size), self._data, c='k')
         plt.show()
         
@@ -96,8 +172,8 @@ def no_nonmeasured_points(function):
     return wrapper_function
             
             
-# TODO Profile function, Average profile function
 # TODO Image export
+# TODO Oblique profiles
 class Surface:
     
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'period', 'homogeneity', 'depth')
@@ -117,6 +193,43 @@ class Surface:
     
     def _repr_png_(self):
         self.show()
+        
+    def get_horizontal_profile(self, y, average=1, average_step=None):
+        if y > self._height_um:
+            raise ValueError("y must not exceed height of surface.")
+        
+        if average_step is None:
+            average_step_px = 1
+        else:
+            average_step_px = int(average_step / self._step_y)
+
+        idx = int(y / self._height_um * self._data.shape[0])
+        idx_min = idx - int(average / 2) * average_step_px
+        idx_min = 0 if idx_min < 0 else idx_min
+        idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
+        idx_max = self._data.shape[0] if idx_max > self._data.shape[0] else idx_max
+        data = self._data[idx_min:idx_max+1:average_step_px].mean(axis=0)
+        return Profile(data, self._step_x, self._width_um)
+    
+    def get_vertical_profile(self, x, average=1, average_step=None):
+        if x > self._height_um:
+            raise ValueError("x must not exceed height of surface.")
+        
+        if average_step is None:
+            average_step_px = 1
+        else:
+            average_step_px = int(average_step / self._step_x)
+
+        idx = int(x / self._width_um * self._data.shape[1])
+        idx_min = idx - int(average / 2) * average_step_px
+        idx_min = 0 if idx_min < 0 else idx_min
+        idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
+        idx_max = self._data.shape[1] if idx_max > self._data.shape[1] else idx_max
+        data = self._data[:,idx_min:idx_max+1:average_step_px].mean(axis=1)
+        return Profile(data, self._step_y, self._height_um)
+    
+    def get_oblique_profile(self, x0, y0, x1, y1):
+        pass
     
     @classmethod
     def load(cls, filepath):
