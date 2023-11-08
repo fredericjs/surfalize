@@ -15,6 +15,7 @@ from scipy.linalg import lstsq
 from scipy.interpolate import griddata
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
+from scipy.ndimage import rotate as scipy_rotate
 
 try:
     # Optional import
@@ -149,7 +150,6 @@ def no_nonmeasured_points(function):
     return wrapper_function
             
             
-# TODO Rotation function -> Detect orientation using FFT
 # TODO Profile function, Average profile function
 # TODO Image export
 class Surface:
@@ -195,7 +195,7 @@ class Surface:
     
     @no_nonmeasured_points
     def level(self, inplace=False):
-        self.period.cache_clear() # Clear the LRU cache of the period method
+        #self.period.cache_clear() # Clear the LRU cache of the period method
         x, y = np.meshgrid(np.arange(self._data.shape[1]), np.arange(self._data.shape[0]))
         # Flatten the x, y, and height_data arrays
         x_flat = x.flatten()
@@ -217,11 +217,50 @@ class Surface:
         return Surface(leveled_data, self._step_x, self._step_y, self._width_um, self._height_um)
     
     @no_nonmeasured_points
+    def rotate(self, angle, inplace=False):
+        rotated = scipy_rotate(self._data, angle, reshape=True)
+
+        aspect_ratio = self._data.shape[0] / self._data.shape[1]
+        rotated_aspect_ratio = rotated.shape[0] / rotated.shape[1]
+
+        if aspect_ratio < 1:
+            total_height = self._data.shape[0] / rotated_aspect_ratio
+        else:
+            total_height = self._data.shape[1]
+
+        pre_comp_sin = np.abs(np.sin(np.deg2rad(angle)))
+        pre_comp_cos = np.abs(np.cos(np.deg2rad(angle)))
+
+        w = total_height / (aspect_ratio * pre_comp_sin + pre_comp_cos)
+        h = w * aspect_ratio
+
+        ny, nx = rotated.shape
+        ymin = int((ny - h)/2)
+        ymax = int(ny - (ny - h)/2)
+        xmin = int((nx - w)/2)
+        xmax = int(nx - (nx - w)/2)
+
+        rotated_cropped = rotated[ymin:ymax+1, xmin:xmax+1]
+        width_um = (self._width_um * pre_comp_cos + self._height_um * pre_comp_sin) * w / nx
+        height_um = (self._width_um * pre_comp_sin + self._height_um * pre_comp_cos) * h / ny
+        step_y = height_um / rotated_cropped.shape[0]
+        step_x = width_um / rotated_cropped.shape[1]
+
+        if inplace:
+            self._data = rotated_cropped
+            self._step_x = step_x
+            self._step_y = step_y
+            self._width_um = width_um
+            self._height_um = height_um
+
+        return Surface(rotated_cropped, step_x, step_y, width_um, height_um)
+    
+    @no_nonmeasured_points
     def filter(self, cutoff, *, mode, cutoff2=None, inplace=False):
         """
         Filters the surface by means of Fourier Transform.
         """
-        self.period.cache_clear() # Clear the LRU cache of the period method
+        #self.period.cache_clear() # Clear the LRU cache of the period method
         if mode == 'both' and inplace:
             raise ValueError("Mode 'both' does not support inplace operation since two Surface objects will be returned")
         freq_x = np.fft.fftfreq(self._data.shape[1], d=self._step_x)
@@ -293,9 +332,11 @@ class Surface:
             return self
         return Surface(data, self._step_x, self._step_y, width_um, height_um)
     
-    @lru_cache
-    @no_nonmeasured_points
-    def period(self):
+    def align(self, inplace=False):
+        angle = self.orientation()
+        return self.rotate(angle, inplace=inplace)
+    
+    def _get_fourier_peak_dx_dy(self):
         # Get rid of the zero peak in the DFT for data that features a substantial offset in the z-direction by centering
         # the values around the mean
         data = self._data - self._data.mean()
@@ -315,9 +356,29 @@ class Surface:
         # Rearrange prominences based on the sorting of peaks
         prominences_sorted = prominences[sorted_indices]
         peaks_2d = np.unravel_index(peaks_sorted, fft.shape)
-        period = 2/np.hypot(freq_x[peaks_2d[1][0]] - freq_x[peaks_2d[1][1]],
-                            freq_y[peaks_2d[0][0]] - freq_y[peaks_2d[0][1]])
+        
+        # Does this really make sense????
+        dy = freq_x[peaks_2d[1][0]] - freq_x[peaks_2d[1][1]]
+        dx = freq_y[peaks_2d[0][0]] - freq_y[peaks_2d[0][1]]
+        
+        return dx, dy
+    
+    #@lru_cache
+    @no_nonmeasured_points
+    def period(self):
+        dx, dy = self._get_fourier_peak_dx_dy()
+        period = 2/np.hypot(dx, dy)
         return period
+    
+    @no_nonmeasured_points
+    def orientation(self):
+        dx, dy = self._get_fourier_peak_dx_dy()
+        angle = np.rad2deg(np.arctan2(np.abs(dx), np.abs(dy)))
+        
+        #TODO: This needs to be fixed!
+        if dy < 0:
+            angle *= -1
+        return angle
     
     def projected_area(self):
         return (self._width_um - self._step_x) * (self._height_um - self._step_y)
