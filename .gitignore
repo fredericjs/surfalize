@@ -1,3 +1,6 @@
+# Any cython transpiled c files
+*.c
+# ipython folder
 .ipynb_checkpoints
 
 # 
