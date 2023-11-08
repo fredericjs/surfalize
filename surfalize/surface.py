@@ -518,12 +518,17 @@ class Surface:
             return np.nanmean(depths), np.nanstd(depths)
         return np.nanmean(depths)
     
-    def show(self):
+    def show(self, cmap='jet'):
+        cmap = plt.get_cmap(cmap).copy()
+        cmap.set_bad('k')
         fig, ax = plt.subplots(dpi=150)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        im = ax.imshow(self._data, cmap='jet', extent=(0, self._width_um, 0, self._height_um))
+        im = ax.imshow(self._data, cmap=cmap, extent=(0, self._width_um, 0, self._height_um))
         fig.colorbar(im, cax=cax, label='z [µm]')
         ax.set_xlabel('x [µm]')
-        ax.set_ylabel('y [µm]')                 
+        ax.set_ylabel('y [µm]')
+        if self._nonmeasured_points_exist:
+            handles = [plt.plot([], [], marker='s', c='k', ls='')[0]]
+            ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         plt.show()
