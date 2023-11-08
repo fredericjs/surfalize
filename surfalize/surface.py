@@ -15,7 +15,7 @@ from scipy.linalg import lstsq
 from scipy.interpolate import griddata
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
-import scipy.ndimage import as ndimage
+import scipy.ndimage as ndimage
 
 # Custom imports
 from . fileloader import load_file
