@@ -15,7 +15,7 @@ from scipy.linalg import lstsq
 from scipy.interpolate import griddata
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
-from scipy.ndimage import rotate as scipy_rotate
+import scipy.ndimage import as ndimage
 
 # Custom imports
 from . fileloader import load_file
@@ -212,7 +212,7 @@ class Surface:
         return Profile(data, self._step_x, self._width_um)
     
     def get_vertical_profile(self, x, average=1, average_step=None):
-        if x > self._height_um:
+        if x > self._width_um:
             raise ValueError("x must not exceed height of surface.")
         
         if average_step is None:
@@ -229,7 +229,29 @@ class Surface:
         return Profile(data, self._step_y, self._height_um)
     
     def get_oblique_profile(self, x0, y0, x1, y1):
-        pass
+        x0px = int(x0 / self._width_um * self._data.shape[1])
+        y0px = int(y0 / self._height_um * self._data.shape[0])
+        x1px = int(x1 / self._width_um * self._data.shape[1])
+        y1px = int(y1 / self._height_um * self._data.shape[0])
+
+        if (not(0 <= x0px <= self._data.shape[1]) or not(0 <= y0px <= self._data.shape[0]) or 
+            not(0 <= x1px <= self._data.shape[1]) or not(0 <= y1px <= self._data.shape[0])):
+            raise ValueError("Start- and endpoint coordinates must lie within the surface.")
+
+        dx = x1px - x0px
+        dy = y1px - y0px
+
+        size = int(np.hypot(dx, dy))
+
+        m = dy/dx
+        xp = np.linspace(x0px, x1px, size)
+        yp = m * xp
+
+        data = ndimage.map_coordinates(self._data, [yp, xp])
+
+        length_um = np.hypot(dy * self._step_y, dx * self._step_x)
+        step = length_um / size
+        return Profile(data, step, length_um)
     
     @classmethod
     def load(cls, filepath):
@@ -277,7 +299,7 @@ class Surface:
     
     @no_nonmeasured_points
     def rotate(self, angle, inplace=False):
-        rotated = scipy_rotate(self._data, angle, reshape=True)
+        rotated = ndimage.rotate(self._data, angle, reshape=True)
 
         aspect_ratio = self._data.shape[0] / self._data.shape[1]
         rotated_aspect_ratio = rotated.shape[0] / rotated.shape[1]
