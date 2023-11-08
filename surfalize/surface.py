@@ -80,7 +80,7 @@ class Profile:
         # Rearrange prominences based on the sorting of peaks
         prominences_sorted = prominences[sorted_indices]
         period = 1/np.abs(freq[peaks_sorted[0]])
-        period
+        return period
         
     def Ra(self):
         return np.abs(self._data - self._data.mean()).sum() / self._data.size
