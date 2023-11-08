@@ -1,4 +1,6 @@
 import struct
+import zipfile
+import io
 from pathlib import Path
 import numpy as np
 
@@ -248,7 +250,23 @@ def _vk4_extract_img_data(offset_dict, d_type, in_file):
         i = i + 1
     data['data'] = array
 
-    return data
+    return data  
+
+def load_vk6_vk7(filepath):
+    with zipfile.ZipFile(filepath) as archive:
+        vk4file = io.BytesIO(archive.read('Vk4File'))
+        
+    offsets = _vk4_extract_offsets(vk4file)
+    img_data = _vk4_extract_img_data(offsets, 'height', vk4file)
+    measurement_conditions = _vk4_extract_measurement_conditions(offsets, vk4file)
+
+    step_x = measurement_conditions['x_length_per_pixel'] / 1000000
+    step_y = measurement_conditions['y_length_per_pixel'] / 1000000
+    width_um = img_data['width'] * step_x
+    height_um = img_data['height'] * step_y
+    data = img_data['data'].reshape(img_data['height'], img_data['width']) / 10000
+    
+    return (data, step_x, step_y, width_um, height_um)
     
 
 def load_vk4(filepath):
@@ -267,6 +285,8 @@ def load_vk4(filepath):
 
 dispatch = {
     '.vk4': load_vk4,
+    '.vk6': load_vk6_vk7,
+    '.vk7': load_vk6_vk7,
     '.plu': load_plu
 }
 
