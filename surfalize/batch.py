@@ -47,6 +47,16 @@ class Batch:
         for surface in tqdm(self._surfaces.values(), desc='Filtering'):
             surface.filter(cutoff, mode=mode, cutoff2=None, inplace=True)
         return self
+    
+    def rotate(self, angle):
+        for surface in tqdm(self._surfaces.values(), desc='Rotating'):
+            surface.rotate(angle, inplace=True)
+        return self
+    
+    def align(self):
+        for surface in tqdm(self._surfaces.values(), desc='Aligning'):
+            surface.align(inplace=True)
+        return self
 
     def roughness_parameters(self, parameters=None):
         if parameters is None:
