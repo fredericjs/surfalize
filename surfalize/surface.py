@@ -303,7 +303,7 @@ class Surface:
         prominences_sorted = prominences[sorted_indices]
         peaks_2d = np.unravel_index(peaks_sorted, fft.shape)
         
-        # Does this really make sense????
+        # Does this really make sense? I think I mixed up x and y but it works which is weird
         dy = freq_x[peaks_2d[1][0]] - freq_x[peaks_2d[1][1]]
         dx = freq_y[peaks_2d[0][0]] - freq_y[peaks_2d[0][1]]
         

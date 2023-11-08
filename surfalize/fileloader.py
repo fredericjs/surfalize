@@ -1,8 +1,10 @@
 import struct
 import zipfile
 import io
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import numpy as np
+
 
 def read_uint32_le(file):
     return struct.unpack('<I', file.read(4))[0]
@@ -75,6 +77,29 @@ def load_plu(filepath):
         height_um = calibration['yres'] * step_y
         
         return (data, step_x, step_y, width_um, height_um)
+    
+
+def load_plux(filepath): 
+    with zipfile.ZipFile(filepath) as archive:
+        data = archive.read('LAYER_0.raw')
+        metadata = archive.read('index.xml')
+
+    xml_str = metadata.decode('utf-8')
+
+    # Parse the XML string
+    root = ET.fromstring(xml_str)
+    shape_x = int(root.find('GENERAL/IMAGE_SIZE_X').text)
+    shape_y = int(root.find('GENERAL/IMAGE_SIZE_Y').text)
+    step_x = float(root.find('GENERAL/FOV_X').text)
+    step_y = float(root.find('GENERAL/FOV_Y').text)
+    width_um = shape_x * step_x
+    height_um = shape_y * step_y
+    width_um, height_um
+
+    size = shape_x * shape_y
+    height_data = np.array(struct.unpack(f'<{size}f', data)).reshape((shape_y, shape_x))
+
+    return (height_data, step_x, step_y, width_um, height_um)
     
 def _vk4_extract_offsets(in_file):
     """extract_offsets
@@ -287,7 +312,8 @@ dispatch = {
     '.vk4': load_vk4,
     '.vk6': load_vk6_vk7,
     '.vk7': load_vk6_vk7,
-    '.plu': load_plu
+    '.plu': load_plu,
+    '.plux': load_plux,
 }
 
 
