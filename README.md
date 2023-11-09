@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="logo.svg" width="300">
+<img src="logo.svg" width="600">
 </h1><br>
 
 # surfalize
