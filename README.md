@@ -1,4 +1,4 @@
-![Image](logo.svg)
+<img src="logo.svg" style="width: 80%; margin-left: 10%; margin-right: 10%">
 
 # surfalize
 
