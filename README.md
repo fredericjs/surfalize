@@ -1,3 +1,5 @@
+![Image](logo.svg)
+
 # surfalize
 
 surfalize is a python package for analyzing microscope topography measurement data in terms of surface
@@ -7,6 +9,13 @@ it proviedes batch analysis capabilities that
 
 Currently, only Keyence *.vk4*, *.vk6* and *.vk7* file formats are supported.
 
+## Currently supported file formats
+
+Manufacturer | Format
+---|-------
+Keyence | *.vk4*, *.vk6*, *.vk7*
+Leica | *.plu*
+Sensofar | *.plu*, *.plux*
 
 ## Basic Usage
 
