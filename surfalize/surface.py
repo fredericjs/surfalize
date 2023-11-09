@@ -65,6 +65,10 @@ class Profile:
         return f'{self.__class__.__name__}({self._length_um:.2f} µm)'
     
     def _repr_png_(self):
+        """
+        Repr method for Jupyter notebooks. When Jupyter makes a call to repr, it checks first if a _repr_png_ is
+        defined. If not, it falls back on __repr__.
+        """
         self.show()
         
     def period(self):
@@ -192,9 +196,37 @@ class Surface:
         return f'{self.__class__.__name__}({self._width_um:.2f} x {self._height_um:.2f} µm²)'
     
     def _repr_png_(self):
+        """
+        Repr method for Jupyter notebooks. When Jupyter makes a call to repr, it checks first if a _repr_png_ is
+        defined. If not, it falls back on __repr__.
+        """
         self.show()
+
+    @classmethod
+    def load(cls, filepath):
+        return cls(*load_file(filepath))
         
     def get_horizontal_profile(self, y, average=1, average_step=None):
+        """
+        Extracts a horizontal profile from the surface with optional averaging over parallel profiles.
+        Profiles on the edge might be averaged over fewer profiles.
+
+        Parameters
+        ----------
+        y: float
+            vertical (height) value in µm from where the profile is extracted. The value is rounded to the closest data
+            point.
+        average: int
+            number of profiles over which to average. Defaults to 1. Profiles will be extracted above and below the
+            position designated by y.
+        average_step: float, default None
+            distance in µm between parallel profiles used for averaging. The value is rounded to the closest integer
+            multiple of the pixel resolution. If the value is None, a distance of 1 px will be assumed.
+
+        Returns
+        -------
+        profile: surfalize.Profile
+        """
         if y > self._height_um:
             raise ValueError("y must not exceed height of surface.")
         
@@ -203,15 +235,38 @@ class Surface:
         else:
             average_step_px = int(average_step / self._step_y)
 
+        # vertical index of profile
         idx = int(y / self._height_um * self._data.shape[0])
+        # first index from which a profile is taken for averaging
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
+        # last index from which a profile is taken for averaging
         idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
         idx_max = self._data.shape[0] if idx_max > self._data.shape[0] else idx_max
         data = self._data[idx_min:idx_max+1:average_step_px].mean(axis=0)
         return Profile(data, self._step_x, self._width_um)
     
     def get_vertical_profile(self, x, average=1, average_step=None):
+        """
+         Extracts a vertical profile from the surface with optional averaging over parallel profiles.
+         Profiles on the edge might be averaged over fewer profiles.
+
+         Parameters
+         ----------
+         x: float
+             laterial (width) value in µm from where the profile is extracted. The value is rounded to the closest data
+             point.
+         average: int
+             number of profiles over which to average. Defaults to 1. Profiles will be extracted above and below the
+             position designated by x.
+         average_step: float, default None
+             distance in µm between parallel profiles used for averaging. The value is rounded to the closest integer
+             multiple of the pixel resolution. If the value is None, a distance of 1 px will be assumed.
+
+         Returns
+         -------
+         profile: surfalize.Profile
+         """
         if x > self._width_um:
             raise ValueError("x must not exceed height of surface.")
         
@@ -220,9 +275,12 @@ class Surface:
         else:
             average_step_px = int(average_step / self._step_x)
 
+        # vertical index of profile
         idx = int(x / self._width_um * self._data.shape[1])
+        # first index from which a profile is taken for averaging
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
+        # last index from which a profile is taken for averaging
         idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
         idx_max = self._data.shape[1] if idx_max > self._data.shape[1] else idx_max
         data = self._data[:,idx_min:idx_max+1:average_step_px].mean(axis=1)
@@ -252,11 +310,9 @@ class Surface:
         length_um = np.hypot(dy * self._step_y, dx * self._step_x)
         step = length_um / size
         return Profile(data, step, length_um)
-    
-    @classmethod
-    def load(cls, filepath):
-        return cls(*load_file(filepath))
-    
+
+    # Operations #######################################################################################################
+
     def fill_nonmeasured(self, method='nearest', inplace=False):
         if not self._nonmeasured_points_exist:
             return self
@@ -339,8 +395,37 @@ class Surface:
     @no_nonmeasured_points
     def filter(self, cutoff, *, mode, cutoff2=None, inplace=False):
         """
-        Filters the surface by means of Fourier Transform.
+        Filters the surface by means of Fourier Transform. There a several possible modes of filtering:
+
+        - 'highpass': computes spatial frequencies above the specified cutoff value
+        - 'lowpass': computes spatial frequencies below the specified cutoff value
+        - 'both': computes and returns both the highpass and lowpass filtered surfaces
+        - 'bandpass': computes frequencies below the specified cutoff value and above the value specified for cutoff2
+
+        The surface object's data can be changed inplace by specifying 'inplace=True' for 'highpass', 'lowpass' and
+        'bandpass' mode. For mode='both', inplace=True will raise a ValueError.
+
+        Parameters
+        ----------
+        cutoff: float
+            Cutoff frequency in 1/µm at which the high and low spatial frequencies are separated.
+            Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
+        mode: str
+            Mode of filtering. Possible values: 'highpass', 'lowpass', 'both', 'bandpass'.
+        cutoff2: float
+            Used only in mode='bandpass'. Specifies the lower cutoff frequency of the bandpass filter. Must be greater
+            than cutoff.
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
+            objects will be returned.
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
         """
+
         #self.period.cache_clear() # Clear the LRU cache of the period method
         if mode == 'both' and inplace:
             raise ValueError("Mode 'both' does not support inplace operation since two Surface objects will be returned")
@@ -401,6 +486,22 @@ class Surface:
             return surface_low
         
     def zoom(self, factor, inplace=False):
+        """
+        Magnifies the surface by the specified factor.
+
+        Parameters
+        ----------
+        factor: float
+            Factor by which the surface is magnified
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
         y, x = self._data.shape
         xn, yn = int(x / factor), int(y / factor)
         data = self._data[int((x - xn) / 2):xn + int((x - xn) / 2) + 1, int((y - yn) / 2):yn + int((y - yn) / 2) + 1]
@@ -414,12 +515,36 @@ class Surface:
         return Surface(data, self._step_x, self._step_y, width_um, height_um)
     
     def align(self, inplace=False):
+        """
+        Computes the dominant orientation of the surface pattern and alignes the orientation with the horizontal
+        or vertical axis.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
         angle = self.orientation()
         return self.rotate(angle, inplace=inplace)
     
     def _get_fourier_peak_dx_dy(self):
-        # Get rid of the zero peak in the DFT for data that features a substantial offset in the z-direction by centering
-        # the values around the mean
+        """
+        Calculates the distance in x and y in spatial frequency length units. The zero peak is avoided by
+        centering the data around the mean. This method is used by the period and orientation calculation.
+
+        Returns
+        -------
+        (dx, dy): tuple[float,float]
+            Distance between largest Fourier peaks in x (dx) and in y (dy)
+        """
+        # Get rid of the zero peak in the DFT for data that features a substantial offset in the z-direction
+        # by centering the values around the mean
         data = self._data - self._data.mean()
         fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
         N, M = self._data.shape
@@ -443,7 +568,9 @@ class Surface:
         dx = freq_y[peaks_2d[0][0]] - freq_y[peaks_2d[0][1]]
         
         return dx, dy
-    
+
+    # Characterization #################################################################################################
+
     #@lru_cache
     @no_nonmeasured_points
     def period(self):
@@ -550,44 +677,7 @@ class Surface:
             gini = A / total
             h.append(1 - gini)
         return np.mean(h).round(4)
-    
-    def roughness_parameters(self, parameters=None):
-        if parameters is None:
-            parameters = self.AVAILABLE_PARAMETERS
-        results = dict()
-        for parameter in parameters:
-            if parameter in self.AVAILABLE_PARAMETERS:
-                results[parameter] = getattr(self, parameter)()
-            else:
-                raise ValueError(f'Parameter "{parameter}" is undefined.')
-        return results
-    
-    @no_nonmeasured_points
-    def abbott_curve(self):
-        zmin = self._data.min()
-        zmax = self._data.max()
-        hist, bins = np.histogram(self._data, bins=40)
-        step = np.abs(bins[0] - bins[1])
 
-        hist = hist / self._data.size * 100
-        cumulated = np.cumsum(np.histogram(self._data, bins=500)[0])
-        cumulated = cumulated / cumulated.max() * 100
-
-        fig, ax = plt.subplots()
-        ax2 = ax.twiny()
-        ax.set_box_aspect(1)
-        ax.barh(np.arange(bins[0] + step, bins[-1] + step, step), hist, height=step*0.8)
-        ax2.plot(cumulated, np.linspace(zmax, zmin, cumulated.size), c='r')
-
-        ax.set_ylim(zmin, zmax)
-        ax.set_ylabel('z (µm)')
-        ax2.set_xlim(0, 100)
-
-        ax.set_xlabel('Material distribution (%)')
-        ax2.set_xlabel('Material ratio (%)')
-
-        plt.show()
-    
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=False, plot=False):
         f = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
@@ -655,6 +745,44 @@ class Surface:
         if retstd:
             return np.nanmean(depths), np.nanstd(depths)
         return np.nanmean(depths)
+
+    def roughness_parameters(self, parameters=None):
+        if parameters is None:
+            parameters = self.AVAILABLE_PARAMETERS
+        results = dict()
+        for parameter in parameters:
+            if parameter in self.AVAILABLE_PARAMETERS:
+                results[parameter] = getattr(self, parameter)()
+            else:
+                raise ValueError(f'Parameter "{parameter}" is undefined.')
+        return results
+
+    # Plotting #########################################################################################################
+    @no_nonmeasured_points
+    def abbott_curve(self):
+        zmin = self._data.min()
+        zmax = self._data.max()
+        hist, bins = np.histogram(self._data, bins=40)
+        step = np.abs(bins[0] - bins[1])
+
+        hist = hist / self._data.size * 100
+        cumulated = np.cumsum(np.histogram(self._data, bins=500)[0])
+        cumulated = cumulated / cumulated.max() * 100
+
+        fig, ax = plt.subplots()
+        ax2 = ax.twiny()
+        ax.set_box_aspect(1)
+        ax.barh(np.arange(bins[0] + step, bins[-1] + step, step), hist, height=step*0.8)
+        ax2.plot(cumulated, np.linspace(zmax, zmin, cumulated.size), c='r')
+
+        ax.set_ylim(zmin, zmax)
+        ax.set_ylabel('z (µm)')
+        ax2.set_xlim(0, 100)
+
+        ax.set_xlabel('Material distribution (%)')
+        ax2.set_xlabel('Material ratio (%)')
+
+        plt.show()
     
     def show(self, cmap='jet'):
         cmap = plt.get_cmap(cmap).copy()
