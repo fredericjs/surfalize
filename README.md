@@ -1,7 +1,6 @@
-<img src="logo.svg">
-
-
-# surfalize
+<h1 align="center">
+<img src="logo.svg" width="600">
+</h1><br>
 
 surfalize is a python package for analyzing microscope topography measurement data in terms of surface
 rouggness and other topographic parameters. It is intended primarily for microtextured surfaces and is supposed to 
