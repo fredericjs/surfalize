@@ -372,11 +372,11 @@ class Surface:
         h = w * aspect_ratio
 
         ny, nx = rotated.shape
-        ymin = int((ny - h)/2)
-        ymax = int(ny - (ny - h)/2)
-        xmin = int((nx - w)/2)
-        xmax = int(nx - (nx - w)/2)
-
+        ymin = int((ny - h)/2) + 1
+        ymax = int(ny - (ny - h)/2) - 1
+        xmin = int((nx - w)/2) + 1
+        xmax = int(nx - (nx - w)/2) - 1
+        
         rotated_cropped = rotated[ymin:ymax+1, xmin:xmax+1]
         width_um = (self._width_um * pre_comp_cos + self._height_um * pre_comp_sin) * w / nx
         height_um = (self._width_um * pre_comp_sin + self._height_um * pre_comp_cos) * h / ny
