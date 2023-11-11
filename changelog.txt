@@ -1,4 +1,4 @@
-v0.0.2:
+v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
-- Fixed bug where Surface.rotate() would leave a border of nan values 
+- Fixed bug where Surface.rotate() would leave a border of nan values
