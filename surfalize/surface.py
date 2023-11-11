@@ -26,6 +26,9 @@ except ImportError:
     logger.warning('Could not import cythonized code. Surface area calculation unavailable.')
     CYTHON_DEFINED = False
 
+# Define general sinusoid function for fitting
+sinusoid = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
+
 # Deprecate
 def _period_from_profile(profile):
     """
@@ -108,15 +111,13 @@ class Profile:
         return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Rq()**4
     
     def depth(self, sampling_width=0.2, plot=False, retstd=False):
-        f = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
-
         period_px = int(self.period() / self._step)
         nintervals = int(self._data.shape[0] / period_px)
         xp = np.arange(self._data.shape[0])
         # Define initial guess for fit parameters
         p0=((self._data.max() - self._data.min())/2, period_px, 0, self._data.mean())
         # Fit the data to the general sine function
-        popt, pcov = curve_fit(f, xp, self._data, p0=p0)
+        popt, pcov = curve_fit(sinusoid, xp, self._data, p0=p0)
         # Extract the refined period estimate from the sine function period
         period_sin = popt[1]
         # Extract the lateral shift of the sine fit
@@ -127,7 +128,7 @@ class Profile:
         if plot:
             fig, ax = plt.subplots(figsize=(16,4))
             ax.plot(xp, self._data, lw=1.5, c='k', alpha=0.7)
-            ax.plot(xp, f(xp, *popt), c='orange', ls='--')
+            ax.plot(xp, sinusoid(xp, *popt), c='orange', ls='--')
             ax.set_xlim(xp.min(), xp.max())
 
         # Loop over each interval
@@ -680,8 +681,6 @@ class Surface:
 
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=False, plot=False):
-        f = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
-
         size, length = self._data.shape
         if nprofiles > size:
             raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size}')
