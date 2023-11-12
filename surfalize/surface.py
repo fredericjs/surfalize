@@ -241,7 +241,7 @@ class Surface:
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
         # last index from which a profile is taken for averaging
-        idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
+        idx_max = idx + int(average / 2) * average_step_px
         idx_max = self._data.shape[0] if idx_max > self._data.shape[0] else idx_max
         data = self._data[idx_min:idx_max+1:average_step_px].mean(axis=0)
         return Profile(data, self._step_x, self._width_um)
@@ -281,7 +281,7 @@ class Surface:
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
         # last index from which a profile is taken for averaging
-        idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
+        idx_max = idx + int(average / 2) * average_step_px
         idx_max = self._data.shape[1] if idx_max > self._data.shape[1] else idx_max
         data = self._data[:,idx_min:idx_max+1:average_step_px].mean(axis=1)
         return Profile(data, self._step_y, self._height_um)
