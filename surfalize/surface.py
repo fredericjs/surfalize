@@ -533,7 +533,7 @@ class Surface:
         """
         angle = self.orientation()
         return self.rotate(angle, inplace=inplace)
-    
+
     def _get_fourier_peak_dx_dy(self):
         """
         Calculates the distance in x and y in spatial frequency length units. The zero peak is avoided by
@@ -550,8 +550,8 @@ class Surface:
         fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
         N, M = self._data.shape
         # Calculate the frequency values for the x and y axes
-        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self._width_um/M))  # Frequency values for the x-axis
-        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self._height_um/N))  # Frequency values for the y-axis
+        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self._width_um / M))  # Frequency values for the x-axis
+        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self._height_um / N))  # Frequency values for the y-axis
         # Find the peaks in the magnitude spectrum
         peaks, properties = find_peaks(fft.flatten(), distance=10, prominence=10)
         # Find the prominence of the peaks
@@ -562,12 +562,23 @@ class Surface:
         peaks_sorted = peaks[sorted_indices]
         # Rearrange prominences based on the sorting of peaks
         prominences_sorted = prominences[sorted_indices]
-        peaks_2d = np.unravel_index(peaks_sorted, fft.shape)
-        
-        # Does this really make sense? I think I mixed up x and y but it works which is weird
-        dy = freq_x[peaks_2d[1][0]] - freq_x[peaks_2d[1][1]]
-        dx = freq_y[peaks_2d[0][0]] - freq_y[peaks_2d[0][1]]
-        
+        # Get peak coordinates in pixels
+        peaks_y_px, peaks_x_px = np.unravel_index(peaks_sorted, fft.shape)
+        # Transform into spatial frequencies in length units
+        # If this is not done, the computed angle will be wrong since the frequency per pixel
+        # resolution is different in x and y due to the different sampling length!
+        peaks_x = freq_x[peaks_x_px]
+        peaks_y = freq_y[peaks_y_px]
+        # Create peak tuples for ease of use
+        peak0 = (peaks_x[0], peaks_y[0])
+        peak1 = (peaks_x[1], peaks_y[1])
+        # Peak1 should always be to the right of peak0
+        if peak0[0] > peak1[0]:
+            peak0, peak1 = peak1, peak0
+
+        dx = peak1[0] - peak0[0]
+        dy = peak0[1] - peak1[1]
+
         return dx, dy
 
     # Characterization #################################################################################################
