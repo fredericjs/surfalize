@@ -593,12 +593,14 @@ class Surface:
     @no_nonmeasured_points
     def orientation(self):
         dx, dy = self._get_fourier_peak_dx_dy()
-        angle = np.rad2deg(np.arctan2(np.abs(dx), np.abs(dy)))
-        
-        #TODO: This needs to be fixed!
-        if dy < 0:
-            angle *= -1
-        return angle
+        #Account for special cases
+        if dx == 0:
+            orientation = 90
+        elif dy == 0:
+            orientation = 0
+        else:
+            orientation = np.rad2deg(np.arctan(dy/dx))
+        return orientation
     
     def projected_area(self):
         return (self._width_um - self._step_x) * (self._height_um - self._step_y)
