@@ -3,3 +3,5 @@ v0.1.0:
   computed parameters
 - Fixed bug where Surface.rotate() would leave a border of nan values
 - Fixed bug in profile averaging
+- Fixed calculation of Surface._get_fourier_peak_dx_dy(), now returns correct angles with correct sign
+- Fixed Surface.orientation(), now considers edgecases where either dy or dx are 0
