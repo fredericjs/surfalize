@@ -753,17 +753,64 @@ class Surface:
         # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
         idx = argclosest(ylower, bin_centers)
         A2 = np.abs(np.trapz(100 - cumsum[idx:], dx=bin_centers[0] - bin_centers[1]))
-        Spv = 2 * A2 / (100 - Smr2)
+        Svk = 2 * A2 / (100 - Smr2)
 
         parameters['Sk'] = Sk
         parameters['Spk'] = Spk
-        parameters['Spv'] = Spv
+        parameters['Svk'] = Svk
         parameters['Smr1'] = Smr1
         parameters['Smr2'] = Smr2
         return parameters
 
     def Sk(self):
+        """
+        Calculates Sk in µm.
+
+        Returns
+        -------
+        Sk: float
+        """
         return self.functional_parameters()['Sk']
+
+    def Spk(self):
+        """
+        Calculates Spk in µm.
+
+        Returns
+        -------
+        Spk: float
+        """
+        return self.functional_parameters()['Spk']
+
+    def Svk(self):
+        """
+        Calculates Svk in µm.
+
+        Returns
+        -------
+        Svk: float
+        """
+        return self.functional_parameters()['Svk']
+
+    def Smr1(self):
+        """
+        Calculates Smr1 in %.
+
+        Returns
+        -------
+        Smr1: float
+        """
+        return self.functional_parameters()['Smr1']
+
+    def Smr2(self):
+        """
+        Calculates Smr2 in %.
+
+        Returns
+        -------
+        Smr2: float
+        """
+        return self.functional_parameters()['Smr2']
 
     # Non-standard parameters ##########################################################################################
     
