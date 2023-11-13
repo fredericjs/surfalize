@@ -710,6 +710,8 @@ class Surface:
             # where the distance to the starting value is 40
             if cumsum[istart] > 100 - WIDTH:
                 break
+            # Here we could theoretically additionally interpolate between two datapoints to get exactly 
+            # 40% width, but it seems unnecessary if the number of datapoints is large enough.
             iend = int(np.interp(cumsum[istart] + WIDTH, cumsum, np.arange(nbins)))
 
             slope = (bin_centers[iend] - bin_centers[istart]) / (cumsum[iend] - cumsum[istart])
