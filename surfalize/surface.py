@@ -18,7 +18,8 @@ from scipy.optimize import curve_fit
 import scipy.ndimage as ndimage
 
 # Custom imports
-from . fileloader import load_file
+from .fileloader import load_file
+from .utils import argclosest, interp1d
 try:
     from .calculations import surface_area
     CYTHON_DEFINED = True
@@ -704,17 +705,19 @@ class Surface:
         slope_min = None
         istart = 0
         istart_final = 0
-        iend_final = int(np.interp(WIDTH, cumsum, np.arange(nbins)))
+
+        # Interpolation function for bin_centers(cumsum)
+        yintp = interp1d(cumsum, bin_centers)
+
         while True:
             # The width in material distribution % is 40, so we have to interpolate to find the index
             # where the distance to the starting value is 40
             if cumsum[istart] > 100 - WIDTH:
                 break
-            # Here we could theoretically additionally interpolate between two datapoints to get exactly 
-            # 40% width, but it seems unnecessary if the number of datapoints is large enough.
-            iend = int(np.interp(cumsum[istart] + WIDTH, cumsum, np.arange(nbins)))
+            # Here we interpolate to get exactly 40% width. The remaining inaccuracy comes from the
+            # start index resoltion.
+            slope = (yintp(cumsum[istart] + WIDTH) - bin_centers[istart]) / WIDTH
 
-            slope = (bin_centers[iend] - bin_centers[istart]) / (cumsum[iend] - cumsum[istart])
             # Since slope is always negative, we check that the value is greater if we want
             # minimal gradient. If we find other instances with same slope, we take the first
             # occurence according to ISO 13565-2
@@ -722,9 +725,8 @@ class Surface:
                 slope_min = slope
             elif slope > slope_min:
                 slope_min = slope
-                # Start of the 40% width equivalence line
+                # Start index of the 40% width equivalence line
                 istart_final = istart
-                iend_final = iend
             istart += 1
 
         # Intercept of the equivalence line
@@ -735,8 +737,29 @@ class Surface:
         # Intercept of the equivalence line at 100% ratio
         ylower = slope_min * 100 + c
         # Sk parameter is distance between those intercepts
-        parameters['Sk'] = yupper - ylower
+        Sk = yupper - ylower
 
+        f = interp1d(bin_centers, cumsum)
+        Smr1, Smr2 = f([yupper, ylower])
+
+        # For now we are using the closest value in the array to ylower
+        # This way, we are losing or gaining a bit of area. In the future we might use some
+        # additional interpolation. For now this is sufficient.
+
+        # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
+        idx = argclosest(yupper, bin_centers)
+        A1 = np.abs(np.trapz(cumsum[:idx], dx=bin_centers[0] - bin_centers[1]))
+        Spk = 2 * A1 / Smr1
+        # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
+        idx = argclosest(ylower, bin_centers)
+        A2 = np.abs(np.trapz(100 - cumsum[idx:], dx=bin_centers[0] - bin_centers[1]))
+        Spv = 2 * A2 / (100 - Smr2)
+
+        parameters['Sk'] = Sk
+        parameters['Spk'] = Spk
+        parameters['Spv'] = Spv
+        parameters['Smr1'] = Smr1
+        parameters['Smr2'] = Smr2
         return parameters
 
     def Sk(self):
