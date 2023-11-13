@@ -313,6 +313,48 @@ class Surface:
         return Profile(data, step, length_um)
 
     # Operations #######################################################################################################
+    
+    def center(self, inplace=False):
+        """
+        Centers the data around its mean value. The height of the surface will be distributed equally around 0.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self. 
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        data = self._data - self._data.mean()
+        if inplace:
+            self._data = data
+            return self
+        return Surface(data, self._step_x, self._step_y, self._width_um, self._height_um)
+    
+    def zero(self, inplace=False):
+        """
+        Sets the minimum height of the surface to zero.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self. 
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        data = self._data - self._data.min()
+        if inplace:
+            self._data = data
+            return self
+        return Surface(data, self._step_x, self._step_y, self._width_um, self._height_um)
 
     def fill_nonmeasured(self, method='nearest', inplace=False):
         if not self._nonmeasured_points_exist:
@@ -582,35 +624,8 @@ class Surface:
         return dx, dy
 
     # Characterization #################################################################################################
-
-    #@lru_cache
-    @no_nonmeasured_points
-    def period(self):
-        dx, dy = self._get_fourier_peak_dx_dy()
-        period = 2/np.hypot(dx, dy)
-        return period
-    
-    @no_nonmeasured_points
-    def orientation(self):
-        dx, dy = self._get_fourier_peak_dx_dy()
-        #Account for special cases
-        if dx == 0:
-            orientation = 90
-        elif dy == 0:
-            orientation = 0
-        else:
-            orientation = np.rad2deg(np.arctan(dy/dx))
-        return orientation
-    
-    def projected_area(self):
-        return (self._width_um - self._step_x) * (self._height_um - self._step_y)
-    
-    @no_nonmeasured_points
-    def surface_area(self):
-        if not CYTHON_DEFINED:
-            raise NotImplementedError("Surface area calculation is based on cython code. Compile cython code to run this"
-                                      "method")
-        return surface_area(self._data, self._step_x, self._step_y)
+   
+    # Height parameters ################################################################################################
     
     @no_nonmeasured_points
     def Sa(self):
@@ -640,6 +655,18 @@ class Surface:
     def Sku(self):
         return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Sq()**4
     
+    # Hybrid parameters ################################################################################################
+    
+    def projected_area(self):
+        return (self._width_um - self._step_x) * (self._height_um - self._step_y)
+    
+    @no_nonmeasured_points
+    def surface_area(self):
+        if not CYTHON_DEFINED:
+            raise NotImplementedError("Surface area calculation is based on cython code. Compile cython code to run this"
+                                      "method")
+        return surface_area(self._data, self._step_x, self._step_y)
+    
     @no_nonmeasured_points
     def Sdr(self):
         return (self.surface_area() / self.projected_area() -1) * 100
@@ -651,6 +678,88 @@ class Surface:
         diff_x = np.diff(self._data, axis=1, append=0) / self._step_x
         diff_y = np.diff(self._data, axis=0, append=0) / self._step_y
         return np.sqrt(np.sum(diff_x**2 + diff_y**2) / A)
+    
+    # Functional parameters ############################################################################################
+    
+    @lru_cache
+    def _get_material_ratio_curve(self, nbins=1000):
+        dist, bins = np.histogram(self._data, bins=nbins)
+        bins = np.flip(bins)
+        bin_centers = bins[:-1] + np.diff(bins)/2
+        cumsum = np.flip(np.cumsum(dist))
+        cumsum = (1 - cumsum / cumsum.max()) * 100
+        return nbins, bin_centers, cumsum
+
+    # We need lru_cache since the steps for all of the functional parameters are almost the same
+    # and we don't want to recompute them for each of these parameters. Therefore, we use a function
+    # that calculates them all with almost no overhead compared to calculating a single one and
+    # use only one of those if we need it. In case we need another, the result is cached.
+    @lru_cache
+    def functional_parameters(self):
+        parameters = dict()
+        # The width of the equivalence line in percent of material ratio as defined by EN ISO 13565-2:1997
+        WIDTH = 40
+        # Using the potentially cached values here
+        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
+        slope_min = None
+        istart = 0
+        istart_final = 0
+        iend_final = int(np.interp(WIDTH, cumsum, np.arange(nbins)))
+        while True:
+            # The width in material distribution % is 40, so we have to interpolate to find the index
+            # where the distance to the starting value is 40
+            if cumsum[istart] > 100 - WIDTH:
+                break
+            iend = int(np.interp(cumsum[istart] + WIDTH, cumsum, np.arange(nbins)))
+
+            slope = (bin_centers[iend] - bin_centers[istart]) / (cumsum[iend] - cumsum[istart])
+            # Since slope is always negative, we check that the value is greater if we want
+            # minimal gradient. If we find other instances with same slope, we take the first
+            # occurence according to ISO 13565-2
+            if slope_min is None:
+                slope_min = slope
+            elif slope > slope_min:
+                slope_min = slope
+                # Start of the 40% width equivalence line
+                istart_final = istart
+                iend_final = iend
+            istart += 1
+
+        # Intercept of the equivalence line
+        c = bin_centers[istart_final] - slope_min * cumsum[istart_final]
+
+        # Intercept of the equivalence line at 0% ratio
+        yupper = c
+        # Intercept of the equivalence line at 100% ratio
+        ylower = slope_min * 100 + c
+        # Sk parameter is distance between those intercepts
+        parameters['Sk'] = yupper - ylower
+
+        return parameters
+
+    def Sk(self):
+        return self.functional_parameters()['Sk']
+
+    # Non-standard parameters ##########################################################################################
+    
+    #@lru_cache
+    @no_nonmeasured_points
+    def period(self):
+        dx, dy = self._get_fourier_peak_dx_dy()
+        period = 2/np.hypot(dx, dy)
+        return period
+    
+    @no_nonmeasured_points
+    def orientation(self):
+        dx, dy = self._get_fourier_peak_dx_dy()
+        #Account for special cases
+        if dx == 0:
+            orientation = 90
+        elif dy == 0:
+            orientation = 0
+        else:
+            orientation = np.rad2deg(np.arctan(dy/dx))
+        return orientation
     
     @no_nonmeasured_points
     def homogeneity(self):
@@ -770,29 +879,25 @@ class Surface:
         return results
 
     # Plotting #########################################################################################################
-    @no_nonmeasured_points
-    def abbott_curve(self):
-        zmin = self._data.min()
-        zmax = self._data.max()
-        hist, bins = np.histogram(self._data, bins=40)
-        step = np.abs(bins[0] - bins[1])
+    def abbott_curve(self, nbars=20):
+        dist_bars, bins_bars = np.histogram(self._data, bins=nbars)
+        dist_bars = np.flip(dist_bars)
+        bins_bars = np.flip(bins_bars)
 
-        hist = hist / self._data.size * 100
-        cumulated = np.cumsum(np.histogram(self._data, bins=500)[0])
-        cumulated = cumulated / cumulated.max() * 100
+        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
 
         fig, ax = plt.subplots()
-        ax2 = ax.twiny()
-        ax.set_box_aspect(1)
-        ax.barh(np.arange(bins[0] + step, bins[-1] + step, step), hist, height=step*0.8)
-        ax2.plot(cumulated, np.linspace(zmax, zmin, cumulated.size), c='r')
-
-        ax.set_ylim(zmin, zmax)
-        ax.set_ylabel('z (µm)')
-        ax2.set_xlim(0, 100)
-
         ax.set_xlabel('Material distribution (%)')
+        ax.set_ylabel('z (µm)')
+        ax2 = ax.twiny()
         ax2.set_xlabel('Material ratio (%)')
+        ax.set_box_aspect(1)
+        ax2.set_xlim(0, 100)
+        ax.set_ylim(self._data.min(), self._data.max())
+
+        ax.barh(bins_bars[:-1] + np.diff(bins_bars)/2, dist_bars / dist_bars.cumsum().max() * 100, 
+                height=(self._data.max() - self._data.min()) / nbars, edgecolor='k', color='lightblue')
+        ax2.plot(cumsum, bin_centers, c='r', clip_on=True)
 
         plt.show()
     
