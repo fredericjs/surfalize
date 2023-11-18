@@ -73,10 +73,8 @@ def load_plu(filepath):
 
         step_x = calibration['mppx']
         step_y = calibration['mppy']
-        width_um = calibration['xres'] * step_x
-        height_um = calibration['yres'] * step_y
         
-        return (data, step_x, step_y, width_um, height_um)
+        return (data, step_x, step_y)
     
 
 def load_plux(filepath): 
@@ -92,14 +90,10 @@ def load_plux(filepath):
     shape_y = int(root.find('GENERAL/IMAGE_SIZE_Y').text)
     step_x = float(root.find('GENERAL/FOV_X').text)
     step_y = float(root.find('GENERAL/FOV_Y').text)
-    width_um = shape_x * step_x
-    height_um = shape_y * step_y
-    width_um, height_um
-
     size = shape_x * shape_y
     height_data = np.array(struct.unpack(f'<{size}f', data)).reshape((shape_y, shape_x))
 
-    return (height_data, step_x, step_y, width_um, height_um)
+    return (height_data, step_x, step_y)
     
 def _vk4_extract_offsets(in_file):
     """extract_offsets
@@ -287,11 +281,9 @@ def load_vk6_vk7(filepath):
 
     step_x = measurement_conditions['x_length_per_pixel'] / 1000000
     step_y = measurement_conditions['y_length_per_pixel'] / 1000000
-    width_um = img_data['width'] * step_x
-    height_um = img_data['height'] * step_y
     data = img_data['data'].reshape(img_data['height'], img_data['width']) / 10000
     
-    return (data, step_x, step_y, width_um, height_um)
+    return (data, step_x, step_y)
     
 
 def load_vk4(filepath):
@@ -302,11 +294,9 @@ def load_vk4(filepath):
 
     step_x = measurement_conditions['x_length_per_pixel'] / 1000000
     step_y = measurement_conditions['y_length_per_pixel'] / 1000000
-    width_um = img_data['width'] * step_x
-    height_um = img_data['height'] * step_y
     data = img_data['data'].reshape(img_data['height'], img_data['width']) / 10000
     
-    return (data, step_x, step_y, width_um, height_um)
+    return (data, step_x, step_y)
 
 dispatch = {
     '.vk4': load_vk4,

@@ -11,7 +11,7 @@ x = np.arange(nx)
 y = np.arange(ny)
 x, y = np.meshgrid(x, y)
 z = np.sin(x/period * 2 * np.pi)
-surface = Surface(z, 0.1, 0.1, 0.1*nx, 0.1*ny)
+surface = Surface(z, 0.1, 0.1)
 
 period = 80
 nx = 1000
@@ -21,7 +21,7 @@ y = np.arange(ny)
 x, y = np.meshgrid(x, y)
 z = np.sin(x/period * 2 * np.pi)
 z_noise = z + np.random.normal(size=z.shape) / 5
-surface_noise = Surface(z_noise, 0.1, 0.1, 0.1*nx, 0.1*ny)
+surface_noise = Surface(z_noise, 0.1, 0.1)
 
 
 def test_Sa():

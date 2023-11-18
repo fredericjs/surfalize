@@ -2,8 +2,10 @@
 from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-from functools import lru_cache, wraps
+logger.setLevel(logging.WARNING)
+FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
+logging.basicConfig(format=FORMAT)
+from functools import wraps, lru_cache
 
 # Scipy stack
 import numpy as np
@@ -183,16 +185,30 @@ def no_nonmeasured_points(function):
 class Surface:
     
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'period', 'homogeneity', 'depth')
+    CACHED_METODS = []
     
-    def __init__(self, height_data, step_x, step_y, width_um, height_um):
+    def __init__(self, height_data, step_x, step_y):
         self._data = height_data
         self._step_x = step_x
         self._step_y = step_y
-        self._width_um = width_um
-        self._height_um = height_um
+        self._width_um = height_data.shape[1] * step_x
+        self._height_um = height_data.shape[0] * step_y
         # True if non-measured points exist on the surface
         self._nonmeasured_points_exist = np.any(np.isnan(self._data))
-        
+
+    def _clear_cache(self):
+        for method in self.CACHED_METODS:
+            method.cache_clear()
+    def _set_data(self, data=None, step_x=None, step_y=None):
+        if data is not None:
+            self._data = data
+        if step_x is not None:
+            self._step_x = step_x
+        if step_y is not None:
+            self._step_y = step_y
+        self._width_um = self._data.shape[1] * self._step_x
+        self._height_um = self._data.shape[0] * self._step_y
+        self._clear_cache()
         
     def __repr__(self):
         return f'{self.__class__.__name__}({self._width_um:.2f} x {self._height_um:.2f} µm²)'
@@ -332,9 +348,9 @@ class Surface:
         """
         data = self._data - self._data.mean()
         if inplace:
-            self._data = data
+            self._set_data(data=data)
             return self
-        return Surface(data, self._step_x, self._step_y, self._width_um, self._height_um)
+        return Surface(data, self._step_x, self._step_y)
     
     def zero(self, inplace=False):
         """
@@ -353,9 +369,9 @@ class Surface:
         """
         data = self._data - self._data.min()
         if inplace:
-            self._data = data
+            self._set_data(data=data)
             return self
-        return Surface(data, self._step_x, self._step_y, self._width_um, self._height_um)
+        return Surface(data, self._step_x, self._step_y)
 
     def fill_nonmeasured(self, method='nearest', inplace=False):
         if not self._nonmeasured_points_exist:
@@ -369,10 +385,10 @@ class Surface:
         data_interpolated = griddata(points[mask], values[mask], (grid_x, grid_y), method=method)
         
         if inplace:
-            self._data = data_interpolated
+            self._set_data(data=data_interpolated)
             self._nonmeasured_points_exist = False
             return self
-        return Surface(data_interpolated, self._step_x, self._step_y, self._width_um, self._height_um)
+        return Surface(data_interpolated, self._step_x, self._step_y)
     
     @no_nonmeasured_points
     def level(self, inplace=False):
@@ -393,9 +409,9 @@ class Surface:
         # Subtract the plane from the original height data to level it
         leveled_data = self._data - plane
         if inplace:
-            self._data = leveled_data
+            self._set_data(data=leveled_data)
             return self
-        return Surface(leveled_data, self._step_x, self._step_y, self._width_um, self._height_um)
+        return Surface(leveled_data, self._step_x, self._step_y)
     
     @no_nonmeasured_points
     def rotate(self, angle, inplace=False):
@@ -428,13 +444,10 @@ class Surface:
         step_x = width_um / rotated_cropped.shape[1]
 
         if inplace:
-            self._data = rotated_cropped
-            self._step_x = step_x
-            self._step_y = step_y
-            self._width_um = width_um
-            self._height_um = height_um
+            self._set_data(data=rotated_cropped, step_x=step_x, step_y=step_y)
+            return self
 
-        return Surface(rotated_cropped, step_x, step_y, width_um, height_um)
+        return Surface(rotated_cropped, step_x, step_y)
     
     @no_nonmeasured_points
     def filter(self, cutoff, *, mode, cutoff2=None, inplace=False):
@@ -469,8 +482,6 @@ class Surface:
         surface: surfalize.Surface
             Surface object.
         """
-
-        #self.period.cache_clear() # Clear the LRU cache of the period method
         if mode == 'both' and inplace:
             raise ValueError("Mode 'both' does not support inplace operation since two Surface objects will be returned")
         freq_x = np.fft.fftfreq(self._data.shape[1], d=self._step_x)
@@ -501,9 +512,9 @@ class Surface:
             filter_lowpass = ~filter_lowpass.astype('bool')
             zfiltered_band = np.fft.ifft2(np.fft.ifftshift(fft * filter_highpass * filter_lowpass)).real
             if inplace:
-                self._data = zfiltered_band
+                self._set_data(data=zfiltered_band)
                 return self
-            return Surface(zfiltered_band, self._step_x, self._step_y, self._width_um, self._height_um)
+            return Surface(zfiltered_band, self._step_x, self._step_y)
 
         filter_highpass = np.ones((rows, cols))
         filter_highpass[rows//2-cutoff1:rows//2+cutoff1, cols//2-cutoff1:cols//2+cutoff1] = 0
@@ -513,20 +524,20 @@ class Surface:
         zfiltered_low = np.fft.ifft2(np.fft.ifftshift(fft * filter_lowpass)).real
 
         if mode == 'both':
-            surface_high = Surface(zfiltered_high, self._step_x, self._step_y, self._width_um, self._height_um)
-            surface_low = Surface(zfiltered_low, self._step_x, self._step_y, self._width_um, self._height_um)
+            surface_high = Surface(zfiltered_high, self._step_x, self._step_y)
+            surface_low = Surface(zfiltered_low, self._step_x, self._step_y)
             return surface_high, surface_low
         if mode == 'highpass':
             if inplace:
-                self._data = zfiltered_high
+                self._set_data(data=zfiltered_high)
                 return self
-            surface_high = Surface(zfiltered_high, self._step_x, self._step_y, self._width_um, self._height_um)
+            surface_high = Surface(zfiltered_high, self._step_x, self._step_y)
             return surface_high
         if mode == 'lowpass':
             if inplace:
-                self._data = zfiltered_low
+                self._set_data(data=zfiltered_low)
                 return self
-            surface_low = Surface(zfiltered_low, self._step_x, self._step_y, self._width_um, self._height_um)
+            surface_low = Surface(zfiltered_low, self._step_x, self._step_y)
             return surface_low
         
     def zoom(self, factor, inplace=False):
@@ -549,14 +560,10 @@ class Surface:
         y, x = self._data.shape
         xn, yn = int(x / factor), int(y / factor)
         data = self._data[int((x - xn) / 2):xn + int((x - xn) / 2) + 1, int((y - yn) / 2):yn + int((y - yn) / 2) + 1]
-        width_um = self._width_um * xn/x
-        height_um = self._height_um * yn/y
         if inplace:
-            self._data = data
-            self._width_um = width_um
-            self._height_um = height_um
+            self._set_data(data=data)
             return self
-        return Surface(data, self._step_x, self._step_y, width_um, height_um)
+        return Surface(data, self._step_x, self._step_y)
     
     def align(self, inplace=False):
         """
@@ -577,6 +584,7 @@ class Surface:
         angle = self.orientation()
         return self.rotate(angle, inplace=inplace)
 
+    @lru_cache
     def _get_fourier_peak_dx_dy(self):
         """
         Calculates the distance in x and y in spatial frequency length units. The zero peak is avoided by
@@ -623,6 +631,8 @@ class Surface:
         dy = peak0[1] - peak1[1]
 
         return dx, dy
+
+    CACHED_METODS.append(_get_fourier_peak_dx_dy)
 
     # Characterization #################################################################################################
    
@@ -689,6 +699,8 @@ class Surface:
         cumsum = np.flip(np.cumsum(dist))
         cumsum = (1 - cumsum / cumsum.max()) * 100
         return nbins, bin_centers, cumsum
+
+    CACHED_METODS.append(_get_material_ratio_curve)
 
     # We need lru_cache since the steps for all of the functional parameters are almost the same
     # and we don't want to recompute them for each of these parameters. Therefore, we use a function
@@ -761,6 +773,8 @@ class Surface:
         parameters['Smr2'] = Smr2
         return parameters
 
+    CACHED_METODS.append(functional_parameters)
+
     def Sk(self):
         """
         Calculates Sk in µm.
@@ -813,13 +827,17 @@ class Surface:
 
     # Non-standard parameters ##########################################################################################
     
-    #@lru_cache
+    @lru_cache
     @no_nonmeasured_points
     def period(self):
+        logger.debug('period called.')
         dx, dy = self._get_fourier_peak_dx_dy()
         period = 2/np.hypot(dx, dy)
         return period
+
+    CACHED_METODS.append(period)
     
+    @lru_cache
     @no_nonmeasured_points
     def orientation(self):
         dx, dy = self._get_fourier_peak_dx_dy()
@@ -831,6 +849,8 @@ class Surface:
         else:
             orientation = np.rad2deg(np.arctan(dy/dx))
         return orientation
+
+    CACHED_METODS.append(orientation)
     
     @no_nonmeasured_points
     def homogeneity(self):
@@ -845,8 +865,7 @@ class Surface:
             for j in range(int(self._data.shape[1] / cell_length)):
                 idx = i * int(self._data.shape[1] / cell_length) + j
                 data = self._data[cell_length * i:cell_length * (i + 1), cell_length * j:cell_length * (j + 1)]
-                cell_surface = Surface(data, self._step_x, self._step_y, cell_length * self._step_x,
-                                       cell_length * self._step_y)
+                cell_surface = Surface(data, self._step_x, self._step_y)
                 sa[idx] = cell_surface.Sa()
                 ssk[idx] = cell_surface.Ssk()
                 sku[idx] = cell_surface.Sku()
@@ -872,8 +891,10 @@ class Surface:
             h.append(1 - gini)
         return np.mean(h).round(4)
 
+    @lru_cache
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=False, plot=False):
+        logger.debug('Depth called.')
         size, length = self._data.shape
         if nprofiles > size:
             raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size}')
@@ -937,6 +958,8 @@ class Surface:
         if retstd:
             return np.nanmean(depths), np.nanstd(depths)
         return np.nanmean(depths)
+
+    CACHED_METODS.append(depth)
 
     def aspect_ratio(self):
         """

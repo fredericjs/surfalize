@@ -16,6 +16,8 @@ replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion f
 
 ## Supported roughness parameters
 
+This package aims to implement all parameters defined in ISO 25178. Currently, the following parameters are supported:
+
 | Category   | Parameter       | Full name                        | Validated against                  |
 |------------|-----------------|----------------------------------|------------------------------------|
 | Height     | Sa              | Arithmetic mean height           | Gwyddion, MountainsMap             |
