@@ -766,8 +766,6 @@ class Surface:
         A2 = np.abs(np.trapz(100 - cumsum[idx:], dx=bin_centers[0] - bin_centers[1]))
         Svk = 2 * A2 / (100 - Smr2)
 
-        Sxp
-
         parameters['Sk'] = Sk
         parameters['Spk'] = Spk
         parameters['Svk'] = Svk
