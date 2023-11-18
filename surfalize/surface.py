@@ -672,13 +672,12 @@ class Surface:
     def Sdr(self):
         return (self.surface_area() / self.projected_area() -1) * 100
     
-    # EXPERIMENTAL -> Does not work correctly
     @no_nonmeasured_points
-    def _Sdq(self):
+    def Sdq(self):
         A = self._data.shape[0] * self._data.shape[1]
-        diff_x = np.diff(self._data, axis=1, append=0) / self._step_x
-        diff_y = np.diff(self._data, axis=0, append=0) / self._step_y
-        return np.sqrt(np.sum(diff_x**2 + diff_y**2) / A)
+        diff_x = np.diff(self._data, axis=1) / self._step_x
+        diff_y = np.diff(self._data, axis=0) / self._step_y
+        return np.sqrt((np.sum(diff_x**2) + np.sum(diff_y**2)) / A)
     
     # Functional parameters ############################################################################################
     

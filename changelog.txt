@@ -1,3 +1,5 @@
+v0.2.0:
+- added Sdq parameter -> tested against LeicaMap
 v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
