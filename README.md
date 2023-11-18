@@ -18,22 +18,27 @@ replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion f
 
 This package aims to implement all parameters defined in ISO 25178. Currently, the following parameters are supported:
 
-| Category   | Parameter       | Full name                        | Validated against                  |
-|------------|-----------------|----------------------------------|------------------------------------|
-| Height     | Sa              | Arithmetic mean height           | Gwyddion, MountainsMap             |
-|            | Sq              | Root mean square height          | Gwyddion, MountainsMap             |
-|            | Sp              | Maximum peak height              | Gwyddion, MountainsMap             |
-|            | Sv              | Maximum valley depth             | Gwyddion, MountainsMap             |
-|            | Sz              | Maximum height                   | Gwyddion, MountainsMap             |
-|            | Ssk             | Skewness                         | Gwyddion, MountainsMap             |
-|            | Sku             | Kurtosis                         | Gwyddion, MountainsMap             |      |
-| Hybrid     | Sdr<sup>1</sup> | Developed interfacial area ratio | Gwyddion<sup>2</sup>, MountainsMap |
-|            | Sdq             | Root mean square gradient        | MountainsMap                       |
-| Functional | Sk              | Core roughness depth             | MountainsMap                       |
-|            | Spk             | Reduced peak height              | MountainsMap                       |
-|            | Svk             | Reduced dale height              | MountainsMap                       |
-|            | Smr2            | Material ratio 1                 | MountainsMap                       |
-|            | Smr1            | Material ratio 2                 | MountainsMap                       |
+| Category           | Parameter       | Full name                        | Validated against                  |
+|--------------------|-----------------|----------------------------------|------------------------------------|
+| Height             | Sa              | Arithmetic mean height           | Gwyddion, MountainsMap             |
+|                    | Sq              | Root mean square height          | Gwyddion, MountainsMap             |
+|                    | Sp              | Maximum peak height              | Gwyddion, MountainsMap             |
+|                    | Sv              | Maximum valley depth             | Gwyddion, MountainsMap             |
+|                    | Sz              | Maximum height                   | Gwyddion, MountainsMap             |
+|                    | Ssk             | Skewness                         | Gwyddion, MountainsMap             |
+|                    | Sku             | Kurtosis                         | Gwyddion, MountainsMap             |  
+| Hybrid             | Sdr<sup>1</sup> | Developed interfacial area ratio | Gwyddion<sup>2</sup>, MountainsMap |
+|                    | Sdq             | Root mean square gradient        | MountainsMap                       |
+| Functional         | Sk              | Core roughness depth             | MountainsMap                       |
+|                    | Spk             | Reduced peak height              | MountainsMap                       |
+|                    | Svk             | Reduced dale height              | MountainsMap                       |
+|                    | Smr2            | Material ratio 1                 | MountainsMap                       |
+|                    | Smr1            | Material ratio 2                 | MountainsMap                       |
+|                    | Sxp             | Peak extreme height              | MountainsMap                       |
+| Functional(volume) | Vmp             | Peak material volume             | MountainsMap                       |
+|                    | Vmc             | Core material volume             | MountainsMap                       |
+|                    | Vvv             | Dale void volume                 | MountainsMap                       |
+|                    | Vvc             | Core void volume                 | MountainsMap                       |
 
 <sup>1</sup> Deviations in Sdr are possible due to chosen algorithm\
 <sup>2</sup> Gwyddion does not support Sdr calculation directly, but calculates surface area and projected
