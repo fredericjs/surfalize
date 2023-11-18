@@ -18,13 +18,17 @@ from scipy.optimize import curve_fit
 import scipy.ndimage as ndimage
 
 # Custom imports
-from . fileloader import load_file
+from .fileloader import load_file
+from .utils import argclosest, interp1d
 try:
     from .calculations import surface_area
     CYTHON_DEFINED = True
 except ImportError:
     logger.warning('Could not import cythonized code. Surface area calculation unavailable.')
     CYTHON_DEFINED = False
+
+# Define general sinusoid function for fitting
+sinusoid = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
 
 # Deprecate
 def _period_from_profile(profile):
@@ -108,15 +112,13 @@ class Profile:
         return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Rq()**4
     
     def depth(self, sampling_width=0.2, plot=False, retstd=False):
-        f = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
-
         period_px = int(self.period() / self._step)
         nintervals = int(self._data.shape[0] / period_px)
         xp = np.arange(self._data.shape[0])
         # Define initial guess for fit parameters
         p0=((self._data.max() - self._data.min())/2, period_px, 0, self._data.mean())
         # Fit the data to the general sine function
-        popt, pcov = curve_fit(f, xp, self._data, p0=p0)
+        popt, pcov = curve_fit(sinusoid, xp, self._data, p0=p0)
         # Extract the refined period estimate from the sine function period
         period_sin = popt[1]
         # Extract the lateral shift of the sine fit
@@ -127,7 +129,7 @@ class Profile:
         if plot:
             fig, ax = plt.subplots(figsize=(16,4))
             ax.plot(xp, self._data, lw=1.5, c='k', alpha=0.7)
-            ax.plot(xp, f(xp, *popt), c='orange', ls='--')
+            ax.plot(xp, sinusoid(xp, *popt), c='orange', ls='--')
             ax.set_xlim(xp.min(), xp.max())
 
         # Loop over each interval
@@ -241,7 +243,7 @@ class Surface:
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
         # last index from which a profile is taken for averaging
-        idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
+        idx_max = idx + int(average / 2) * average_step_px
         idx_max = self._data.shape[0] if idx_max > self._data.shape[0] else idx_max
         data = self._data[idx_min:idx_max+1:average_step_px].mean(axis=0)
         return Profile(data, self._step_x, self._width_um)
@@ -281,7 +283,7 @@ class Surface:
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
         # last index from which a profile is taken for averaging
-        idx_max = idx + int(average / 2) * int(average / 2) * average_step_px
+        idx_max = idx + int(average / 2) * average_step_px
         idx_max = self._data.shape[1] if idx_max > self._data.shape[1] else idx_max
         data = self._data[:,idx_min:idx_max+1:average_step_px].mean(axis=1)
         return Profile(data, self._step_y, self._height_um)
@@ -312,6 +314,48 @@ class Surface:
         return Profile(data, step, length_um)
 
     # Operations #######################################################################################################
+    
+    def center(self, inplace=False):
+        """
+        Centers the data around its mean value. The height of the surface will be distributed equally around 0.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self. 
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        data = self._data - self._data.mean()
+        if inplace:
+            self._data = data
+            return self
+        return Surface(data, self._step_x, self._step_y, self._width_um, self._height_um)
+    
+    def zero(self, inplace=False):
+        """
+        Sets the minimum height of the surface to zero.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self. 
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        data = self._data - self._data.min()
+        if inplace:
+            self._data = data
+            return self
+        return Surface(data, self._step_x, self._step_y, self._width_um, self._height_um)
 
     def fill_nonmeasured(self, method='nearest', inplace=False):
         if not self._nonmeasured_points_exist:
@@ -372,11 +416,11 @@ class Surface:
         h = w * aspect_ratio
 
         ny, nx = rotated.shape
-        ymin = int((ny - h)/2)
-        ymax = int(ny - (ny - h)/2)
-        xmin = int((nx - w)/2)
-        xmax = int(nx - (nx - w)/2)
-
+        ymin = int((ny - h)/2) + 1
+        ymax = int(ny - (ny - h)/2) - 1
+        xmin = int((nx - w)/2) + 1
+        xmax = int(nx - (nx - w)/2) - 1
+        
         rotated_cropped = rotated[ymin:ymax+1, xmin:xmax+1]
         width_um = (self._width_um * pre_comp_cos + self._height_um * pre_comp_sin) * w / nx
         height_um = (self._width_um * pre_comp_sin + self._height_um * pre_comp_cos) * h / ny
@@ -532,7 +576,7 @@ class Surface:
         """
         angle = self.orientation()
         return self.rotate(angle, inplace=inplace)
-    
+
     def _get_fourier_peak_dx_dy(self):
         """
         Calculates the distance in x and y in spatial frequency length units. The zero peak is avoided by
@@ -549,8 +593,8 @@ class Surface:
         fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
         N, M = self._data.shape
         # Calculate the frequency values for the x and y axes
-        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self._width_um/M))  # Frequency values for the x-axis
-        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self._height_um/N))  # Frequency values for the y-axis
+        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self._width_um / M))  # Frequency values for the x-axis
+        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self._height_um / N))  # Frequency values for the y-axis
         # Find the peaks in the magnitude spectrum
         peaks, properties = find_peaks(fft.flatten(), distance=10, prominence=10)
         # Find the prominence of the peaks
@@ -561,42 +605,28 @@ class Surface:
         peaks_sorted = peaks[sorted_indices]
         # Rearrange prominences based on the sorting of peaks
         prominences_sorted = prominences[sorted_indices]
-        peaks_2d = np.unravel_index(peaks_sorted, fft.shape)
-        
-        # Does this really make sense? I think I mixed up x and y but it works which is weird
-        dy = freq_x[peaks_2d[1][0]] - freq_x[peaks_2d[1][1]]
-        dx = freq_y[peaks_2d[0][0]] - freq_y[peaks_2d[0][1]]
-        
+        # Get peak coordinates in pixels
+        peaks_y_px, peaks_x_px = np.unravel_index(peaks_sorted, fft.shape)
+        # Transform into spatial frequencies in length units
+        # If this is not done, the computed angle will be wrong since the frequency per pixel
+        # resolution is different in x and y due to the different sampling length!
+        peaks_x = freq_x[peaks_x_px]
+        peaks_y = freq_y[peaks_y_px]
+        # Create peak tuples for ease of use
+        peak0 = (peaks_x[0], peaks_y[0])
+        peak1 = (peaks_x[1], peaks_y[1])
+        # Peak1 should always be to the right of peak0
+        if peak0[0] > peak1[0]:
+            peak0, peak1 = peak1, peak0
+
+        dx = peak1[0] - peak0[0]
+        dy = peak0[1] - peak1[1]
+
         return dx, dy
 
     # Characterization #################################################################################################
-
-    #@lru_cache
-    @no_nonmeasured_points
-    def period(self):
-        dx, dy = self._get_fourier_peak_dx_dy()
-        period = 2/np.hypot(dx, dy)
-        return period
-    
-    @no_nonmeasured_points
-    def orientation(self):
-        dx, dy = self._get_fourier_peak_dx_dy()
-        angle = np.rad2deg(np.arctan2(np.abs(dx), np.abs(dy)))
-        
-        #TODO: This needs to be fixed!
-        if dy < 0:
-            angle *= -1
-        return angle
-    
-    def projected_area(self):
-        return (self._width_um - self._step_x) * (self._height_um - self._step_y)
-    
-    @no_nonmeasured_points
-    def surface_area(self):
-        if not CYTHON_DEFINED:
-            raise NotImplementedError("Surface area calculation is based on cython code. Compile cython code to run this"
-                                      "method")
-        return surface_area(self._data, self._step_x, self._step_y)
+   
+    # Height parameters ################################################################################################
     
     @no_nonmeasured_points
     def Sa(self):
@@ -626,6 +656,18 @@ class Surface:
     def Sku(self):
         return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Sq()**4
     
+    # Hybrid parameters ################################################################################################
+    
+    def projected_area(self):
+        return (self._width_um - self._step_x) * (self._height_um - self._step_y)
+    
+    @no_nonmeasured_points
+    def surface_area(self):
+        if not CYTHON_DEFINED:
+            raise NotImplementedError("Surface area calculation is based on cython code. Compile cython code to run this"
+                                      "method")
+        return surface_area(self._data, self._step_x, self._step_y)
+    
     @no_nonmeasured_points
     def Sdr(self):
         return (self.surface_area() / self.projected_area() -1) * 100
@@ -637,6 +679,159 @@ class Surface:
         diff_x = np.diff(self._data, axis=1, append=0) / self._step_x
         diff_y = np.diff(self._data, axis=0, append=0) / self._step_y
         return np.sqrt(np.sum(diff_x**2 + diff_y**2) / A)
+    
+    # Functional parameters ############################################################################################
+    
+    @lru_cache
+    def _get_material_ratio_curve(self, nbins=1000):
+        dist, bins = np.histogram(self._data, bins=nbins)
+        bins = np.flip(bins)
+        bin_centers = bins[:-1] + np.diff(bins)/2
+        cumsum = np.flip(np.cumsum(dist))
+        cumsum = (1 - cumsum / cumsum.max()) * 100
+        return nbins, bin_centers, cumsum
+
+    # We need lru_cache since the steps for all of the functional parameters are almost the same
+    # and we don't want to recompute them for each of these parameters. Therefore, we use a function
+    # that calculates them all with almost no overhead compared to calculating a single one and
+    # use only one of those if we need it. In case we need another, the result is cached.
+    @lru_cache
+    def functional_parameters(self):
+        parameters = dict()
+        # The width of the equivalence line in percent of material ratio as defined by EN ISO 13565-2:1997
+        WIDTH = 40
+        # Using the potentially cached values here
+        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
+        slope_min = None
+        istart = 0
+        istart_final = 0
+
+        # Interpolation function for bin_centers(cumsum)
+        yintp = interp1d(cumsum, bin_centers)
+
+        while True:
+            # The width in material distribution % is 40, so we have to interpolate to find the index
+            # where the distance to the starting value is 40
+            if cumsum[istart] > 100 - WIDTH:
+                break
+            # Here we interpolate to get exactly 40% width. The remaining inaccuracy comes from the
+            # start index resoltion.
+            slope = (yintp(cumsum[istart] + WIDTH) - bin_centers[istart]) / WIDTH
+
+            # Since slope is always negative, we check that the value is greater if we want
+            # minimal gradient. If we find other instances with same slope, we take the first
+            # occurence according to ISO 13565-2
+            if slope_min is None:
+                slope_min = slope
+            elif slope > slope_min:
+                slope_min = slope
+                # Start index of the 40% width equivalence line
+                istart_final = istart
+            istart += 1
+
+        # Intercept of the equivalence line
+        c = bin_centers[istart_final] - slope_min * cumsum[istart_final]
+
+        # Intercept of the equivalence line at 0% ratio
+        yupper = c
+        # Intercept of the equivalence line at 100% ratio
+        ylower = slope_min * 100 + c
+        # Sk parameter is distance between those intercepts
+        Sk = yupper - ylower
+
+        f = interp1d(bin_centers, cumsum)
+        Smr1, Smr2 = f([yupper, ylower])
+
+        # For now we are using the closest value in the array to ylower
+        # This way, we are losing or gaining a bit of area. In the future we might use some
+        # additional interpolation. For now this is sufficient.
+
+        # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
+        idx = argclosest(yupper, bin_centers)
+        A1 = np.abs(np.trapz(cumsum[:idx], dx=bin_centers[0] - bin_centers[1]))
+        Spk = 2 * A1 / Smr1
+        # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
+        idx = argclosest(ylower, bin_centers)
+        A2 = np.abs(np.trapz(100 - cumsum[idx:], dx=bin_centers[0] - bin_centers[1]))
+        Svk = 2 * A2 / (100 - Smr2)
+
+        parameters['Sk'] = Sk
+        parameters['Spk'] = Spk
+        parameters['Svk'] = Svk
+        parameters['Smr1'] = Smr1
+        parameters['Smr2'] = Smr2
+        return parameters
+
+    def Sk(self):
+        """
+        Calculates Sk in µm.
+
+        Returns
+        -------
+        Sk: float
+        """
+        return self.functional_parameters()['Sk']
+
+    def Spk(self):
+        """
+        Calculates Spk in µm.
+
+        Returns
+        -------
+        Spk: float
+        """
+        return self.functional_parameters()['Spk']
+
+    def Svk(self):
+        """
+        Calculates Svk in µm.
+
+        Returns
+        -------
+        Svk: float
+        """
+        return self.functional_parameters()['Svk']
+
+    def Smr1(self):
+        """
+        Calculates Smr1 in %.
+
+        Returns
+        -------
+        Smr1: float
+        """
+        return self.functional_parameters()['Smr1']
+
+    def Smr2(self):
+        """
+        Calculates Smr2 in %.
+
+        Returns
+        -------
+        Smr2: float
+        """
+        return self.functional_parameters()['Smr2']
+
+    # Non-standard parameters ##########################################################################################
+    
+    #@lru_cache
+    @no_nonmeasured_points
+    def period(self):
+        dx, dy = self._get_fourier_peak_dx_dy()
+        period = 2/np.hypot(dx, dy)
+        return period
+    
+    @no_nonmeasured_points
+    def orientation(self):
+        dx, dy = self._get_fourier_peak_dx_dy()
+        #Account for special cases
+        if dx == 0:
+            orientation = 90
+        elif dy == 0:
+            orientation = 0
+        else:
+            orientation = np.rad2deg(np.arctan(dy/dx))
+        return orientation
     
     @no_nonmeasured_points
     def homogeneity(self):
@@ -680,8 +875,6 @@ class Surface:
 
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=False, plot=False):
-        f = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
-
         size, length = self._data.shape
         if nprofiles > size:
             raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size}')
@@ -702,7 +895,7 @@ class Surface:
             # Define initial guess for fit parameters
             p0=((line.max() - line.min())/2, period_px, 0, line.mean())
             # Fit the data to the general sine function
-            popt, pcov = curve_fit(f, xp, line, p0=p0)
+            popt, pcov = curve_fit(sinusoid, xp, line, p0=p0)
             # Extract the refined period estimate from the sine function period
             period_sin = popt[1]
             # Extract the lateral shift of the sine fit
@@ -746,6 +939,16 @@ class Surface:
             return np.nanmean(depths), np.nanstd(depths)
         return np.nanmean(depths)
 
+    def aspect_ratio(self):
+        """
+        Calculates the aspect ratio of a periodic texture as the ratio of the structure depth and the structure period.
+
+        Returns
+        -------
+        aspect_ratio: float
+        """
+        return self.depth() / self.period()
+
     def roughness_parameters(self, parameters=None):
         if parameters is None:
             parameters = self.AVAILABLE_PARAMETERS
@@ -758,29 +961,25 @@ class Surface:
         return results
 
     # Plotting #########################################################################################################
-    @no_nonmeasured_points
-    def abbott_curve(self):
-        zmin = self._data.min()
-        zmax = self._data.max()
-        hist, bins = np.histogram(self._data, bins=40)
-        step = np.abs(bins[0] - bins[1])
+    def abbott_curve(self, nbars=20):
+        dist_bars, bins_bars = np.histogram(self._data, bins=nbars)
+        dist_bars = np.flip(dist_bars)
+        bins_bars = np.flip(bins_bars)
 
-        hist = hist / self._data.size * 100
-        cumulated = np.cumsum(np.histogram(self._data, bins=500)[0])
-        cumulated = cumulated / cumulated.max() * 100
+        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
 
         fig, ax = plt.subplots()
-        ax2 = ax.twiny()
-        ax.set_box_aspect(1)
-        ax.barh(np.arange(bins[0] + step, bins[-1] + step, step), hist, height=step*0.8)
-        ax2.plot(cumulated, np.linspace(zmax, zmin, cumulated.size), c='r')
-
-        ax.set_ylim(zmin, zmax)
-        ax.set_ylabel('z (µm)')
-        ax2.set_xlim(0, 100)
-
         ax.set_xlabel('Material distribution (%)')
+        ax.set_ylabel('z (µm)')
+        ax2 = ax.twiny()
         ax2.set_xlabel('Material ratio (%)')
+        ax.set_box_aspect(1)
+        ax2.set_xlim(0, 100)
+        ax.set_ylim(self._data.min(), self._data.max())
+
+        ax.barh(bins_bars[:-1] + np.diff(bins_bars)/2, dist_bars / dist_bars.cumsum().max() * 100, 
+                height=(self._data.max() - self._data.min()) / nbars, edgecolor='k', color='lightblue')
+        ax2.plot(cumsum, bin_centers, c='r', clip_on=True)
 
         plt.show()
     

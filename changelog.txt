@@ -1,0 +1,14 @@
+v0.1.0:
+- Added option to Batch to supply additional parameters associated with each file that can be merged into the
+  computed parameters
+- Fixed bug where Surface.rotate() would leave a border of nan values
+- Fixed bug in profile averaging
+- Fixed calculation of Surface._get_fourier_peak_dx_dy(), now returns correct angles with correct sign
+- Fixed Surface.orientation(), now considers edgecases where either dy or dx are 0
+- Added calculation of areal material ratio curve
+- Fixed Abbott-Firestone curve display
+- Added calculation fundament for functional parameters
+- Added some functional parameters: Sk, Spk, Svk, Smr1, Smr2
+- Added utils module with some helper functions
+- Fixed bug in depth calculation due to renaming of sinusoid function
+- Added aspect ratio parameter to Surface
