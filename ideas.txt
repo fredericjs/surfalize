@@ -1,3 +1,10 @@
 - Remove binning from area material ratio curve. Instead sort all height values in descending order and calculate the
   cumsum of the index for the material ratio (x-axis). This might fix the deviations from the MountainsMap values for
   the functional parameters. However, this will require a reimplementation of the code in Surface.functional_parameters
+
+- Implement the use of keyword arguments for parameter calculations using the Batch class
+
+- Implement export of images in plotting functions as well as in the Batch class
+
+- Implement Fourier Transform plotting with optional Hanning Window
+
