@@ -10,3 +10,5 @@ v0.1.0:
 - Added calculation fundament for functional parameters
 - Added some functional parameters: Sk, Spk, Svk, Smr1, Smr2
 - Added utils module with some helper functions
+- Fixed bug in depth calculation due to renaming of sinusoid function
+- Added aspect ratio parameter to Surface
