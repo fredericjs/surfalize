@@ -178,13 +178,162 @@ def no_nonmeasured_points(function):
             raise ValueError("Non-measured points must be filled before any other operation.")
         return function(self, *args, **kwargs)
     return wrapper_function
+
+
+class AbbottFirestoneCurve:
+    # Width of the equivalence line in % as defined by ISO 25178-2
+    EQUIVALENCE_LINE_WIDTH = 40
+
+    def __init__(self, surface):
+        self._surface = surface
+        self._calculate_curve()
+
+    @lru_cache
+    def _get_material_ratio_curve(self, nbins=1000):
+        dist, bins = np.histogram(self._surface._data, bins=nbins)
+        bins = np.flip(bins)
+        bin_centers = bins[:-1] + np.diff(bins) / 2
+        cumsum = np.flip(np.cumsum(dist))
+        cumsum = (1 - cumsum / cumsum.max()) * 100
+        return nbins, bin_centers, cumsum
+
+    # This is a bit hacky right now with the modified state. Maybe clean that up in the future
+    def _calculate_curve(self):
+        parameters = dict()
+        # Using the potentially cached values here
+        nbins, height, material_ratio = self._get_material_ratio_curve()
+        # Step in the height array
+        dc = np.abs(height[0] - height[1])
+        slope_min = None
+        istart = 0
+        istart_final = 0
+
+        # Interpolation function for bin_centers(cumsum)
+        self._smc_fit = interp1d(material_ratio, height)
+
+        while True:
+            # The width in material distribution % is 40, so we have to interpolate to find the index
+            # where the distance to the starting value is 40
+            if material_ratio[istart] > 100 - self.EQUIVALENCE_LINE_WIDTH:
+                break
+            # Here we interpolate to get exactly 40% width. The remaining inaccuracy comes from the
+            # start index resoltion.
+            slope = (self._smc_fit(material_ratio[istart] + self.EQUIVALENCE_LINE_WIDTH) - height[
+                istart]) / self.EQUIVALENCE_LINE_WIDTH
+
+            # Since slope is always negative, we check that the value is greater if we want
+            # minimal gradient. If we find other instances with same slope, we take the first
+            # occurence according to ISO 13565-2
+            if slope_min is None:
+                slope_min = slope
+            elif slope > slope_min:
+                slope_min = slope
+                # Start index of the 40% width equivalence line
+                istart_final = istart
+            istart += 1
+
+        self._slope = slope_min
+
+        # Intercept of the equivalence line
+        self._intercept = height[istart_final] - slope_min * material_ratio[istart_final]
+
+        # Intercept of the equivalence line at 0% ratio
+        self._yupper = self._intercept
+        # Intercept of the equivalence line at 100% ratio
+        self._ylower = slope_min * 100 + self._intercept
+
+        self._smr_fit = interp1d(height, material_ratio)
+        self._height = height
+        self._material_ratio = material_ratio
+        self._dc = dc
+
+    @lru_cache
+    def Sk(self):
+        return self._yupper - self._ylower
+
+    def Smr(self, c):
+        return float(self._smr_fit(c))
+
+    def Smc(self, mr):
+        return float(self._smc_fit(mr))
+
+    @lru_cache
+    def Smr1(self):
+        return self.Smr(self._yupper)
+
+    @lru_cache
+    def Smr2(self):
+        return self.Smr(self._ylower)
+
+    @lru_cache
+    def Spk(self):
+        # For now we are using the closest value in the array to ylower
+        # This way, we are losing or gaining a bit of area. In the future we might use some
+        # additional interpolation. For now this is sufficient.
+
+        # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
+        idx = argclosest(self._yupper, self._height)
+        A1 = np.abs(np.trapz(self._material_ratio[:idx], dx=self._dc))
+        Spk = 2 * A1 / self.Smr1()
+        return Spk
+
+    @lru_cache
+    def Svk(self):
+        # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
+        idx = argclosest(self._ylower, self._height)
+        A2 = np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc))
+        Svk = 2 * A2 / (100 - self.Smr2())
+        return Svk
+
+    @lru_cache
+    def Vmp(self, p=10):
+        idx = argclosest(self.Smc(p), self._height)
+        return np.trapz(self._material_ratio[:idx], dx=self._dc) / 100
+
+    @lru_cache
+    def Vmc(self, p=10, q=80):
+        idx = argclosest(self.Smc(q), self._height)
+        return np.trapz(self._material_ratio[:idx], dx=self._dc) / 100 - self.Vmp(p)
+
+    @lru_cache
+    def Vvv(self, q=80):
+        idx = argclosest(self.Smc(80), self._height)
+        return np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc)) / 100
+
+    @lru_cache
+    def Vvc(self, p=10, q=80):
+        idx = argclosest(self.Smc(10), self._height)
+        return np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc)) / 100 - self.Vvv(q)
+
+    def visual_parameter_study(self):
+        fig, ax = plt.subplots()
+        ax.set_box_aspect(1)
+        ax.set_xlim(0, 100)
+        ax.set_ylim(self._height.min(), self._height.max())
+        x = np.linspace(0, 100, 10)
+        ax.plot(x, self._slope * x + self._intercept, c='k')
+        ax.add_patch(plt.Polygon([[0, self._yupper], [0, self._yupper + self.Spk()], [self.Smr1(), self._yupper]],
+                                 fc='orange', ec='k'))
+        ax.add_patch(plt.Polygon([[100, self._ylower], [100, self._ylower - self.Svk()], [self.Smr2(), self._ylower]],
+                                 fc='orange', ec='k'))
+        ax.plot(self._material_ratio, self._height, c='r')
+        ax.axhline(self._ylower, c='k', lw=1)
+        ax.axhline(self._yupper, c='k', lw=1)
+        ax.axhline(self._ylower - self.Svk(), c='k', lw=1)
+        ax.axhline(self._yupper + self.Spk(), c='k', lw=1)
+        ax.plot([self.Smr1(), self.Smr1()], [0, self._yupper], c='k', lw=1)
+        ax.plot([self.Smr2(), self.Smr2()], [0, self._ylower], c='k', lw=1)
+
+        ax.set_xlabel('Material ratio (%)')
+        ax.set_ylabel('Height (µm)')
             
             
 # TODO Image export
 # TODO Oblique profiles
 class Surface:
     
-    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'period', 'homogeneity', 'depth')
+    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
+                            'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio', 'homogeneity')
     CACHED_METODS = []
     
     def __init__(self, height_data, step_x, step_y):
@@ -722,90 +871,10 @@ class Surface:
     # Functional parameters ############################################################################################
     
     @lru_cache
-    def _get_material_ratio_curve(self, nbins=1000):
-        dist, bins = np.histogram(self._data, bins=nbins)
-        bins = np.flip(bins)
-        bin_centers = bins[:-1] + np.diff(bins)/2
-        cumsum = np.flip(np.cumsum(dist))
-        cumsum = (1 - cumsum / cumsum.max()) * 100
-        return nbins, bin_centers, cumsum
+    def _get_abbott_firestone_curve(self):
+        return AbbottFirestoneCurve(self)
 
-    CACHED_METODS.append(_get_material_ratio_curve)
-
-    # We need lru_cache since the steps for all of the functional parameters are almost the same
-    # and we don't want to recompute them for each of these parameters. Therefore, we use a function
-    # that calculates them all with almost no overhead compared to calculating a single one and
-    # use only one of those if we need it. In case we need another, the result is cached.
-    @lru_cache
-    def functional_parameters(self):
-        parameters = dict()
-        # The width of the equivalence line in percent of material ratio as defined by EN ISO 13565-2:1997
-        WIDTH = 40
-        # Using the potentially cached values here
-        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
-        slope_min = None
-        istart = 0
-        istart_final = 0
-
-        # Interpolation function for bin_centers(cumsum)
-        Smc = interp1d(cumsum, bin_centers)
-
-        while True:
-            # The width in material distribution % is 40, so we have to interpolate to find the index
-            # where the distance to the starting value is 40
-            if cumsum[istart] > 100 - WIDTH:
-                break
-            # Here we interpolate to get exactly 40% width. The remaining inaccuracy comes from the
-            # start index resoltion.
-            slope = (Smc(cumsum[istart] + WIDTH) - bin_centers[istart]) / WIDTH
-
-            # Since slope is always negative, we check that the value is greater if we want
-            # minimal gradient. If we find other instances with same slope, we take the first
-            # occurence according to ISO 13565-2
-            if slope_min is None:
-                slope_min = slope
-            elif slope > slope_min:
-                slope_min = slope
-                # Start index of the 40% width equivalence line
-                istart_final = istart
-            istart += 1
-
-        # Intercept of the equivalence line
-        c = bin_centers[istart_final] - slope_min * cumsum[istart_final]
-
-        # Intercept of the equivalence line at 0% ratio
-        yupper = c
-        # Intercept of the equivalence line at 100% ratio
-        ylower = slope_min * 100 + c
-        # Sk parameter is distance between those intercepts
-        Sk = yupper - ylower
-
-        Smr = interp1d(bin_centers, cumsum)
-        Smr1, Smr2 = Smr([yupper, ylower])
-
-        # For now we are using the closest value in the array to ylower
-        # This way, we are losing or gaining a bit of area. In the future we might use some
-        # additional interpolation. For now this is sufficient.
-
-        # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
-        idx = argclosest(yupper, bin_centers)
-        A1 = np.abs(np.trapz(cumsum[:idx], dx=bin_centers[0] - bin_centers[1]))
-        Spk = 2 * A1 / Smr1
-        # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
-        idx = argclosest(ylower, bin_centers)
-        A2 = np.abs(np.trapz(100 - cumsum[idx:], dx=bin_centers[0] - bin_centers[1]))
-        Svk = 2 * A2 / (100 - Smr2)
-
-        parameters['Sk'] = Sk
-        parameters['Spk'] = Spk
-        parameters['Svk'] = Svk
-        parameters['Smr1'] = Smr1
-        parameters['Smr2'] = Smr2
-        parameters['Smr'] = Smr
-        parameters['Smc'] = Smc
-        return parameters
-
-    CACHED_METODS.append(functional_parameters)
+    CACHED_METODS.append(_get_abbott_firestone_curve)
 
     def Sk(self):
         """
@@ -815,7 +884,7 @@ class Surface:
         -------
         Sk: float
         """
-        return self.functional_parameters()['Sk']
+        return self._get_abbott_firestone_curve().Sk()
 
     def Spk(self):
         """
@@ -825,7 +894,7 @@ class Surface:
         -------
         Spk: float
         """
-        return self.functional_parameters()['Spk']
+        return self._get_abbott_firestone_curve().Spk()
 
     def Svk(self):
         """
@@ -835,7 +904,7 @@ class Surface:
         -------
         Svk: float
         """
-        return self.functional_parameters()['Svk']
+        return self._get_abbott_firestone_curve().Svk()
 
     def Smr1(self):
         """
@@ -845,7 +914,7 @@ class Surface:
         -------
         Smr1: float
         """
-        return self.functional_parameters()['Smr1']
+        return self._get_abbott_firestone_curve().Smr1()
 
     def Smr2(self):
         """
@@ -855,7 +924,7 @@ class Surface:
         -------
         Smr2: float
         """
-        return self.functional_parameters()['Smr2']
+        return self._get_abbott_firestone_curve().Smr2()
 
     def Smr(self, c):
         """
@@ -870,7 +939,7 @@ class Surface:
         -------
         areal material ratio: float
         """
-        return self.functional_parameters()['Smr'](c)
+        return self._get_abbott_firestone_curve().Smr(c)
 
     def Smc(self, mr):
         """
@@ -885,7 +954,7 @@ class Surface:
         -------
         height: float
         """
-        return self.functional_parameters()['Smc'](mr)
+        return self._get_abbott_firestone_curve().Smc(mr)
 
     def Sxp(self, p=2.5, q=50):
         """
@@ -904,6 +973,20 @@ class Surface:
         Height difference: float
         """
         return self.Smc(p) - self.Smc(q)
+
+    # Functional volume parameters ######################################################################################
+
+    def Vmp(self, p=10):
+        return self._get_abbott_firestone_curve().Vmp(p=p)
+
+    def Vmc(self, p=10, q=80):
+        return self._get_abbott_firestone_curve().Vmc(p=p, q=q)
+
+    def Vvv(self, q=80):
+        return self._get_abbott_firestone_curve().Vvv(q=q)
+
+    def Vvc(self, p=10, q=80):
+        return self._get_abbott_firestone_curve().Vvc(p=p, q=q)
 
     # Non-standard parameters ##########################################################################################
     
