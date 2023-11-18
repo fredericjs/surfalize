@@ -23,6 +23,7 @@ z = np.sin(x/period * 2 * np.pi)
 z_noise = z + np.random.normal(size=z.shape) / 5
 surface_noise = Surface(z_noise, 0.1, 0.1, 0.1*nx, 0.1*ny)
 
+
 def test_Sa():
 	assert surface.Sa() == approx(0.63137515)
 	assert surface_noise.Sa() == approx(0.64857575)
