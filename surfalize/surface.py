@@ -718,7 +718,7 @@ class Surface:
         istart_final = 0
 
         # Interpolation function for bin_centers(cumsum)
-        yintp = interp1d(cumsum, bin_centers)
+        Smc = interp1d(cumsum, bin_centers)
 
         while True:
             # The width in material distribution % is 40, so we have to interpolate to find the index
@@ -727,7 +727,7 @@ class Surface:
                 break
             # Here we interpolate to get exactly 40% width. The remaining inaccuracy comes from the
             # start index resoltion.
-            slope = (yintp(cumsum[istart] + WIDTH) - bin_centers[istart]) / WIDTH
+            slope = (Smc(cumsum[istart] + WIDTH) - bin_centers[istart]) / WIDTH
 
             # Since slope is always negative, we check that the value is greater if we want
             # minimal gradient. If we find other instances with same slope, we take the first
@@ -750,8 +750,8 @@ class Surface:
         # Sk parameter is distance between those intercepts
         Sk = yupper - ylower
 
-        f = interp1d(bin_centers, cumsum)
-        Smr1, Smr2 = f([yupper, ylower])
+        Smr = interp1d(bin_centers, cumsum)
+        Smr1, Smr2 = Smr([yupper, ylower])
 
         # For now we are using the closest value in the array to ylower
         # This way, we are losing or gaining a bit of area. In the future we might use some
@@ -766,11 +766,15 @@ class Surface:
         A2 = np.abs(np.trapz(100 - cumsum[idx:], dx=bin_centers[0] - bin_centers[1]))
         Svk = 2 * A2 / (100 - Smr2)
 
+        Sxp
+
         parameters['Sk'] = Sk
         parameters['Spk'] = Spk
         parameters['Svk'] = Svk
         parameters['Smr1'] = Smr1
         parameters['Smr2'] = Smr2
+        parameters['Smr'] = Smr
+        parameters['Smc'] = Smc
         return parameters
 
     CACHED_METODS.append(functional_parameters)
@@ -824,6 +828,54 @@ class Surface:
         Smr2: float
         """
         return self.functional_parameters()['Smr2']
+
+    def Smr(self, c):
+        """
+        Calculates the ratio of the area of the material at a specified height c (in µm) to the evaluation area.
+
+        Parameters
+        ----------
+        c: float
+            height in µm.
+
+        Returns
+        -------
+        areal material ratio: float
+        """
+        return self.functional_parameters()['Smr'](c)
+
+    def Smc(self, mr):
+        """
+        Calculates the height (c) in µm for a given areal material ratio (mr).
+
+        Parameters
+        ----------
+        mr: float
+            areal material ratio in %.
+
+        Returns
+        -------
+        height: float
+        """
+        return self.functional_parameters()['Smc'](mr)
+
+    def Sxp(self, p=2.5, q=50):
+        """
+        Calculates the difference in height between the p and q material ratio. For Sxp, p and q are defined by the
+        standard ISO 25178-3 to be 2.5% and 50%, respectively.
+
+        Parameters
+        ----------
+        p: float
+            material ratio p in % as defined by the standard ISO 25178-3
+        q: float
+            material ratio q in % as defined by the standard ISO 25178-3
+
+        Returns
+        -------
+        Height difference: float
+        """
+        return self.Smc(p) - self.Smc(q)
 
     # Non-standard parameters ##########################################################################################
     
