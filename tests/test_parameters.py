@@ -53,14 +53,10 @@ def test_Sku():
     assert surface_noise.Sku() == approx(1.71930405)
 
 def test_Sdr():
-    assert surface.Sdr() == approx(129.44488379205384)
-    assert surface_noise.Sdr() == approx(270.96701941569603)
+    assert surface.Sdr() == approx(129.44488379)
+    assert surface_noise.Sdr() == approx(270.96701942)
     assert surface.Sdr(method='gwyddion') == approx(130.08211683)
     assert surface_noise.Sdr(method='gwyddion') == approx(230.56169546)
-
-def test_Sdq():
-    assert surface.Sdq() == approx(2.21015819)
-    assert surface_noise.Sdq() == approx(4.03191002)
 
 def test_Sk():
     assert surface.Sk() == approx(1.725)
@@ -82,13 +78,29 @@ def test_Smr2():
     assert surface.Smr2() == approx(95.0)
     assert surface_noise.Smr2() == approx(92.75723063)
 
+def test_Sxp():
+    assert surface.Sxp() == approx(0.99343396)
+    assert surface_noise.Sxp() == approx(1.13043771)
+
+def test_Vmp():
+    assert surface.Vmp() == approx(0.00705)
+    assert surface_noise.Vmp() == approx(0.01420866)
+
+def test_Vmc():
+    assert surface.Vmc() == approx(0.802394)
+    assert surface_noise.Vmc() == approx(0.81028585)
+
+def test_Vvv():
+    assert surface.Vvv() == approx(0.0309)
+    assert surface_noise.Vvv() == approx(0.04512763)
+
+def test_Vvc():
+    assert surface.Vvc() == approx(0.894406)
+    assert surface_noise.Vvc() == approx(0.91816915)
+
 def test_period():
     assert surface.period() == approx(2.0)
     assert surface_noise.period() == approx(8.33333333)
-
-def test_homogeneity():
-    assert surface.homogeneity() == approx(1.0)
-    assert surface_noise.homogeneity() == approx(0.9598)
 
 def test_depth():
     assert surface.depth() == approx(1.90211303)
@@ -97,4 +109,8 @@ def test_depth():
 def test_aspect_ratio():
     assert surface.aspect_ratio() == approx(0.95105652)
     assert surface_noise.aspect_ratio() == approx(0.22430393)
+
+def test_homogeneity():
+    assert surface.homogeneity() == approx(1.0)
+    assert surface_noise.homogeneity() == approx(0.9598)
 

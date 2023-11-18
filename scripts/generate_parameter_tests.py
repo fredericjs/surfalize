@@ -35,8 +35,7 @@ surface_noise = Surface(z_noise, 0.1, 0.1)
 exec(preamble)
 
 text = preamble + '\n\n'
-AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
-                        'period', 'homogeneity', 'depth', 'aspect_ratio')
+AVAILABLE_PARAMETERS = Surface.AVAILABLE_PARAMETERS
 surf_objs = {'surface': surface, 'surface_noise': surface_noise}
 for par in AVAILABLE_PARAMETERS:
     test = f'def test_{par}():\n'
