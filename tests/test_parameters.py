@@ -53,8 +53,10 @@ def test_Sku():
     assert surface_noise.Sku() == approx(1.71930405)
 
 def test_Sdr():
-    assert surface.Sdr() == approx(130.08211683)
-    assert surface_noise.Sdr() == approx(230.56169546)
+    assert surface.Sdr() == approx(129.44488379205384)
+    assert surface_noise.Sdr() == approx(270.96701941569603)
+    assert surface.Sdr(method='gwyddion') == approx(130.08211683)
+    assert surface_noise.Sdr(method='gwyddion') == approx(230.56169546)
 
 def test_Sdq():
     assert surface.Sdq() == approx(2.21015819)

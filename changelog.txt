@@ -6,6 +6,7 @@ v0.2.0:
 - Replaced default method for calculation of surface area with the one proposed by ISO 25178-2. The method used by
   Gwyddion is now available by keyword argument. Sdr values now match the values computed by MountainsMap and its
   derivative software packages.
+- Added correct tests for ISO Sdr values
 v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
