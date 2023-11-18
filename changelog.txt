@@ -12,3 +12,5 @@ v0.1.0:
 - Added utils module with some helper functions
 - Fixed bug in depth calculation due to renaming of sinusoid function
 - Added aspect ratio parameter to Surface
+- Added tests for roughness parameters
+- Added script to generate tests for roughness parameters for a set of example surfaces
