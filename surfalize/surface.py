@@ -895,7 +895,7 @@ class Surface:
             # Define initial guess for fit parameters
             p0=((line.max() - line.min())/2, period_px, 0, line.mean())
             # Fit the data to the general sine function
-            popt, pcov = curve_fit(f, xp, line, p0=p0)
+            popt, pcov = curve_fit(sinusoid, xp, line, p0=p0)
             # Extract the refined period estimate from the sine function period
             period_sin = popt[1]
             # Extract the lateral shift of the sine fit
@@ -938,6 +938,16 @@ class Surface:
         if retstd:
             return np.nanmean(depths), np.nanstd(depths)
         return np.nanmean(depths)
+
+    def aspect_ratio(self):
+        """
+        Calculates the aspect ratio of a periodic texture as the ratio of the structure depth and the structure period.
+
+        Returns
+        -------
+        aspect_ratio: float
+        """
+        return self.depth() / self.period()
 
     def roughness_parameters(self, parameters=None):
         if parameters is None:
