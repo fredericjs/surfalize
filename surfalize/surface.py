@@ -672,15 +672,45 @@ class Surface:
         return (self._width_um - self._step_x) * (self._height_um - self._step_y)
     
     @no_nonmeasured_points
-    def surface_area(self):
+    def surface_area(self, method='iso'):
+        """
+        Calculates the surface area of the surface. The method parameter can be either 'iso' or 'gwyddion'. The default
+        method is the 'iso' method proposed by ISO 25178 and used by MountainsMap, whereby two triangles are
+        spanned between four corner points. The 'gwyddion' method implements the approach used by the open-source
+        software Gwyddion, whereby four triangles are spanned between four corner points and their calculated center
+        point. The method is detailed here: http://gwyddion.net/documentation/user-guide-en/statistical-analysis.html.
+
+        Parameters
+        ----------
+        method: str, Default 'iso'
+            The method by which to calculate the surface area.
+        Returns
+        -------
+        area: float
+        """
         if not CYTHON_DEFINED:
             raise NotImplementedError("Surface area calculation is based on cython code. Compile cython code to run this"
                                       "method")
-        return surface_area(self._data, self._step_x, self._step_y)
+        return surface_area(self._data, self._step_x, self._step_y, method=method)
     
     @no_nonmeasured_points
-    def Sdr(self):
-        return (self.surface_area() / self.projected_area() -1) * 100
+    def Sdr(self, method='iso'):
+        """
+        Calculates Sdr. The method parameter can be either 'iso' or 'gwyddion'. The default method is the 'iso' method
+        proposed by ISO 25178 and used by MountainsMap, whereby two triangles are spanned between four corner points.
+        The 'gwyddion' method implements the approach used by the open-source software Gwyddion, whereby four triangles
+        are spanned between four corner points and their calculated center point. The method is detailed here:
+        http://gwyddion.net/documentation/user-guide-en/statistical-analysis.html.
+
+        Parameters
+        ----------
+        method: str, Default 'iso'
+            The method by which to calculate the surface area.
+        Returns
+        -------
+        area: float
+        """
+        return (self.surface_area(method=method) / self.projected_area() -1) * 100
     
     @no_nonmeasured_points
     def Sdq(self):
