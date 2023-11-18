@@ -1,5 +1,8 @@
 v0.2.0:
-- added Sdq parameter -> tested against LeicaMap
+- Added Sdq parameter -> tested against LeicaMap
+- Removed width_um and height_um as initialization parameters for Surface, since they are redundant
+- Added lru_cache to some functions to save computation time
+- Added cache clearing mechanism as well as recalculation of width_um and height_um upon inplace modification of data
 v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
