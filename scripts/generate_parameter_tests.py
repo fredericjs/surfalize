@@ -35,13 +35,14 @@ surface_noise = Surface(z_noise, 0.1, 0.1)
 exec(preamble)
 
 text = preamble + '\n\n'
-AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2', 'period', 'homogeneity', 'depth', 'aspect_ratio')
+AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
+                        'period', 'homogeneity', 'depth', 'aspect_ratio')
 surf_objs = {'surface': surface, 'surface_noise': surface_noise}
 for par in AVAILABLE_PARAMETERS:
     test = f'def test_{par}():\n'
     for name, surf_obj in surf_objs.items():
         res = round(getattr(surf_obj, par)(), 8)
-        test += f'\tassert {name}.{par}() == approx({res})\n'
+        test += f'    assert {name}.{par}() == approx({res})\n'
     text += test + '\n'
 
 with open(args.output, 'w') as file:
