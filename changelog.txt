@@ -11,6 +11,7 @@ v0.2.0:
 - Moved functional parameter calculation to new class AbbottFirestoneCurve
 - Added functional volume parameters Vmp, Vmc, Vvv, Vvc
 - Added tests for functional volume parameters
+- Added Fourier transform plotting method to Surface
 v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
