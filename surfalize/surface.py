@@ -340,14 +340,15 @@ class Surface:
         self._data = height_data
         self._step_x = step_x
         self._step_y = step_y
-        self._width_um = height_data.shape[1] * step_x
-        self._height_um = height_data.shape[0] * step_y
+        self._width_um = (height_data.shape[1]-1) * step_x
+        self._height_um = (height_data.shape[0]-1) * step_y
         # True if non-measured points exist on the surface
         self._nonmeasured_points_exist = np.any(np.isnan(self._data))
 
     def _clear_cache(self):
         for method in self.CACHED_METODS:
             method.cache_clear()
+            
     def _set_data(self, data=None, step_x=None, step_y=None):
         if data is not None:
             self._data = data
@@ -355,8 +356,8 @@ class Surface:
             self._step_x = step_x
         if step_y is not None:
             self._step_y = step_y
-        self._width_um = self._data.shape[1] * self._step_x
-        self._height_um = self._data.shape[0] * self._step_y
+        self._width_um = (self._data.shape[1]-1) * self._step_x
+        self._height_um = (self._data.shape[0]-1) * self._step_y
         self._clear_cache()
         
     def __repr__(self):
