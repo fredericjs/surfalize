@@ -21,7 +21,7 @@ def _surface_area_gwyddion_cy(double[:,:] p, double dx, double dy):
     as well as row. This is done to deal with the border vertices according to the strategy proposed by
     Gwyddion http://gwyddion.net/documentation/user-guide-en/statistical-analysis.html.
     """
-    cdef float total_area = 0
+    cdef double total_area = 0
     cdef int i, j
     cdef int imax = p.shape[0]-1
     cdef int jmax = p.shape[1]-1
@@ -66,10 +66,10 @@ def _surface_area_iso_cy(double[:,:] p, double dx, double dy):
     of methods for the characterisation of roughness in three dimensions. European Report EUR 15178 EN,
     ISBN 0704413132" and referenced in ISO 25178-2. It is the method used by MountainsMap and its derivatives.
     """
-    cdef float total_area = 0
+    cdef double total_area = 0
     cdef int i, j
-    cdef int imax = p.shape[0]-1
-    cdef int jmax = p.shape[1]-1
+    cdef int imax = p.shape[0] - 1
+    cdef int jmax = p.shape[1] - 1
     cdef double a1, a2
     for i in range(imax):
         for j in range(jmax):
@@ -77,6 +77,7 @@ def _surface_area_iso_cy(double[:,:] p, double dx, double dy):
             a2 = triangle_area(dx, 0, p[i+1,j] - p[i+1,j+1], 0, dy, p[i,j+1] - p[i+1,j+1])
             total_area += a1 + a2
     return total_area
+
 
 def _extend_array(array):
     """
