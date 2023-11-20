@@ -12,6 +12,7 @@ v0.2.0:
 - Added functional volume parameters Vmp, Vmc, Vvv, Vvc
 - Added tests for functional volume parameters
 - Added Fourier transform plotting method to Surface
+- Fixed a bug with surface area calculation in the Cython code that would result in negative Sdr for some edgecases
 v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
