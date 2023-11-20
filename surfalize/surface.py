@@ -332,7 +332,7 @@ class AbbottFirestoneCurve:
 # TODO Oblique profiles
 class Surface:
     
-    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
+    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
                             'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio', 'homogeneity')
     CACHED_METODS = []
     
