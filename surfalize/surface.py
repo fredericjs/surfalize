@@ -332,7 +332,7 @@ class AbbottFirestoneCurve:
 # TODO Oblique profiles
 class Surface:
     
-    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
+    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
                             'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio', 'homogeneity')
     CACHED_METODS = []
     
@@ -1168,6 +1168,80 @@ class Surface:
         ax2.plot(cumsum, bin_centers, c='r', clip_on=True)
 
         plt.show()
+        
+    def fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None, cmap='inferno', adjust_colormap=True):
+        """
+        Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral leakage effects 
+        that occur when analyzing a signal of finite sample length.
+
+        Parameters
+        ----------
+        log: bool, Default True
+            Shows the logarithm of the Fourier Transform to increase peak visibility.
+        hanning: bool, Default False
+            Applys a Hanning window to the data before the transform.
+        subtract_mean: bool, Default False
+            Subtracts the mean of the data before the transform to avoid the zero peak.
+        fxmax: float, Default None
+            Maximum frequency displayed in x. The plot will be cropped to -fxmax : fxmax.
+        fymax: float, Default None
+            Maximum frequency displayed in y. The plot will be cropped to -fymax : fymax.
+        cmap: str, Default 'inferno'
+            Matplotlib colormap with which to map the data.
+        adjust_colormap: bool, Default True
+            If True, the colormap starts at the mean and ends at 0.7 time the maximum of the data
+            to increase peak visibility.
+        Returns
+        -------
+        ax: matplotlib.axes
+        """
+        N, M = self._data.shape
+        data = self._data
+        if subtract_mean:
+            data = data - self._data.mean()
+
+        if hanning:
+            hann_window_y = np.hanning(N)
+            hann_window_x = np.hanning(M)
+            hann_window_2d = np.outer(hann_window_y, hann_window_x)
+            data = data * hann_window_2d
+
+        fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
+
+        # Calculate the frequency values for the x and y axes
+        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self._width_um / M))  # Frequency values for the x-axis
+        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self._height_um / N))  # Frequency values for the y-axis
+
+        if log:
+            fft = np.log10(fft)
+        ixmin = 0
+        ixmax = M-1
+        iymin = 0
+        iymax = N-1
+
+        if fxmax is not None:
+            ixmax = argclosest(fxmax, freq_x)
+            ixmin = M - ixmax
+            fft = fft[:,ixmin:ixmax+1]
+
+        if fymax is not None:
+            iymax = argclosest(fymax, freq_y)
+            iymin = N - iymax
+            fft = fft[iymin:iymax+1]
+
+        vmin = None
+        vmax = None
+        if adjust_colormap:
+            vmin = fft.mean()
+            vmax = 0.7 * fft.max()
+
+        fig, ax = plt.subplots()
+        ax.set_xlabel('Frequency [µm$^{-1}$]')
+        ax.set_ylabel('Frequency [µm$^{-1}$]')
+        extent = (freq_x[ixmin], freq_x[ixmax], freq_y[iymax], freq_y[iymin])
+
+        ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
+        return ax
     
     def show(self, cmap='jet'):
         cmap = plt.get_cmap(cmap).copy()
