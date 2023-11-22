@@ -6,5 +6,3 @@
 
 - Implement export of images in plotting functions as well as in the Batch class
 
-- Implement Fourier Transform plotting with optional Hanning Window
-
