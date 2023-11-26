@@ -29,6 +29,8 @@ This package aims to implement all parameters defined in ISO 25178. Currently, t
 |                     | Sku             | Kurtosis                         | Gwyddion, MountainsMap             |  
 | Hybrid              | Sdr<sup>1</sup> | Developed interfacial area ratio | Gwyddion<sup>2</sup>, MountainsMap |
 |                     | Sdq             | Root mean square gradient        | MountainsMap                       |
+ | Spatial             | Sal             | Autocorrelation length           | -                                  |
+|                     | Str             | Texture aspect ratio             | -                                  |
 | Functional          | Sk              | Core roughness depth             | MountainsMap                       |
 |                     | Spk             | Reduced peak height              | MountainsMap                       |
 |                     | Svk             | Reduced dale height              | MountainsMap                       |
