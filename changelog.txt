@@ -16,6 +16,8 @@ v0.2.0:
 - Added autocorrelation function and the derived spatial parameters Sal and Str
 - Added tests for spatial parameters
 - Restructuring of modules: Profile, AbbottFirestoneCurve, AutocorrelationFunction now in speparate modules
+- Fixed filtering method: Now filters at the correct frequencies in all axes. Added note in docstring that warns about
+  the side effects of zeroing bins
 v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters

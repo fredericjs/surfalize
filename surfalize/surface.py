@@ -342,7 +342,11 @@ class Surface:
     @no_nonmeasured_points
     def filter(self, cutoff, *, mode, cutoff2=None, inplace=False):
         """
-        Filters the surface by means of Fourier Transform. There a several possible modes of filtering:
+        Filters the surface by zeroing bins in the Fourier Transform. This introduces errors since the direct zeroing
+        of bins is equivalent to applying a rectangular windowing function to the dft, which is equivalent to the
+        convolution of the signal with a sinc(x) function! Use at your own risk.
+
+        There a several possible modes of filtering:
 
         - 'highpass': computes spatial frequencies above the specified cutoff value
         - 'lowpass': computes spatial frequencies below the specified cutoff value
@@ -372,63 +376,50 @@ class Surface:
         surface: surfalize.Surface
             Surface object.
         """
+        if mode not in ('highpass', 'lowpass', 'both', 'bandpass'):
+            raise ValueError("Invalid mode selected")
         if mode == 'both' and inplace:
-            raise ValueError("Mode 'both' does not support inplace operation since two Surface objects will be returned")
-        freq_x = np.fft.fftfreq(self._data.shape[1], d=self._step_x)
-        freq_target = 1/cutoff
-        cutoff1 = np.argmax(freq_x > freq_target)
-        if np.abs(freq_target - freq_x[cutoff1]) > np.abs(freq_target - freq_x[cutoff1-1]):
-            cutoff1 -= 1
+            raise ValueError(
+                "Mode 'both' does not support inplace operation since two Surface objects will be returned")
+
         if mode == 'bandpass':
             if cutoff2 is None:
                 raise ValueError("cutoff2 must be provided.")
             if cutoff2 <= cutoff:
                 raise ValueError("The value of cutoff2 must be greater than the value of cutoff.")
-            freq_target2 = 1/cutoff2
-            cutoff2 = np.argmax(freq_x > freq_target2)
-            if np.abs(freq_target2 - freq_x[cutoff2]) > np.abs(freq_target2 - freq_x[cutoff2-1]):
-                cutoff2 -= 1
-            
-        fft = np.fft.fftshift(np.fft.fft2(self._data))
-        rows, cols = self._data.shape
-        
-        
-        if mode == 'bandpass':
-            filter_highpass = np.ones((rows, cols))
-            filter_highpass[rows//2-cutoff2:rows//2+cutoff2, cols//2-cutoff2:cols//2+cutoff2] = 0
-            
-            filter_lowpass = np.ones((rows, cols))
-            filter_lowpass[rows//2-cutoff1:rows//2+cutoff1, cols//2-cutoff1:cols//2+cutoff1] = 0
-            filter_lowpass = ~filter_lowpass.astype('bool')
-            zfiltered_band = np.fft.ifft2(np.fft.ifftshift(fft * filter_highpass * filter_lowpass)).real
-            if inplace:
-                self._set_data(data=zfiltered_band)
-                return self
-            return Surface(zfiltered_band, self._step_x, self._step_y)
+            cutoff_freq2 = 1 / cutoff2
 
-        filter_highpass = np.ones((rows, cols))
-        filter_highpass[rows//2-cutoff1:rows//2+cutoff1, cols//2-cutoff1:cols//2+cutoff1] = 0
-        filter_lowpass = ~filter_highpass.astype('bool')
-            
-        zfiltered_high = np.fft.ifft2(np.fft.ifftshift(fft * filter_highpass)).real
-        zfiltered_low = np.fft.ifft2(np.fft.ifftshift(fft * filter_lowpass)).real
-
-        if mode == 'both':
-            surface_high = Surface(zfiltered_high, self._step_x, self._step_y)
-            surface_low = Surface(zfiltered_low, self._step_x, self._step_y)
-            return surface_high, surface_low
-        if mode == 'highpass':
-            if inplace:
-                self._set_data(data=zfiltered_high)
-                return self
-            surface_high = Surface(zfiltered_high, self._step_x, self._step_y)
-            return surface_high
+        cutoff_freq = 1 / cutoff
+        dft = np.fft.fftshift(np.fft.fft2(self._data))
+        freq_y = np.fft.fftshift(np.fft.fftfreq(self._data.shape[0], self._step_y))
+        freq_x = np.fft.fftshift(np.fft.fftfreq(self._data.shape[1], self._step_x))
+        freq_x, freq_y = np.meshgrid(freq_x, freq_y)
+        freq = np.sqrt(freq_x ** 2 + freq_y ** 2)
+        filter_ = freq <= cutoff_freq
         if mode == 'lowpass':
+            data_filtered = np.fft.ifft2(np.fft.ifftshift(dft * filter_)).real
             if inplace:
-                self._set_data(data=zfiltered_low)
+                self._set_data(data=data_filtered)
                 return self
-            surface_low = Surface(zfiltered_low, self._step_x, self._step_y)
-            return surface_low
+            return Surface(data_filtered, self._step_x, self._step_y)
+        if mode == 'highpass':
+            data_filtered = np.fft.ifft2(np.fft.ifftshift(dft * ~filter_)).real
+            if inplace:
+                self._set_data(data=data_filtered)
+                return self
+            return Surface(data_filtered, self._step_x, self._step_y)
+        if mode == 'both':
+            data_lowpass = np.fft.ifft2(np.fft.ifftshift(dft * filter_)).real
+            data_highpass = np.fft.ifft2(np.fft.ifftshift(dft * ~filter_)).real
+            return Surface(data_lowpass, self._step_x, self._step_y), Surface(data_highpass, self._step_x, self._step_y)
+        if mode == 'bandpass':
+            filter_lowpass = filter_
+            filter_highpass = freq >= cutoff_freq2
+            data_filtered = np.fft.ifft2(np.fft.ifftshift(dft * filter_lowpass * filter_highpass)).real
+            if inplace:
+                self._set_data(data=data_filtered)
+                return self
+            return Surface(data_filtered, self._step_x, self._step_y)
         
     def zoom(self, factor, inplace=False):
         """
