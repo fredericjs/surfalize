@@ -53,3 +53,21 @@ def argclosest(x, xdata):
         Index of the value in xdata that is closest to x.
     """
     return np.argmin(np.abs(xdata - x))
+
+def closest(x, data):
+    """
+    Returns the value in an array that is closest to the value x.
+
+    Parameters
+    ----------
+    x: float
+        value to which closest array value index should be computed
+    xdata: array_like
+        array of x-values
+
+    Returns
+    -------
+    value:
+        Value in xdata that is closest to x.
+    """
+    return data.ravel()[argclosest(x, data.ravel())]
