@@ -47,6 +47,18 @@ By keyword argument, the Gwyddion algorithm can be used instead.\
 <sup>2</sup> Gwyddion does not support Sdr calculation directly, but calculates surface area and projected
 area. 
 
+## Supported parameters of 1d-periodic surfaces
+
+Additionally, this package supports the calculation of non-standard parameters for periodic textured surfaces with one-
+dimensional periodic structures. The following parameters can be calculated:
+
+| Parameter    | Description                                                  |
+|--------------|--------------------------------------------------------------|
+| Period       | Dominant spatial period of the 1d-surface texture            | 
+| Depth        | Peak-to-valley depth of the 1d-texture profiles              | 
+| Aspect ratio | Ratio of peak-to-valley depth to spatial period              |
+| Homogeneity  | Homogeneity factor (0 < H < 1) calculated from Gini analysis |
+
 ## Basic Usage
 
 ```
