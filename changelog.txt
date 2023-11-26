@@ -1,3 +1,4 @@
+v0.3.0:
 v0.2.0:
 - Added Sdq parameter -> tested against LeicaMap
 - Removed width_um and height_um as initialization parameters for Surface, since they are redundant
