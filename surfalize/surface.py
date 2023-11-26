@@ -22,16 +22,16 @@ import scipy.ndimage as ndimage
 # Custom imports
 from .fileloader import load_file
 from .utils import argclosest, interp1d
+from .common import sinusoid
 from .autocorrelation import AutocorrelationFunction
+from .abbottfirestone import AbbottFirestoneCurve
+from .profile import Profile
 try:
     from .calculations import surface_area
     CYTHON_DEFINED = True
 except ImportError:
     logger.warning('Could not import cythonized code. Surface area calculation unavailable.')
     CYTHON_DEFINED = False
-
-# Define general sinusoid function for fitting
-sinusoid = lambda x, a, p, xo, yo: a*np.sin((x-xo)/p*2*np.pi) + yo
 
 # Deprecate
 def _period_from_profile(profile):
@@ -59,118 +59,6 @@ def _period_from_profile(profile):
     prominences_sorted = prominences[sorted_indices]
     period = 1/np.abs(freq[peaks_sorted[0]])
     return period
-
-
-class Profile:
-    
-    def __init__(self, height_data, step, length_um):
-        self._data = height_data
-        self._step = step
-        self._length_um = length_um
-        
-    def __repr__(self):
-        return f'{self.__class__.__name__}({self._length_um:.2f} µm)'
-    
-    def _repr_png_(self):
-        """
-        Repr method for Jupyter notebooks. When Jupyter makes a call to repr, it checks first if a _repr_png_ is
-        defined. If not, it falls back on __repr__.
-        """
-        self.show()
-        
-    def period(self):
-        fft = np.abs(np.fft.fft(self._data))
-        freq = np.fft.fftfreq(self._data.shape[0], d=self._step)
-        peaks, properties = find_peaks(fft.flatten(), distance=10, prominence=10)
-        # Find the prominence of the peaks
-        prominences = properties['prominences']
-        # Sort in descendin'g order by computing sorting indices
-        sorted_indices = np.argsort(prominences)[::-1]
-        # Sort peaks in descending order
-        peaks_sorted = peaks[sorted_indices]
-        # Rearrange prominences based on the sorting of peaks
-        prominences_sorted = prominences[sorted_indices]
-        period = 1/np.abs(freq[peaks_sorted[0]])
-        return period
-        
-    def Ra(self):
-        return np.abs(self._data - self._data.mean()).sum() / self._data.size
-    
-    def Rq(self):
-        return np.sqrt(((self._data - self._data.mean()) ** 2).sum() / self._data.size)
-    
-    def Rp(self):
-        return (self._data - self._data.mean()).max()
-    
-    def Rv(self):
-        return np.abs((self._data - self._data.mean()).min())
-    
-    def Rz(self):
-        return self.Sp() + self.Sv()
-    
-    def Rsk(self):
-        return ((self._data - self._data.mean()) ** 3).sum() / self._data.size / self.Rq()**3
-    
-    def Rku(self):
-        return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Rq()**4
-    
-    def depth(self, sampling_width=0.2, plot=False, retstd=False):
-        period_px = int(self.period() / self._step)
-        nintervals = int(self._data.shape[0] / period_px)
-        xp = np.arange(self._data.shape[0])
-        # Define initial guess for fit parameters
-        p0=((self._data.max() - self._data.min())/2, period_px, 0, self._data.mean())
-        # Fit the data to the general sine function
-        popt, pcov = curve_fit(sinusoid, xp, self._data, p0=p0)
-        # Extract the refined period estimate from the sine function period
-        period_sin = popt[1]
-        # Extract the lateral shift of the sine fit
-        x0 = popt[2]
-
-        depths_line = np.zeros(nintervals * 2)
-
-        if plot:
-            fig, ax = plt.subplots(figsize=(16,4))
-            ax.plot(xp, self._data, lw=1.5, c='k', alpha=0.7)
-            ax.plot(xp, sinusoid(xp, *popt), c='orange', ls='--')
-            ax.set_xlim(xp.min(), xp.max())
-
-        # Loop over each interval
-        for i in range(nintervals*2):
-            idx = (0.25 + 0.5*i) * period_sin + x0        
-
-            idx_min = int(idx) - int(period_sin * sampling_width/2)
-            idx_max = int(idx) + int(period_sin * sampling_width/2)
-            if idx_min < 0 or idx_max > self._data.shape[0]-1:
-                depths_line[i] = np.nan
-                continue
-            depth_mean = self._data[idx_min:idx_max+1].mean()
-            depth_median = np.median(self._data[idx_min:idx_max+1])
-            depths_line[i] = depth_median
-            # For plotting
-            if plot:          
-                rx = xp[idx_min:idx_max+1].min()
-                ry = self._data[idx_min:idx_max+1].min()
-                rw = xp[idx_max] - xp[idx_min+1]
-                rh = np.abs(self._data[idx_min:idx_max+1].min() - self._data[idx_min:idx_max+1].max())
-                rect = plt.Rectangle((rx, ry), rw, rh, facecolor='tab:orange')
-                ax.plot([rx, rx+rw], [depth_mean, depth_mean], c='r')
-                ax.plot([rx, rx+rw], [depth_median, depth_median], c='g')
-                ax.add_patch(rect)   
-
-        # Subtract peaks and valleys from eachother by slicing with 2 step
-        depths = np.abs(depths_line[0::2] - depths_line[1::2])
-
-        if retstd:
-            return np.nanmean(depths), np.nanstd(depths)
-        return np.nanmean(depths)
-    
-    def show(self):
-        fig, ax = plt.subplots(figsize=(10, 3))
-        ax.set_xlim(0, self._length_um)
-        ax.plot(np.linspace(0, self._length_um, self._data.size), self._data, c='k')
-        plt.show()
-        
            
 def no_nonmeasured_points(function):
     @wraps(function)
@@ -181,156 +69,6 @@ def no_nonmeasured_points(function):
     return wrapper_function
 
 
-class AbbottFirestoneCurve:
-    # Width of the equivalence line in % as defined by ISO 25178-2
-    EQUIVALENCE_LINE_WIDTH = 40
-
-    def __init__(self, surface):
-        self._surface = surface
-        self._calculate_curve()
-
-    @lru_cache
-    def _get_material_ratio_curve(self, nbins=1000):
-        dist, bins = np.histogram(self._surface._data, bins=nbins)
-        bins = np.flip(bins)
-        bin_centers = bins[:-1] + np.diff(bins) / 2
-        cumsum = np.flip(np.cumsum(dist))
-        cumsum = (1 - cumsum / cumsum.max()) * 100
-        return nbins, bin_centers, cumsum
-
-    # This is a bit hacky right now with the modified state. Maybe clean that up in the future
-    def _calculate_curve(self):
-        parameters = dict()
-        # Using the potentially cached values here
-        nbins, height, material_ratio = self._get_material_ratio_curve()
-        # Step in the height array
-        dc = np.abs(height[0] - height[1])
-        slope_min = None
-        istart = 0
-        istart_final = 0
-
-        # Interpolation function for bin_centers(cumsum)
-        self._smc_fit = interp1d(material_ratio, height)
-
-        while True:
-            # The width in material distribution % is 40, so we have to interpolate to find the index
-            # where the distance to the starting value is 40
-            if material_ratio[istart] > 100 - self.EQUIVALENCE_LINE_WIDTH:
-                break
-            # Here we interpolate to get exactly 40% width. The remaining inaccuracy comes from the
-            # start index resoltion.
-            slope = (self._smc_fit(material_ratio[istart] + self.EQUIVALENCE_LINE_WIDTH) - height[
-                istart]) / self.EQUIVALENCE_LINE_WIDTH
-
-            # Since slope is always negative, we check that the value is greater if we want
-            # minimal gradient. If we find other instances with same slope, we take the first
-            # occurence according to ISO 13565-2
-            if slope_min is None:
-                slope_min = slope
-            elif slope > slope_min:
-                slope_min = slope
-                # Start index of the 40% width equivalence line
-                istart_final = istart
-            istart += 1
-
-        self._slope = slope_min
-
-        # Intercept of the equivalence line
-        self._intercept = height[istart_final] - slope_min * material_ratio[istart_final]
-
-        # Intercept of the equivalence line at 0% ratio
-        self._yupper = self._intercept
-        # Intercept of the equivalence line at 100% ratio
-        self._ylower = slope_min * 100 + self._intercept
-
-        self._smr_fit = interp1d(height, material_ratio)
-        self._height = height
-        self._material_ratio = material_ratio
-        self._dc = dc
-
-    @lru_cache
-    def Sk(self):
-        return self._yupper - self._ylower
-
-    def Smr(self, c):
-        return float(self._smr_fit(c))
-
-    def Smc(self, mr):
-        return float(self._smc_fit(mr))
-
-    @lru_cache
-    def Smr1(self):
-        return self.Smr(self._yupper)
-
-    @lru_cache
-    def Smr2(self):
-        return self.Smr(self._ylower)
-
-    @lru_cache
-    def Spk(self):
-        # For now we are using the closest value in the array to ylower
-        # This way, we are losing or gaining a bit of area. In the future we might use some
-        # additional interpolation. For now this is sufficient.
-
-        # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
-        idx = argclosest(self._yupper, self._height)
-        A1 = np.abs(np.trapz(self._material_ratio[:idx], dx=self._dc))
-        Spk = 2 * A1 / self.Smr1()
-        return Spk
-
-    @lru_cache
-    def Svk(self):
-        # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
-        idx = argclosest(self._ylower, self._height)
-        A2 = np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc))
-        Svk = 2 * A2 / (100 - self.Smr2())
-        return Svk
-
-    @lru_cache
-    def Vmp(self, p=10):
-        idx = argclosest(self.Smc(p), self._height)
-        return np.trapz(self._material_ratio[:idx], dx=self._dc) / 100
-
-    @lru_cache
-    def Vmc(self, p=10, q=80):
-        idx = argclosest(self.Smc(q), self._height)
-        return np.trapz(self._material_ratio[:idx], dx=self._dc) / 100 - self.Vmp(p)
-
-    @lru_cache
-    def Vvv(self, q=80):
-        idx = argclosest(self.Smc(80), self._height)
-        return np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc)) / 100
-
-    @lru_cache
-    def Vvc(self, p=10, q=80):
-        idx = argclosest(self.Smc(10), self._height)
-        return np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc)) / 100 - self.Vvv(q)
-
-    def visual_parameter_study(self):
-        fig, ax = plt.subplots()
-        ax.set_box_aspect(1)
-        ax.set_xlim(0, 100)
-        ax.set_ylim(self._height.min(), self._height.max())
-        x = np.linspace(0, 100, 10)
-        ax.plot(x, self._slope * x + self._intercept, c='k')
-        ax.add_patch(plt.Polygon([[0, self._yupper], [0, self._yupper + self.Spk()], [self.Smr1(), self._yupper]],
-                                 fc='orange', ec='k'))
-        ax.add_patch(plt.Polygon([[100, self._ylower], [100, self._ylower - self.Svk()], [self.Smr2(), self._ylower]],
-                                 fc='orange', ec='k'))
-        ax.plot(self._material_ratio, self._height, c='r')
-        ax.axhline(self._ylower, c='k', lw=1)
-        ax.axhline(self._yupper, c='k', lw=1)
-        ax.axhline(self._ylower - self.Svk(), c='k', lw=1)
-        ax.axhline(self._yupper + self.Spk(), c='k', lw=1)
-        ax.plot([self.Smr1(), self.Smr1()], [0, self._yupper], c='k', lw=1)
-        ax.plot([self.Smr2(), self.Smr2()], [0, self._ylower], c='k', lw=1)
-
-        ax.set_xlabel('Material ratio (%)')
-        ax.set_ylabel('Height (µm)')
-            
-            
-# TODO Image export
-# TODO Oblique profiles
 class Surface:
     
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
