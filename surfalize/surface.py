@@ -22,6 +22,7 @@ import scipy.ndimage as ndimage
 # Custom imports
 from .fileloader import load_file
 from .utils import argclosest, interp1d
+from .autocorrelation import AutocorrelationFunction
 try:
     from .calculations import surface_area
     CYTHON_DEFINED = True
@@ -332,8 +333,9 @@ class AbbottFirestoneCurve:
 # TODO Oblique profiles
 class Surface:
     
-    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sk', 'Spk', 'Svk', 'Smr1', 'Smr2',
-                            'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio', 'homogeneity')
+    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
+                            'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
+                            'homogeneity')
     CACHED_METODS = []
     
     def __init__(self, height_data, step_x, step_y):
@@ -868,6 +870,57 @@ class Surface:
         diff_x = np.diff(self._data, axis=1) / self._step_x
         diff_y = np.diff(self._data, axis=0) / self._step_y
         return np.sqrt((np.sum(diff_x**2) + np.sum(diff_y**2)) / A)
+
+    # Spatial parameters ###############################################################################################
+
+    @lru_cache
+    def _get_autocorrelation_function(self):
+        return AutocorrelationFunction(self)
+
+    CACHED_METODS.append(_get_autocorrelation_function)
+
+    def Sal(self, s=0.2):
+        """
+        Calculates the autocorrelation length Sal. Sal represents the horizontal distance of the f_ACF(tx,ty)
+        which has the fastest decay to a specified value s, with 0 < s < 1. s represents the fraction of the
+        maximum value of the autocorrelation function. The default value for s is 0.2 according to ISO 25178-3.
+
+        Parameters
+        ----------
+        s: float
+            threshold value below which the data is considered to be uncorrelated. The
+            point of fastest and slowest decay are calculated respective to the threshold
+            value, to which the autocorrelation function decays. The threshold s is a fraction
+            of the maximum value of the autocorrelation function.
+
+        Returns
+        -------
+        Sal: float
+            autocorrelation length.
+        """
+        return self._get_autocorrelation_function().Str(s=s)
+
+    def Str(self, s=0.2):
+        """
+        Calculates the texture aspect ratio Str. Str represents the ratio of the horizontal distance of the f_ACF(tx,ty)
+        which has the fastest decay to a specified value s to the horizontal distance of the fACF(tx,ty) which has the
+        slowest decay to s, with 0 < s < 1. s represents the fraction of the maximum value of the autocorrelation
+        function. The default value for s is 0.2 according to ISO 25178-3.
+
+        Parameters
+        ----------
+        s: float
+            threshold value below which the data is considered to be uncorrelated. The
+            point of fastest and slowest decay are calculated respective to the threshold
+            value, to which the autocorrelation function decays. The threshold s is a fraction
+            of the maximum value of the autocorrelation function.
+
+        Returns
+        -------
+        Str: float
+            texture aspect ratio.
+        """
+        return self._get_autocorrelation_function().Sal(s=s)
     
     # Functional parameters ############################################################################################
     

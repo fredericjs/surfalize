@@ -13,6 +13,8 @@ v0.2.0:
 - Added tests for functional volume parameters
 - Added Fourier transform plotting method to Surface
 - Fixed a bug with surface area calculation in the Cython code that would result in negative Sdr for some edgecases
+- Added autocorrelation function and the derived spatial parameters Sal and Str
+- Added tests for spatial parameters
 v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
