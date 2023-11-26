@@ -898,7 +898,7 @@ class Surface:
         Sal: float
             autocorrelation length.
         """
-        return self._get_autocorrelation_function().Str(s=s)
+        return self._get_autocorrelation_function().Sal(s=s)
 
     def Str(self, s=0.2):
         """
@@ -920,7 +920,7 @@ class Surface:
         Str: float
             texture aspect ratio.
         """
-        return self._get_autocorrelation_function().Sal(s=s)
+        return self._get_autocorrelation_function().Str(s=s)
     
     # Functional parameters ############################################################################################
     

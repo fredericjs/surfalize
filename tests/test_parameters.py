@@ -61,12 +61,12 @@ def test_Sdq():
     assert surface_noise.Sdq() == approx(4.03191002)
 
 def test_Sal():
-    assert surface.Sal() == approx(0.01428519)
-    assert surface_noise.Sal() == approx(0.05138748)
+    assert surface.Sal() == approx(0.5)
+    assert surface_noise.Sal() == approx(1.8)
 
 def test_Str():
-    assert surface.Str() == approx(0.5)
-    assert surface_noise.Str() == approx(1.8)
+    assert surface.Str() == approx(0.01428519)
+    assert surface_noise.Str() == approx(0.05138748)
 
 def test_Sk():
     assert surface.Sk() == approx(1.725)
