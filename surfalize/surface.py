@@ -88,8 +88,9 @@ class Surface:
         # True if non-measured points exist on the surface
         self._nonmeasured_points_exist = np.any(np.isnan(self.data))
 
+    @property
     def size(self):
-        return size(self.data.shape)
+        return size(*self.data.shape)
 
     def _clear_cache(self):
         for method in self.CACHED_METODS:
@@ -102,8 +103,8 @@ class Surface:
             self.step_x = step_x
         if step_y is not None:
             self.step_y = step_y
-        self.width_um = (self.data.shape[1] - 1) * self.step_x
-        self.height_um = (self.data.shape[0] - 1) * self.step_y
+        self.width_um = (self.size.x - 1) * self.step_x
+        self.height_um = (self.size.y - 1) * self.step_y
         self._clear_cache()
         
     def __repr__(self):
@@ -150,13 +151,13 @@ class Surface:
             average_step_px = int(average_step / self.step_y)
 
         # vertical index of profile
-        idx = int(y / self.height_um * self.data.shape[0])
+        idx = int(y / self.height_um * self.size.y)
         # first index from which a profile is taken for averaging
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
         # last index from which a profile is taken for averaging
         idx_max = idx + int(average / 2) * average_step_px
-        idx_max = self.data.shape[0] if idx_max > self.data.shape[0] else idx_max
+        idx_max = self.size.y if idx_max > self.size.y else idx_max
         data = self.data[idx_min:idx_max + 1:average_step_px].mean(axis=0)
         return Profile(data, self.step_x, self.width_um)
     
@@ -190,24 +191,24 @@ class Surface:
             average_step_px = int(average_step / self.step_x)
 
         # vertical index of profile
-        idx = int(x / self.width_um * self.data.shape[1])
+        idx = int(x / self.width_um * self.size.x)
         # first index from which a profile is taken for averaging
         idx_min = idx - int(average / 2) * average_step_px
         idx_min = 0 if idx_min < 0 else idx_min
         # last index from which a profile is taken for averaging
         idx_max = idx + int(average / 2) * average_step_px
-        idx_max = self.data.shape[1] if idx_max > self.data.shape[1] else idx_max
+        idx_max = self.size.x if idx_max > self.size.x else idx_max
         data = self.data[:, idx_min:idx_max + 1:average_step_px].mean(axis=1)
         return Profile(data, self.step_y, self.height_um)
     
     def get_oblique_profile(self, x0, y0, x1, y1):
-        x0px = int(x0 / self.width_um * self.data.shape[1])
-        y0px = int(y0 / self.height_um * self.data.shape[0])
-        x1px = int(x1 / self.width_um * self.data.shape[1])
-        y1px = int(y1 / self.height_um * self.data.shape[0])
+        x0px = int(x0 / self.width_um * self.size.x)
+        y0px = int(y0 / self.height_um * self.size.y)
+        x1px = int(x1 / self.width_um * self.size.x)
+        y1px = int(y1 / self.height_um * self.size.y)
 
-        if (not(0 <= x0px <= self.data.shape[1]) or not(0 <= y0px <= self.data.shape[0]) or
-            not(0 <= x1px <= self.data.shape[1]) or not(0 <= y1px <= self.data.shape[0])):
+        if (not(0 <= x0px <= self.size.x) or not(0 <= y0px <= self.size.y) or
+            not(0 <= x1px <= self.size.x) or not(0 <= y1px <= self.size.y)):
             raise ValueError("Start- and endpoint coordinates must lie within the surface.")
 
         dx = x1px - x0px
@@ -275,7 +276,7 @@ class Surface:
         values = self.data.ravel()
         mask = ~np.isnan(values)
 
-        grid_x, grid_y = np.meshgrid(np.arange(self.data.shape[1]), np.arange(self.data.shape[0]))
+        grid_x, grid_y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
         points = np.column_stack([grid_x.ravel(), grid_y.ravel()])
 
         data_interpolated = griddata(points[mask], values[mask], (grid_x, grid_y), method=method)
@@ -289,7 +290,7 @@ class Surface:
     @no_nonmeasured_points
     def level(self, inplace=False):
         #self.period.cache_clear() # Clear the LRU cache of the period method
-        x, y = np.meshgrid(np.arange(self.data.shape[1]), np.arange(self.data.shape[0]))
+        x, y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
         # Flatten the x, y, and height_data arrays
         x_flat = x.flatten()
         y_flat = y.flatten()
@@ -313,13 +314,13 @@ class Surface:
     def rotate(self, angle, inplace=False):
         rotated = ndimage.rotate(self.data, angle, reshape=True)
 
-        aspect_ratio = self.data.shape[0] / self.data.shape[1]
+        aspect_ratio = self.size.y / self.size.x
         rotated_aspect_ratio = rotated.shape[0] / rotated.shape[1]
 
         if aspect_ratio < 1:
-            total_height = self.data.shape[0] / rotated_aspect_ratio
+            total_height = self.size.y / rotated_aspect_ratio
         else:
-            total_height = self.data.shape[1]
+            total_height = self.size.x
 
         pre_comp_sin = np.abs(np.sin(np.deg2rad(angle)))
         pre_comp_cos = np.abs(np.cos(np.deg2rad(angle)))
@@ -397,8 +398,8 @@ class Surface:
 
         cutoff_freq = 1 / cutoff
         dft = np.fft.fftshift(np.fft.fft2(self.data))
-        freq_y = np.fft.fftshift(np.fft.fftfreq(self.data.shape[0], self.step_y))
-        freq_x = np.fft.fftshift(np.fft.fftfreq(self.data.shape[1], self.step_x))
+        freq_y = np.fft.fftshift(np.fft.fftfreq(self.size.y, self.step_y))
+        freq_x = np.fft.fftshift(np.fft.fftfreq(self.size.x, self.step_x))
         freq_x, freq_y = np.meshgrid(freq_x, freq_y)
         freq = np.sqrt(freq_x ** 2 + freq_y ** 2)
         filter_ = freq <= cutoff_freq
@@ -444,7 +445,7 @@ class Surface:
         surface: surfalize.Surface
             Surface object.
         """
-        y, x = self.data.shape
+        y, x = self.size
         xn, yn = int(x / factor), int(y / factor)
         data = self.data[int((x - xn) / 2):xn + int((x - xn) / 2) + 1, int((y - yn) / 2):yn + int((y - yn) / 2) + 1]
         if inplace:
@@ -486,7 +487,7 @@ class Surface:
         # by centering the values around the mean
         data = self.data - self.data.mean()
         fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
-        N, M = self.data.shape
+        N, M = self.size
         # Calculate the frequency values for the x and y axes
         freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self.width_um / M))  # Frequency values for the x-axis
         freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self.height_um / N))  # Frequency values for the y-axis
@@ -601,7 +602,7 @@ class Surface:
     
     @no_nonmeasured_points
     def Sdq(self):
-        A = self.data.shape[0] * self.data.shape[1]
+        A = self.size.y * self.size.x
         diff_x = np.diff(self.data, axis=1) / self.step_x
         diff_y = np.diff(self.data, axis=0) / self.step_y
         return np.sqrt((np.sum(diff_x**2) + np.sum(diff_y**2)) / A)
@@ -807,15 +808,15 @@ class Surface:
     @no_nonmeasured_points
     def homogeneity(self):
         period = self.period()
-        cell_length = int(period / self.height_um * self.data.shape[0])
-        ncells = int(self.data.shape[0] / cell_length) * int(self.data.shape[1] / cell_length)
+        cell_length = int(period / self.height_um * self.size.y)
+        ncells = int(self.size.y / cell_length) * int(self.size.x / cell_length)
         sa = np.zeros(ncells)
         ssk = np.zeros(ncells)
         sku = np.zeros(ncells)
         sdr = np.zeros(ncells)
-        for i in range(int(self.data.shape[0] / cell_length)):
-            for j in range(int(self.data.shape[1] / cell_length)):
-                idx = i * int(self.data.shape[1] / cell_length) + j
+        for i in range(int(self.size.y / cell_length)):
+            for j in range(int(self.size.x / cell_length)):
+                idx = i * int(self.size.x / cell_length) + j
                 data = self.data[cell_length * i:cell_length * (i + 1), cell_length * j:cell_length * (j + 1)]
                 cell_surface = Surface(data, self.step_x, self.step_y)
                 sa[idx] = cell_surface.Sa()
@@ -847,7 +848,7 @@ class Surface:
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=False, plot=False):
         logger.debug('Depth called.')
-        size, length = self.data.shape
+        size, length = self.size
         if nprofiles > size:
             raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size}')
 
@@ -983,7 +984,7 @@ class Surface:
         -------
         ax: matplotlib.axes
         """
-        N, M = self.data.shape
+        N, M = self.size
         data = self.data
         if subtract_mean:
             data = data - self.data.mean()
