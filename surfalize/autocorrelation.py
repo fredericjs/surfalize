@@ -30,7 +30,7 @@ class AutocorrelationFunction:
         self.Sal.cache_clear()
         self.Str.cache_clear()
         self._current_threshold = s
-        self._autocorr = correlate(self._surface._data, self._surface._data, mode='same')
+        self._autocorr = correlate(self._surface.data, self._surface.data, mode='same')
 
         mask = (self._autocorr < s * self._autocorr.max())
 
@@ -77,7 +77,7 @@ class AutocorrelationFunction:
         if self._current_threshold != s:
             self._calculate_autocorrelation(s)
         dy, dx = np.abs(self._idx_min[0] - self.center[0]), np.abs(self._idx_min[1] - self.center[1])
-        Sal = np.hypot(dx * self._surface._step_x, dy * self._surface._step_y)
+        Sal = np.hypot(dx * self._surface.step_x, dy * self._surface.step_y)
         return Sal
 
     @lru_cache
@@ -104,5 +104,5 @@ class AutocorrelationFunction:
         if self._current_threshold != s:
             self._calculate_autocorrelation(s)
         dy, dx = np.abs(self._idx_max[0] - self.center[0]), np.abs(self._idx_max[1] - self.center[1])
-        Str = self.Sal() / np.hypot(dx * self._surface._step_x, dy * self._surface._step_y)
+        Str = self.Sal() / np.hypot(dx * self._surface.step_x, dy * self._surface.step_y)
         return Str

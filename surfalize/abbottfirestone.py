@@ -15,7 +15,7 @@ class AbbottFirestoneCurve:
 
     @lru_cache
     def _get_material_ratio_curve(self, nbins=1000):
-        dist, bins = np.histogram(self._surface._data, bins=nbins)
+        dist, bins = np.histogram(self._surface.data, bins=nbins)
         bins = np.flip(bins)
         bin_centers = bins[:-1] + np.diff(bins) / 2
         cumsum = np.flip(np.cumsum(dist))
