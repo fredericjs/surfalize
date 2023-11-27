@@ -1,6 +1,7 @@
 v0.3.0:
 - Removed underscore from Surface._data, ._step_x, ._step_y, ._width_um, ._height_um since they are supposed to be
   public attributes
+- Fixed bug in Surface.zoom
 v0.2.0:
 - Added Sdq parameter -> tested against LeicaMap
 - Removed width_um and height_um as initialization parameters for Surface, since they are redundant

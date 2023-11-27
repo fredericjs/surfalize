@@ -447,7 +447,7 @@ class Surface:
         """
         y, x = self.size
         xn, yn = int(x / factor), int(y / factor)
-        data = self.data[int((x - xn) / 2):xn + int((x - xn) / 2) + 1, int((y - yn) / 2):yn + int((y - yn) / 2) + 1]
+        data = self.data[int((y - yn) / 2):yn + int((y - yn) / 2) + 1, int((x - xn) / 2):xn + int((x - xn) / 2) + 1]
         if inplace:
             self._set_data(data=data)
             return self
