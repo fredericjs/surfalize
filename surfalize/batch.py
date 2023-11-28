@@ -1,4 +1,5 @@
-from multiprocessing import Pool
+import multiprocessing as mp
+from functools import partial
 from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
@@ -8,7 +9,7 @@ from .surface import Surface
 
 try:
     # Optional import
-    from tqdm import tqdm
+    from tqdm.auto import tqdm
 except ImportError:
     logger.info('tqdm not found, no progessbars will be shown.')
     # If tqdm is not defined, replace with dummy function
@@ -36,6 +37,15 @@ class _Parameter:
         method = getattr(surface, self.identifier)
         return method(*self.args, **self.kwargs)
 
+def _task(filepath, operations, parameters):
+    surface = Surface.load(filepath)
+    for operation in operations:
+        operation.execute_on(surface)
+    results = dict()
+    for parameter in parameters:
+        result = parameter.calculate_from(surface)
+        results[parameter.identifier] = result
+    return results
 
 #TODO batch image export
 class Batch:
@@ -65,28 +75,28 @@ class Batch:
         self._additional_data = additional_data
         self._operations = []
         self._parameters = []
-        
-    def execute(self, multiprocessing=False):
-        def task(filepath, operations, parameters):
-            surface = Surface.load(filepath)
-            for operation in operations:
-                operation.execute_on(surface)
-            results = dict()
-            for parameter in parameters:
-                result = parameter.calculate_from(surface)
-                results[parameter.identifier] = result
-            return results
 
+    def _disptach_tasks(self, multiprocessing=True):
         results = []
         if multiprocessing:
-            with Pool() as pool:
-                for result in pool.map(task, self._filepaths):
-                    results.append(result)
+            total_tasks = len(self._filepaths)
+            description = f'Processing on {mp.cpu_count()} cores'
+            with mp.Pool() as pool:
+                task = partial(_task, operations=self._operations, parameters=self._parameters)
+                with tqdm(total=len(self._filepaths), desc=description) as progress_bar:
+                    for result in pool.imap(task, self._filepaths):
+                        results.append(result)
+                        progress_bar.update()
             return results
 
-        for filepath in self._filepaths:
-            results.append(task(filepath))
+        for filepath in tqdm(self._filepaths, desc='Processing'):
+            results.append(_task(filepath, self._operations, self._parameters))
         return results
+        
+    def execute(self, multiprocessing=True):
+        results = self._disptach_tasks(multiprocessing=multiprocessing)
+        return results
+
 
     def zero(self):
         operation = _Operation('zero', kwargs=dict(inplace=True))
