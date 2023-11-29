@@ -5,15 +5,8 @@ import logging
 logger = logging.getLogger(__name__)
 import numpy as np
 import pandas as pd
+from tqdm.auto import tqdm
 from .surface import Surface
-
-try:
-    # Optional import
-    from tqdm.auto import tqdm
-except ImportError:
-    logger.info('tqdm not found, no progessbars will be shown.')
-    # If tqdm is not defined, replace with dummy function
-    tqdm = lambda x, *args, **kwargs: x
 
 class _Operation:
 
@@ -41,7 +34,7 @@ def _task(filepath, operations, parameters):
     surface = Surface.load(filepath)
     for operation in operations:
         operation.execute_on(surface)
-    results = dict()
+    results = dict(file=filepath.name)
     for parameter in parameters:
         result = parameter.calculate_from(surface)
         results[parameter.identifier] = result
@@ -92,10 +85,14 @@ class Batch:
         for filepath in tqdm(self._filepaths, desc='Processing'):
             results.append(_task(filepath, self._operations, self._parameters))
         return results
-        
+
+    def _construct_dataframe(self, results):
+        return pd.DataFrame(results)
+
     def execute(self, multiprocessing=True):
         results = self._disptach_tasks(multiprocessing=multiprocessing)
-        return results
+        df = self._construct_dataframe(results)
+        return df
 
 
     def zero(self):
