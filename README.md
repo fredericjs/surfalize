@@ -59,6 +59,18 @@ dimensional periodic structures. The following parameters can be calculated:
 | Aspect ratio | Ratio of peak-to-valley depth to spatial period              |
 | Homogeneity  | Homogeneity factor (0 < H < 1) calculated from Gini analysis |
 
+## Supported operations
+
+| Operation | Description                                                                                                        |
+|-----------|--------------------------------------------------------------------------------------------------------------------|
+| Leveling  | Subtraction of least squares fit to a plane                                                                        | 
+| Zeroing   | Sets the lowest datapoint of the surface to zero                                                                   | 
+| Centering | Sets the average value of the surface elevation to zero                                                            |
+| Zooming   | Magnifies the surface by a specified factor                                                                        |
+| Rotation  | Rotates the surface by a specified angle in degrees                                                                |
+| Alignment | Aligns the surface with the dominant texture direction by rotation                                                 |
+| Filtering | Applies a highpass, lowpass or bandpass filter to the <br/>surface by zeroing of the bins of the Fourier transform |
+
 ## Basic Usage
 
 ```
