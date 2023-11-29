@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 from .surface import Surface
 
-class _Operation:
+class Operation:
 
     def __init__(self, identifier, args=None, kwargs=None):
         self.identifier = identifier
@@ -19,7 +19,7 @@ class _Operation:
         method = getattr(surface, self.identifier)
         method(*self.args, **self.kwargs)
 
-class _Parameter:
+class Parameter:
 
     def __init__(self, identifier, args=None, kwargs=None):
         self.identifier = identifier
@@ -59,7 +59,7 @@ class Batch:
             List of filepaths of topography files
         additional_data: str, pathlib.Path
             Path to an excel file containing additional parameters, such as
-            input parameters. Excel file must contain a column 'filename' with
+            input parameters. Excel file must contain a column 'file' with
             the filename including the file extension. Otherwise, an arbitrary
             number of additional columns can be supplied.
         
@@ -87,21 +87,26 @@ class Batch:
         return results
 
     def _construct_dataframe(self, results):
-        return pd.DataFrame(results)
-
-    def execute(self, multiprocessing=True):
-        results = self._disptach_tasks(multiprocessing=multiprocessing)
-        df = self._construct_dataframe(results)
+        df = pd.DataFrame(results)
+        if self._additional_data is not None:
+            dfin = pd.read_excel(self._additional_data)
+            df = pd.merge(dfin, df, on='file')
         return df
 
+    def execute(self, multiprocessing=True, saveto=None):
+        results = self._disptach_tasks(multiprocessing=multiprocessing)
+        df = self._construct_dataframe(results)
+        if saveto is not None:
+            df.to_excel(saveto)
+        return df
 
     def zero(self):
-        operation = _Operation('zero', kwargs=dict(inplace=True))
+        operation = Operation('zero', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 
     def center(self):
-        operation = _Operation('center', kwargs=dict(inplace=True))
+        operation = Operation('center', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
             
@@ -110,32 +115,32 @@ class Batch:
         Calls the 'fill_nonmeasured' method of each surface in the batch with the inplace argument
         specified as True.
         """
-        operation = _Operation('fill_nonmeasured', kwargs=dict(mode=mode, inplace=True))
+        operation = Operation('fill_nonmeasured', kwargs=dict(mode=mode, inplace=True))
         self._operations.append(operation)
         return self
             
     def level(self):
-        operation = _Operation('level', kwargs=dict(inplace=True))
+        operation = Operation('level', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
             
     def filter(self, cutoff, *, mode, cutoff2=None, inplace=False):
-        operation = _Operation('filter', args=(cutoff, ), kwargs=dict(mode=mode, cutoff2=cutoff2, inplace=True))
+        operation = Operation('filter', args=(cutoff,), kwargs=dict(mode=mode, cutoff2=cutoff2, inplace=True))
         self._operations.append(operation)
         return self
     
     def rotate(self, angle):
-        operation = _Operation('rotate', args=(angle,), kwargs=dict(inplace=True))
+        operation = Operation('rotate', args=(angle,), kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
     
     def align(self):
-        operation = _Operation('align', kwargs=dict(inplace=True))
+        operation = Operation('align', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 
     def zoom(self, factor):
-        operation = _Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
+        operation = Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 
@@ -152,26 +157,18 @@ class Batch:
             if attr not in Surface.AVAILABLE_PARAMETERS:
                 raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{attr}'")
         def parameter_dummy_method(*args, **kwargs):
-            parameter = _Parameter(attr, args=args, kwargs=kwargs)
+            parameter = Parameter(attr, args=args, kwargs=kwargs)
             self._parameters.append(parameter)
             return self
 
         return parameter_dummy_method
 
-    # To be reimplemented
-
-    # def roughness_parameters(self, parameters=None):
-    #     if parameters is None:
-    #         parameters = list(Surface.AVAILABLE_PARAMETERS)
-    #     df = pd.DataFrame({'filename': [file.name for file in self._filepaths]})
-    #     df = df.set_index('filename')
-    #     df[list(parameters)] = np.nan
-    #     for file, surface in tqdm(self._surfaces.items(), desc='Calculating parameters'):
-    #         results = surface.roughness_parameters(parameters)
-    #         for k, v in results.items():
-    #             df.loc[file.name][k] = v
-    #     df = df.reset_index()
-    #     if self._additional_data is None:
-    #         return df
-    #     dfin = pd.read_excel(self._additional_data)
-    #     return pd.merge(dfin, df, on='filename')
+    def roughness_parameters(self, parameters=None):
+        if parameters is None:
+            parameters = list(Surface.AVAILABLE_PARAMETERS)
+            print(parameters)
+        for parameter in parameters:
+            if isinstance(parameter, str):
+                parameter = Parameter(parameter)
+            self._parameters.append(parameter)
+        return self
