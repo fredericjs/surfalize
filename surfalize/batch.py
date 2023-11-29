@@ -80,7 +80,7 @@ class Batch:
             with mp.Pool() as pool:
                 task = partial(_task, operations=self._operations, parameters=self._parameters)
                 with tqdm(total=len(self._filepaths), desc=description) as progress_bar:
-                    for result in pool.imap(task, self._filepaths):
+                    for result in pool.imap_unordered(task, self._filepaths):
                         results.append(result)
                         progress_bar.update()
             return results
