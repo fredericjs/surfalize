@@ -7,6 +7,9 @@ v0.3.0:
   taking place once Batch.execute is called
 - Dataframe is now constructed after all processing is completed, which reduces complexity
 - Added keyword argument for saving dataframe to excel upon completion of Batch.execute
+- Additional data is now loaded directly when initializing Batch object and raises ValueError if column with name file
+  doesn't exist
+- Updated readme with examples for batch processing
 
 - tqdm is now a non-optional dependency
 v0.2.0:
