@@ -65,7 +65,10 @@ class Batch:
         
         """
         self._filepaths = [Path(file) for file in filepaths]
-        self._additional_data = additional_data
+        if additional_data is not None:
+            self._additional_data = pd.read_excel(additional_data)
+            if 'file' not in self._additional_data.columns:
+                raise ValueError("File specified by 'additional_data' does not contain column named 'file'.")
         self._operations = []
         self._parameters = []
 
@@ -89,8 +92,8 @@ class Batch:
     def _construct_dataframe(self, results):
         df = pd.DataFrame(results)
         if self._additional_data is not None:
-            dfin = pd.read_excel(self._additional_data)
-            df = pd.merge(dfin, df, on='file')
+
+            df = pd.merge(self._additional_data, df, on='file')
         return df
 
     def execute(self, multiprocessing=True, saveto=None):

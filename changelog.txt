@@ -2,6 +2,13 @@ v0.3.0:
 - Removed underscore from Surface._data, ._step_x, ._step_y, ._width_um, ._height_um since they are supposed to be
   public attributes
 - Fixed bug in Surface.zoom
+- Reworked Batch processing: now implements lazy loading and dispatch to multiple processes for faster load time
+- Operations and Parameters now are constructured as a pipeline on the Batch object, with the actual execution only
+  taking place once Batch.execute is called
+- Dataframe is now constructed after all processing is completed, which reduces complexity
+- Added keyword argument for saving dataframe to excel upon completion of Batch.execute
+
+- tqdm is now a non-optional dependency
 v0.2.0:
 - Added Sdq parameter -> tested against LeicaMap
 - Removed width_um and height_um as initialization parameters for Surface, since they are redundant
