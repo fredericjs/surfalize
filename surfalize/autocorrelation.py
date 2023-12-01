@@ -7,7 +7,9 @@ from scipy.signal import correlate
 class AutocorrelationFunction:
 
     def __init__(self, surface):
-        self._surface = surface
+        # For now we level and center. In the future, we should replace that with lookups of booleans
+        # to avoid double computation
+        self._surface = surface.level().center()
         self._current_threshold = None
 
     def _calculate_autocorrelation(self, s):
@@ -31,8 +33,9 @@ class AutocorrelationFunction:
         self.Str.cache_clear()
         self._current_threshold = s
         self._autocorr = correlate(self._surface.data, self._surface.data, mode='same')
-
-        mask = (self._autocorr < s * self._autocorr.max())
+        #threshold = self._autocorr.min() + (self._autocorr.max() - self._autocorr.min()) * s
+        threshold = s * self._autocorr.max()
+        mask = (self._autocorr < threshold)
 
         # Find the center point of the array
         self.center = np.array(self._autocorr.shape) // 2
@@ -48,6 +51,7 @@ class AutocorrelationFunction:
         distances = np.linalg.norm(indices - self.center, axis=1)
         # Find the index with the smallest distance
         self._idx_min = indices[np.argmin(distances)]
+
         # Find the indices of the True values in the mask
         indices = np.argwhere(~mask)
         # Calculate the Euclidean distance from each index to the center
@@ -77,7 +81,7 @@ class AutocorrelationFunction:
         if self._current_threshold != s:
             self._calculate_autocorrelation(s)
         dy, dx = np.abs(self._idx_min[0] - self.center[0]), np.abs(self._idx_min[1] - self.center[1])
-        Sal = np.hypot(dx * self._surface.step_x, dy * self._surface.step_y)
+        Sal = np.hypot(dx * self._surface.step_x, dy * self._surface.step_y) - self._surface.step_x/2
         return Sal
 
     @lru_cache
@@ -104,5 +108,5 @@ class AutocorrelationFunction:
         if self._current_threshold != s:
             self._calculate_autocorrelation(s)
         dy, dx = np.abs(self._idx_max[0] - self.center[0]), np.abs(self._idx_max[1] - self.center[1])
-        Str = self.Sal() / np.hypot(dx * self._surface.step_x, dy * self._surface.step_y)
+        Str = self.Sal() / (np.hypot(dx * self._surface.step_x, dy * self._surface.step_y) - self._surface.step_x/2)
         return Str
