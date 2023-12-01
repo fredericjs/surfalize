@@ -23,8 +23,8 @@ def _surface_area_gwyddion_cy(double[:,:] p, double dx, double dy):
     """
     cdef double total_area = 0
     cdef int i, j
-    cdef int imax = p.shape[0]-1
-    cdef int jmax = p.shape[1]-1
+    cdef Py_ssize_t imax = p.shape[0]-1
+    cdef Py_ssize_t jmax = p.shape[1]-1
     cdef double a1, a2, a3, a4
     cdef double zm
     for i in range(imax):
@@ -68,8 +68,8 @@ def _surface_area_iso_cy(double[:,:] p, double dx, double dy):
     """
     cdef double total_area = 0
     cdef int i, j
-    cdef int imax = p.shape[0] - 1
-    cdef int jmax = p.shape[1] - 1
+    cdef Py_ssize_t imax = p.shape[0] - 1
+    cdef Py_ssize_t jmax = p.shape[1] - 1
     cdef double a1, a2
     for i in range(imax):
         for j in range(jmax):
