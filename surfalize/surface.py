@@ -293,7 +293,6 @@ class Surface:
         x = np.arange(1, y.size + 1, 1) / y.size
         idx0 = argclosest(threshold / 100, x)
         idx1 = argclosest(1 - threshold / 100, x)
-        print(y[idx0], y[idx1])
         data = self.data.copy()
         data[(data > y[idx0]) | (data < y[idx1])] = np.nan
         if inplace:
