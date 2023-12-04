@@ -908,7 +908,7 @@ class Surface:
             if plot and i == 4:
                 fig, ax = plt.subplots(figsize=(16,4))
                 ax.plot(xp, line, lw=1.5, c='k', alpha=0.7)
-                ax.plot(xp, f(xp, *popt), c='orange', ls='--')
+                ax.plot(xp, sinusoid(xp, *popt), c='orange', ls='--')
                 ax.set_xlim(xp.min(), xp.max())
 
             # Loop over each interval
