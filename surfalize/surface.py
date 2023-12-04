@@ -273,7 +273,8 @@ class Surface:
     def remove_outliers(self, n=3, method='mean', inplace=False):
         """
         Removes outliers based on the n-sigma criterion. All values that fall outside n-standard deviations of the mean
-        are replaced by nan values. The default is three standard deviations.
+        are replaced by nan values. The default is three standard deviations. This method supports operation on data
+        which contains non-measured points.
 
         Parameters
         ----------
@@ -295,10 +296,10 @@ class Surface:
         """
         data = self.data.copy()
         if method == 'mean':
-            data[np.abs(data - np.mean(data)) > n * np.std(data)] = np.nan
+            data[np.abs(data - np.nanmean(data)) > n * np.nanstd(data)] = np.nan
         elif method == 'median':
-            dist = np.abs(data - np.median(data))
-            data[dist > n * np.median(dist)] = np.nan
+            dist = np.abs(data - np.nanmedian(data))
+            data[dist > n * np.nanmedian(dist)] = np.nan
         else:
             raise ValueError("Invalid methode.")
         if inplace:
@@ -310,7 +311,7 @@ class Surface:
         """
         Removes data outside of threshold percentage of the material ratio curve.
         The topmost percentage (given by threshold) of hight values and the lowest percentage of height values are
-        replaced with non-measured points.
+        replaced with non-measured points. This method supports operation on data which contains non-measured points.
 
         Parameters
         ----------
@@ -325,7 +326,7 @@ class Surface:
         surface: surfalize.Surface
             Surface object.
         """
-        y = np.sort(self.data.flatten())[::-1]
+        y = np.sort(self.data[~np.isnan(self.data)])[::-1]
         x = np.arange(1, y.size + 1, 1) / y.size
         idx0 = argclosest(threshold / 100, x)
         idx1 = argclosest(1 - threshold / 100, x)
