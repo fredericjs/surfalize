@@ -22,7 +22,7 @@ import scipy.ndimage as ndimage
 
 # Custom imports
 from .fileloader import load_file
-from .utils import argclosest, interp1d
+from .utils import argclosest, interp1d, is_list_like
 from .common import sinusoid
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
@@ -315,8 +315,11 @@ class Surface:
 
         Parameters
         ----------
-        threshold: float, default 0.5
-            Percentage threshold value of the material ratio.
+        threshold: float or tuple[float, float], default 0.5
+            Percentage threshold value of the material ratio. If threshold is a tuple, the first value represents the
+            upper threshold and the second value represents the lower threshold. For example, threshold=0.5 removes the
+            uppermost and lowermost 0.5% from the areal material ratio curve. The achieve the same result when
+            specifiying the upper and lower threshold explicitly, the tuple passed ton threshold must be (0.5, 0.5)
         inplace: bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
@@ -328,8 +331,14 @@ class Surface:
         """
         y = np.sort(self.data[~np.isnan(self.data)])[::-1]
         x = np.arange(1, y.size + 1, 1) / y.size
-        idx0 = argclosest(threshold / 100, x)
-        idx1 = argclosest(1 - threshold / 100, x)
+        if is_list_like(threshold):
+            threshold_upper, threshold_lower = threshold
+        else:
+            threshold_upper, threshold_lower = threshold, threshold
+        if threshold_lower + threshold_upper >= 100:
+            raise ValueError("Combined threshold is larger than 100%.")
+        idx0 = argclosest(threshold_upper / 100, x)
+        idx1 = argclosest(1 - threshold_lower / 100, x)
         data = self.data.copy()
         data[(data > y[idx0]) | (data < y[idx1])] = np.nan
         if inplace:
