@@ -61,15 +61,18 @@ dimensional periodic structures. The following parameters can be calculated:
 
 ## Supported operations
 
-| Operation | Description                                                                                                        |
-|-----------|--------------------------------------------------------------------------------------------------------------------|
-| Leveling  | Subtraction of least squares fit to a plane                                                                        | 
-| Zeroing   | Sets the lowest datapoint of the surface to zero                                                                   | 
-| Centering | Sets the average value of the surface elevation to zero                                                            |
-| Zooming   | Magnifies the surface by a specified factor                                                                        |
-| Rotation  | Rotates the surface by a specified angle in degrees                                                                |
-| Alignment | Aligns the surface with the dominant texture direction by rotation                                                 |
-| Filtering | Applies a highpass, lowpass or bandpass filter to the <br/>surface by zeroing of the bins of the Fourier transform |
+| Operation       | Description                                                                                                        |
+|-----------------|--------------------------------------------------------------------------------------------------------------------|
+| Leveling        | Subtraction of least squares fit to a plane                                                                        | 
+| Zeroing         | Sets the lowest datapoint of the surface to zero                                                                   | 
+| Centering       | Sets the average value of the surface elevation to zero                                                            |
+| Zooming         | Magnifies the surface by a specified factor                                                                        |
+| Cropping        | Crops the surface in a specified rectangle                                                                         |
+| Rotation        | Rotates the surface by a specified angle in degrees                                                                |
+| Alignment       | Aligns the surface with the dominant texture direction by rotation                                                 |
+| Outlier removal | Removes outliers outside n standard deviation from the mean                                                        |
+| Thresholding    | Thresholding based on areal material ratio                                                                         |
+| Filtering       | Applies a highpass, lowpass or bandpass filter to the <br/>surface by zeroing of the bins of the Fourier transform |
 
 ## Basic Usage
 
