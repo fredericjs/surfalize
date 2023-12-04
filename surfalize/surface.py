@@ -270,6 +270,37 @@ class Surface:
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    def threshold(self, threshold=0.5, inplace=True):
+        """
+        Removes data outside of threshold percentage of the material ratio curve.
+        The topmost percentage (given by threshold) of hight values and the lowest percentage of height values are
+        replaced with non-measured points.
+
+        Parameters
+        ----------
+        threshold: float, default 0.5
+            Percentage threshold value of the material ratio.
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        y = np.sort(self.data.flatten())[::-1]
+        x = np.arange(1, y.size + 1, 1) / y.size
+        idx0 = argclosest(threshold / 100, x)
+        idx1 = argclosest(1 - threshold / 100, x)
+        print(y[idx0], y[idx1])
+        data = self.data.copy()
+        data[(data > y[idx0]) | (data < y[idx1])] = np.nan
+        if inplace:
+            self._set_data(data=data)
+            return self
+        return Surface(data, self.step_x, self.step_y)
+
     def fill_nonmeasured(self, method='nearest', inplace=False):
         if not self._nonmeasured_points_exist:
             return self
