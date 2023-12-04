@@ -71,3 +71,20 @@ def closest(x, data):
         Value in xdata that is closest to x.
     """
     return data.ravel()[argclosest(x, data.ravel())]
+
+def is_list_like(obj):
+    """
+    Determines whether an object is list-like. For now, lists, tuples and numpy arrays are considered list-like.
+
+    Parameters
+    ----------
+    obj: object
+
+    Returns
+    -------
+    bool
+        True if object is list-like, False if is is not.
+    """
+    if isinstance(obj, (list, tuple, np.array)):
+        return True
+    return False
