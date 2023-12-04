@@ -1102,6 +1102,6 @@ class Surface:
         ax.set_xlabel('x [µm]')
         ax.set_ylabel('y [µm]')
         if self._nonmeasured_points_exist:
-            handles = [plt.plot([], [], marker='s', c='k', ls='')[0]]
+            handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         plt.show()
