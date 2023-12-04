@@ -1091,9 +1091,9 @@ class Surface:
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         return ax
     
-    def show(self, cmap='jet'):
+    def show(self, cmap='jet', maskcolor='black'):
         cmap = plt.get_cmap(cmap).copy()
-        cmap.set_bad('k')
+        cmap.set_bad(maskcolor)
         fig, ax = plt.subplots(dpi=150)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
