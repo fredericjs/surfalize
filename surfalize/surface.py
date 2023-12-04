@@ -452,6 +452,35 @@ class Surface:
             self._set_data(data=data)
             return self
         return Surface(data, self.step_x, self.step_y)
+
+    def crop(self, box, inplace=False):
+        """
+        Crop the surface to the area specified by the box parameter.
+
+        Parameters
+        ----------
+        box: tuple[float, float, float, float]
+            The crop rectangle, as a (x0, x1, y0, y1) tuple.
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        x0 = round(box[0] / self.step_x)
+        x1 = round(box[1] / self.step_x)
+        y1 = self.size.y - round(box[2] / self.step_y) - 1
+        y0 = self.size.y - round(box[3] / self.step_y) - 1
+
+        if x0 < 0 or y0 < 0 or x1 > self.size.x - 1 or y1 > self.size.y - 1:
+            raise ValueError('Box is out of bounds!')
+
+        data = self.data[y0:y1 + 1, x0:x1 + 1]
+        if inplace:
+            self._set_data(data=data)
+            return self
+        return Surface(data, self.step_x, self.step_y)
+
     
     def align(self, inplace=False):
         """
