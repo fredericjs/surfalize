@@ -270,7 +270,43 @@ class Surface:
             return self
         return Surface(data, self.step_x, self.step_y)
 
-    def threshold(self, threshold=0.5, inplace=True):
+    def remove_outliers(self, n=3, method='mean', inplace=False):
+        """
+        Removes outliers based on the n-sigma criterion. All values that fall outside n-standard deviations of the mean
+        are replaced by nan values. The default is three standard deviations.
+
+        Parameters
+        ----------
+        n: float, default 3
+            Number of standard deviations outside of which values are considered outliers if method is 'mean'. If the
+            method is 'median', n represents the number of medians distances of the data to its median value.
+        method: {'mean', 'median'}, default 'mean'
+            Method by which to perform the outlier detection. The default method is mean, which removes outliers outside
+            an interval of n standard deviations from the mean. The method 'median' removes outliers outside n median
+            distances of the data to its median.
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        data = self.data.copy()
+        if method == 'mean':
+            data[np.abs(data - np.mean(data)) > n * np.std(data)] = np.nan
+        elif method == 'median':
+            dist = np.abs(data - np.median(data))
+            data[dist > n * np.median(dist)] = np.nan
+        else:
+            raise ValueError("Invalid methode.")
+        if inplace:
+            self._set_data(data=data)
+            return self
+        return Surface(data, self.step_x, self.step_y)
+
+    def threshold(self, threshold=0.5, inplace=False):
         """
         Removes data outside of threshold percentage of the material ratio curve.
         The topmost percentage (given by threshold) of hight values and the lowest percentage of height values are

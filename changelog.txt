@@ -13,6 +13,7 @@ v0.3.0:
 - Added cropping method to Surface
 - Fixed bug in plotting of depth analysis
 - Added thresholding method based on material ratio to Surface
+- Added outlier removal method based on sigma criterion
 
 - tqdm is now a non-optional dependency
 v0.2.0:
