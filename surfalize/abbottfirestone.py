@@ -14,21 +14,16 @@ class AbbottFirestoneCurve:
         self._calculate_curve()
 
     @lru_cache
-    def _get_material_ratio_curve(self, nbins=1000):
-        dist, bins = np.histogram(self._surface.data, bins=nbins)
-        bins = np.flip(bins)
-        bin_centers = bins[:-1] + np.diff(bins) / 2
-        cumsum = np.flip(np.cumsum(dist))
-        cumsum = (1 - cumsum / cumsum.max()) * 100
-        return nbins, bin_centers, cumsum
+    def _get_material_ratio_curve(self):
+        height = np.sort(self._surface.data[~np.isnan(self._surface.data)])[::-1]
+        material_ratio = (np.arange(1, height.size + 1, 1) / height.size) * 100
+        return height, material_ratio
 
     # This is a bit hacky right now with the modified state. Maybe clean that up in the future
     def _calculate_curve(self):
         parameters = dict()
         # Using the potentially cached values here
-        nbins, height, material_ratio = self._get_material_ratio_curve()
-        # Step in the height array
-        dc = np.abs(height[0] - height[1])
+        height, material_ratio = self._get_material_ratio_curve()
         slope_min = None
         istart = 0
         istart_final = 0
@@ -70,7 +65,6 @@ class AbbottFirestoneCurve:
         self._smr_fit = interp1d(height, material_ratio)
         self._height = height
         self._material_ratio = material_ratio
-        self._dc = dc
 
     @lru_cache
     def Sk(self):
@@ -98,7 +92,7 @@ class AbbottFirestoneCurve:
 
         # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
         idx = argclosest(self._yupper, self._height)
-        A1 = np.abs(np.trapz(self._material_ratio[:idx], dx=self._dc))
+        A1 = np.abs(np.trapz(self._material_ratio[:idx], x=self._height[:idx]))
         Spk = 2 * A1 / self.Smr1()
         return Spk
 
@@ -106,36 +100,36 @@ class AbbottFirestoneCurve:
     def Svk(self):
         # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
         idx = argclosest(self._ylower, self._height)
-        A2 = np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc))
+        A2 = np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:]))
         Svk = 2 * A2 / (100 - self.Smr2())
         return Svk
 
     @lru_cache
     def Vmp(self, p=10):
         idx = argclosest(self.Smc(p), self._height)
-        return np.trapz(self._material_ratio[:idx], dx=self._dc) / 100
+        return np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100
 
     @lru_cache
     def Vmc(self, p=10, q=80):
         idx = argclosest(self.Smc(q), self._height)
-        return np.trapz(self._material_ratio[:idx], dx=self._dc) / 100 - self.Vmp(p)
+        return np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100 - self.Vmp(p)
 
     @lru_cache
     def Vvv(self, q=80):
         idx = argclosest(self.Smc(80), self._height)
-        return np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc)) / 100
+        return np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100
 
     @lru_cache
     def Vvc(self, p=10, q=80):
         idx = argclosest(self.Smc(10), self._height)
-        return np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc)) / 100 - self.Vvv(q)
+        return np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.Vvv(q)
 
     def plot(self, nbars=20):
         dist_bars, bins_bars = np.histogram(self._surface.data, bins=nbars)
         dist_bars = np.flip(dist_bars)
         bins_bars = np.flip(bins_bars)
 
-        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
+        height, material_ratio = self._get_material_ratio_curve()
 
         fig, ax = plt.subplots()
         ax.set_xlabel('Material distribution (%)')
@@ -148,7 +142,7 @@ class AbbottFirestoneCurve:
 
         ax.barh(bins_bars[:-1] + np.diff(bins_bars) / 2, dist_bars / dist_bars.cumsum().max() * 100,
                 height=(self._surface.data.max() - self._surface.data.min()) / nbars, edgecolor='k', color='lightblue')
-        ax2.plot(cumsum, bin_centers, c='r', clip_on=True)
+        ax2.plot(material_ratio, height, c='r', clip_on=True)
 
         plt.show()
 
