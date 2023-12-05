@@ -15,6 +15,7 @@ v0.3.0:
 - Added thresholding method based on material ratio to Surface
 - Added outlier removal method based on sigma criterion
 - Added support for operation on data which contains non-measured points to thresholding and outlier removal methods
+- Added remove_outliers and threshold to Batch
 
 - tqdm is now a non-optional dependency
 v0.2.0:
