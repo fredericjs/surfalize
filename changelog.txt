@@ -18,6 +18,8 @@ v0.3.0:
 - Added remove_outliers and threshold to Batch
 - Removed binning from AbbottFirestoneCurve. Instead, now calculates the curve from all available points with unequal
   spacing.
+- Fixed errors in homogeneity calculation and added parameter to specify roughness parameters for evaluation on method
+  call.
 
 - tqdm is now a non-optional dependency
 v0.2.0:
