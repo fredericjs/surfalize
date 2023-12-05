@@ -1041,29 +1041,11 @@ class Surface:
         return results
 
     # Plotting #########################################################################################################
-    def abbott_curve(self, nbars=20):
-        dist_bars, bins_bars = np.histogram(self.data, bins=nbars)
-        dist_bars = np.flip(dist_bars)
-        bins_bars = np.flip(bins_bars)
-
-        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
-
-        fig, ax = plt.subplots()
-        ax.set_xlabel('Material distribution (%)')
-        ax.set_ylabel('z (µm)')
-        ax2 = ax.twiny()
-        ax2.set_xlabel('Material ratio (%)')
-        ax.set_box_aspect(1)
-        ax2.set_xlim(0, 100)
-        ax.set_ylim(self.data.min(), self.data.max())
-
-        ax.barh(bins_bars[:-1] + np.diff(bins_bars) / 2, dist_bars / dist_bars.cumsum().max() * 100,
-                height=(self.data.max() - self.data.min()) / nbars, edgecolor='k', color='lightblue')
-        ax2.plot(cumsum, bin_centers, c='r', clip_on=True)
-
-        plt.show()
+    def plot_abbott_curve(self, nbars=20):
+        abbott_curve = self._get_abbott_firestone_curve()
+        abbott_curve.plot(nbars=nbars)
         
-    def fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None, cmap='inferno', adjust_colormap=True):
+    def plot_fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None, cmap='inferno', adjust_colormap=True):
         """
         Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral leakage effects 
         that occur when analyzing a signal of finite sample length.

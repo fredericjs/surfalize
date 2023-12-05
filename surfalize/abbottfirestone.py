@@ -130,6 +130,28 @@ class AbbottFirestoneCurve:
         idx = argclosest(self.Smc(10), self._height)
         return np.abs(np.trapz(100 - self._material_ratio[idx:], dx=self._dc)) / 100 - self.Vvv(q)
 
+    def plot(self, nbars=20):
+        dist_bars, bins_bars = np.histogram(self._surface.data, bins=nbars)
+        dist_bars = np.flip(dist_bars)
+        bins_bars = np.flip(bins_bars)
+
+        nbins, bin_centers, cumsum = self._get_material_ratio_curve()
+
+        fig, ax = plt.subplots()
+        ax.set_xlabel('Material distribution (%)')
+        ax.set_ylabel('z (µm)')
+        ax2 = ax.twiny()
+        ax2.set_xlabel('Material ratio (%)')
+        ax.set_box_aspect(1)
+        ax2.set_xlim(0, 100)
+        ax.set_ylim(self._surface.data.min(), self._surface.data.max())
+
+        ax.barh(bins_bars[:-1] + np.diff(bins_bars) / 2, dist_bars / dist_bars.cumsum().max() * 100,
+                height=(self._surface.data.max() - self._surface.data.min()) / nbars, edgecolor='k', color='lightblue')
+        ax2.plot(cumsum, bin_centers, c='r', clip_on=True)
+
+        plt.show()
+
     def visual_parameter_study(self):
         fig, ax = plt.subplots()
         ax.set_box_aspect(1)
