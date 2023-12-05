@@ -911,41 +911,51 @@ class Surface:
     CACHED_METODS.append(orientation)
     
     @no_nonmeasured_points
-    def homogeneity(self):
+    def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr')):
+        """
+        Calculates the homogeneity of a periodic surface through Gini coefficient analysis. It returns 1 - Gini, which
+        is distributed on in the range between 0 and 1, where 0 represents minimum and 1 represents maximum homogeneity.
+        The homogeneity factor is calculated for each roughness parameter specified in 'parameters' and the mean value
+        is returned. However, note that only parameters which do not yield negative number qualify for the Gini analysis
+        (e.g. the skewness 'Ssk' is not a valid input).
+
+        The algorithm is based on references [1] and [2].
+
+        [1] Lechthaler et al., https://doi.org/10.1038/s41598-020-70758-9
+        [2] Soldera et al., https://doi.org/0.2961/jlmn.2022.02.2002
+
+        Parameters
+        ----------
+        parameters: tuple[str]
+            Roughness parameters that are evaluated for their homogeneity distribution.
+
+        Returns
+        -------
+        Homogeneity: float
+            Value between 0 and 1.
+        """
         period = self.period()
         cell_length = int(period / self.height_um * self.size.y)
         ncells = int(self.size.y / cell_length) * int(self.size.x / cell_length)
-        sa = np.zeros(ncells)
-        ssk = np.zeros(ncells)
-        sku = np.zeros(ncells)
-        sdr = np.zeros(ncells)
+        results = np.zeros((len(parameters), ncells))
         for i in range(int(self.size.y / cell_length)):
             for j in range(int(self.size.x / cell_length)):
                 idx = i * int(self.size.x / cell_length) + j
                 data = self.data[cell_length * i:cell_length * (i + 1), cell_length * j:cell_length * (j + 1)]
                 cell_surface = Surface(data, self.step_x, self.step_y)
-                sa[idx] = cell_surface.Sa()
-                ssk[idx] = cell_surface.Ssk()
-                sku[idx] = cell_surface.Sku()
-                sdr[idx] = cell_surface.Sdr()
-        sa = np.sort(sa.round(8))
-        ssk = np.sort(np.abs(ssk).round(8))
-        sku = np.sort(sku.round(8))
-        sdr = np.sort(sdr.round(8))
+                for k, parameter in enumerate(parameters):
+                    results[k, idx] = getattr(cell_surface, parameter)()
 
+        results = np.sort(results.round(8), axis=1)
         h = []
-        for param in (sa, ssk, sku, sdr):
-            if np.all(param == 0):
-                h.append(1)
-                continue
-            x, step = np.linspace(0, 1, ncells, retstep=True)
-            lorenz = np.cumsum(np.abs(param))
-            lorenz = (lorenz - lorenz.min()) / lorenz.max()
+        for i in range(len(parameters)):
+            lorenz = np.zeros(ncells + 1)
+            lorenz[1:] = np.cumsum(results[i]) / np.sum(results[i])
+            x, step = np.linspace(0, 1, lorenz.size, retstep=True)
             y = lorenz.min() + (lorenz.max() - lorenz.min()) * x
-            total = np.trapz(y, dx=step)
             B = np.trapz(lorenz, dx=step)
-            A = total - B
-            gini = A / total
+            A = 0.5 - B
+            gini = A / 0.5
             h.append(1 - gini)
         return np.mean(h).round(4)
 
