@@ -92,7 +92,6 @@ class Batch:
     def _construct_dataframe(self, results):
         df = pd.DataFrame(results)
         if self._additional_data is not None:
-
             df = pd.merge(self._additional_data, df, on='file')
         return df
 
@@ -110,6 +109,16 @@ class Batch:
 
     def center(self):
         operation = Operation('center', kwargs=dict(inplace=True))
+        self._operations.append(operation)
+        return self
+
+    def threshold(self, threshold=0.5):
+        operation = Operation('threshold'), kwargs=dict(threshold=threshold, inplace=True))
+        self._operations.append(operation)
+        return self
+
+    def remove_outliers(self, n=3, method='mean'):
+        operation = Operation('remove_outliers'), kwargs = dict(n=n, method=method, inplace=True))
         self._operations.append(operation)
         return self
             
