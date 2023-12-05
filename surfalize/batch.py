@@ -113,12 +113,12 @@ class Batch:
         return self
 
     def threshold(self, threshold=0.5):
-        operation = Operation('threshold'), kwargs=dict(threshold=threshold, inplace=True))
+        operation = Operation('threshold', kwargs=dict(threshold=threshold, inplace=True))
         self._operations.append(operation)
         return self
 
     def remove_outliers(self, n=3, method='mean'):
-        operation = Operation('remove_outliers'), kwargs = dict(n=n, method=method, inplace=True))
+        operation = Operation('remove_outliers', kwargs = dict(n=n, method=method, inplace=True))
         self._operations.append(operation)
         return self
             
