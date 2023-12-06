@@ -85,6 +85,6 @@ def is_list_like(obj):
     bool
         True if object is list-like, False if is is not.
     """
-    if isinstance(obj, (list, tuple, np.array)):
+    if isinstance(obj, (list, tuple, np.ndarray)):
         return True
     return False
