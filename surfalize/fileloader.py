@@ -295,11 +295,6 @@ dispatch = {
     '.plux': load_plux,
 }
 
-
-class UnsupportedFileFormatError(Exception):
-    pass
-
-
 def load_file(filepath):
     filepath = Path(filepath)
     if filepath.suffix not in dispatch:
