@@ -1,6 +1,9 @@
 from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
 
+with open('README.md', 'r', encoding='utf-8') as file:
+    long_description = file.read()
+
 extensions = [
     Extension(
         'surfalize.calculations',
@@ -14,6 +17,8 @@ setup(
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     classifiers=[
         'Programming Language :: Python',
