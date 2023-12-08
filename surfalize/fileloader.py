@@ -64,11 +64,9 @@ def load_plu(filepath):
         measure_config['factorio_delmacio'] = read_uint32_le(file)
 
         data_length = calibration['xres'] * calibration['yres']
-        data = np.zeros(data_length)
-        for i in range(data_length):
-            data[i] = read_float_le(file)
+
+        data = np.fromfile(file, dtype=np.float32, count=data_length)
         data = data.reshape((calibration['yres'], calibration['xres']))
-       
         data[data == NON_MEASURED_VALUE] = np.nan
 
         step_x = calibration['mppx']
@@ -91,8 +89,8 @@ def load_plux(filepath):
     step_x = float(root.find('GENERAL/FOV_X').text)
     step_y = float(root.find('GENERAL/FOV_Y').text)
     size = shape_x * shape_y
-    height_data = np.array(struct.unpack(f'<{size}f', data)).reshape((shape_y, shape_x))
 
+    height_data = np.frombuffer(data, dtype=np.float32, count=size).reshape((shape_y, shape_x))
     return (height_data, step_x, step_y)
     
 def _vk4_extract_offsets(in_file):
@@ -258,16 +256,7 @@ def _vk4_extract_img_data(offset_dict, d_type, in_file):
         palette[i] = ord(in_file.read(1))
         i = i+1
     data['palette'] = palette
-
-    array = np.zeros((data['width']*data['height']), dtype=data_types[d_type][1])
-    int_type = data_types[d_type][2]
-    bytesize = data_types[d_type][3]
-    i = 0
-    for val in range(data['width']*data['height']):
-        # array[i] = data_types[d_type][2](in_file)
-        array[i] = struct.unpack(int_type, in_file.read(bytesize))[0]
-        i = i + 1
-    data['data'] = array
+    data['data'] = np.fromfile(in_file, dtype=np.uint32, count=data['width']*data['height'])
 
     return data  
 
