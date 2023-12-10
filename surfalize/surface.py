@@ -895,12 +895,35 @@ class Surface:
     @lru_cache
     @no_nonmeasured_points
     def period(self):
-        logger.debug('period called.')
+        """
+        Calculates the spatial period based on the Fourier transform.
+
+        Returns
+        -------
+        period: float
+        """
         dx, dy = self._get_fourier_peak_dx_dy()
         period = 2/np.hypot(dx, dy)
+        if full:
+            return period, 2/dx, 2/dy
         return period
 
     CACHED_METODS.append(period)
+
+    @lru_cache
+    @no_nonmeasured_points
+    def period_x_y(self):
+        """
+        Calculates the spatial period along the x and y axes based on the Fourier transform.
+
+        Returns
+        -------
+        (periodx, periody): tuple[float, float]
+        """
+        dx, dy = self._get_fourier_peak_dx_dy()
+        periodx = 0 if dx == 0 else 2/dx
+        periody = 0 if dy == 0 else 2/dy
+        return periodx, periody
     
     @lru_cache
     @no_nonmeasured_points
@@ -970,23 +993,36 @@ class Surface:
     @lru_cache
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=True, plot=False):
-        logger.debug('Depth called.')
-        size, length = self.size
-        if nprofiles > size:
-            raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size}')
-
+        # Check if alignment is more vertical or horizontal
+        aligned_vertically = True if -45 < self.orientation() < 45 else False
+        size = self.size
+        if aligned_vertically and nprofiles > size.y:
+            raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size.y}')
+        if not aligned_vertically and nprofiles > size.x:
+            raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size.x}')
         # Obtain the period estimate from the fourier transform in pixel units
-        period_ft_um = self.period()
-        # Calculate the number of intervals per profile
-        nintervals = int(self.width_um / period_ft_um)
-        # Allocate depth array with twice the length of the number of periods to accomodate both peaks and valleys
+        periodx, periody = self.period_x_y()
+        # If the texture is more vertically aligned, we take the period in x, else in y
+        if aligned_vertically:
+            # Calculate the number of intervals per profile
+            nintervals = int(self.width_um / periodx)
+            period_px = periodx / self.step_x
+            profile_dist_px = int(size.y / nprofiles)
+        else:
+            nintervals = int(self.height_um / periody)
+            period_px = periody / self.step_y
+            profile_dist_px = int(size.x / nprofiles)
+
+        # Allocate depth array with twice the length of the number of periods to accommodate both peaks and valleys
         # multiplied by the number of sampled profiles
         depths = np.zeros(nprofiles * nintervals)
 
         # Loop over each profile
         for i in range(nprofiles):
-            line = self.data[int(size / nprofiles) * i]
-            period_px = _period_from_profile(line)
+            if aligned_vertically:
+                line = self.data[profile_dist_px * i]
+            else:
+                line = self.data[:, profile_dist_px * i]
             xp = np.arange(line.size)
             # Define initial guess for fit parameters
             p0=((line.max() - line.min())/2, period_px, 0, line.mean())
@@ -1011,7 +1047,7 @@ class Surface:
 
                 idx_min = int(idx) - int(period_sin * sampling_width/2)
                 idx_max = int(idx) + int(period_sin * sampling_width/2)
-                if idx_min < 0 or idx_max > length-1:
+                if idx_min < 0 or idx_max > line.size-1:
                     depths_line[j] = np.nan
                     continue
                 depth_mean = line[idx_min:idx_max+1].mean()

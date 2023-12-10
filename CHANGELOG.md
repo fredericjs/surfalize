@@ -6,6 +6,9 @@
   functional parameter calculations based on whole dataset
 - Added support for multiple return values in the Batch class
 - Surface.align now takes axis argument to specify with which axis to align the texture
+- Surface.depth now considers orientation of the structure and uses correct period in x or y depending on it. It also
+  now uses either horizontal or vertical profiles depending on the orientation. Moreover, it doesn't compute the period
+  initial guess from each profile anymore but only once from the fourier transform.
 ## v0.3.0:
 - Removed underscore from Surface._data, ._step_x, ._step_y, ._width_um, ._height_um since they are supposed to be
   public attributes
