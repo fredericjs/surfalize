@@ -9,14 +9,18 @@ class AbbottFirestoneCurve:
     # Width of the equivalence line in % as defined by ISO 25178-2
     EQUIVALENCE_LINE_WIDTH = 40
 
-    def __init__(self, surface):
+    def __init__(self, surface, nbins=10000):
         self._surface = surface
+        self._nbins = nbins
         self._calculate_curve()
 
     @lru_cache
     def _get_material_ratio_curve(self):
-        height = np.sort(self._surface.data[~np.isnan(self._surface.data)])[::-1]
-        material_ratio = (np.arange(1, height.size + 1, 1) / height.size) * 100
+        hist, height = np.histogram(surface.data, bins=self._nbins)
+        hist = hist[::-1]  # sort descending
+        height = height[::-1]  # sort descending
+        material_ratio = np.append(1, np.cumsum(hist))  # prepend 1 for first bin edge after cumsum
+        material_ratio = material_ratio / material_ratio.max() * 100
         return height, material_ratio
 
     # This is a bit hacky right now with the modified state. Maybe clean that up in the future
