@@ -379,6 +379,7 @@ class Surface:
         a, b, c = coefficients
         # Calculate the plane values for each point in the grid
         plane = a * x + b * y + c
+        plane = plane - plane.mean()
         # Subtract the plane from the original height data to level it
         leveled_data = self.data - plane
         if inplace:
