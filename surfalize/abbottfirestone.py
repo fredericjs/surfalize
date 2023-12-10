@@ -16,7 +16,7 @@ class AbbottFirestoneCurve:
 
     @lru_cache
     def _get_material_ratio_curve(self):
-        hist, height = np.histogram(surface.data, bins=self._nbins)
+        hist, height = np.histogram(self._surface.data, bins=self._nbins)
         hist = hist[::-1]  # sort descending
         height = height[::-1]  # sort descending
         material_ratio = np.append(1, np.cumsum(hist))  # prepend 1 for first bin edge after cumsum
