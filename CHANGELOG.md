@@ -1,11 +1,11 @@
-v0.0.4:
+## v0.0.4:
 - Reduced file load times by >90% using numpy.fromfile to read the height data
 - Leveling now no longer also centers the data around the mean
 - Fixed wrong alignment direction in Surface.align
 - Reverted to binning with default of 10,000 bins for AbbottFirestoneCurve due to large performance bottleneck of
   functional parameter calculations based on whole dataset
 - Added support for multiple return values in the Batch class
-v0.3.0:
+## v0.3.0:
 - Removed underscore from Surface._data, ._step_x, ._step_y, ._width_um, ._height_um since they are supposed to be
   public attributes
 - Fixed bug in Surface.zoom
@@ -28,7 +28,7 @@ v0.3.0:
 - Fixed errors in homogeneity calculation and added parameter to specify roughness parameters for evaluation on method
   call.
 - tqdm is now a non-optional dependency
-v0.2.0:
+## v0.2.0:
 - Added Sdq parameter -> tested against LeicaMap
 - Removed width_um and height_um as initialization parameters for Surface, since they are redundant
 - Added lru_cache to some functions to save computation time
@@ -48,7 +48,7 @@ v0.2.0:
 - Restructuring of modules: Profile, AbbottFirestoneCurve, AutocorrelationFunction now in speparate modules
 - Fixed filtering method: Now filters at the correct frequencies in all axes. Added note in docstring that warns about
   the side effects of zeroing bins
-v0.1.0:
+## v0.1.0:
 - Added option to Batch to supply additional parameters associated with each file that can be merged into the
   computed parameters
 - Fixed bug where Surface.rotate() would leave a border of nan values
