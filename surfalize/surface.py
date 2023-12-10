@@ -23,7 +23,7 @@ import scipy.ndimage as ndimage
 # Custom imports
 from .fileloader import load_file
 from .utils import argclosest, interp1d, is_list_like
-from .common import sinusoid
+from .common import sinusoid, register_returnlabels
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -960,9 +960,10 @@ class Surface:
             h.append(1 - gini)
         return np.mean(h).round(4)
 
+    @register_returnlabels(('mean', 'std'))
     @lru_cache
     @no_nonmeasured_points
-    def depth(self, nprofiles=30, sampling_width=0.2, retstd=False, plot=False):
+    def depth(self, nprofiles=30, sampling_width=0.2, retstd=True, plot=False):
         logger.debug('Depth called.')
         size, length = self.size
         if nprofiles > size:
@@ -1038,7 +1039,7 @@ class Surface:
         -------
         aspect_ratio: float
         """
-        return self.depth() / self.period()
+        return self.depth(retstd=False) / self.period()
 
     def roughness_parameters(self, parameters=None):
         if parameters is None:

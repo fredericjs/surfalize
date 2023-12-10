@@ -7,6 +7,10 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from .surface import Surface
+from .utils import is_list_like
+
+class BatchError(Exception):
+    pass
 
 class Operation:
 
@@ -28,7 +32,11 @@ class Parameter:
 
     def calculate_from(self, surface):
         method = getattr(surface, self.identifier)
-        return method(*self.args, **self.kwargs)
+        result = method(*self.args, **self.kwargs)
+        if is_list_like(result):
+            labels = method.return_labels
+            return {f'{self.identifier}_{label}': value for value, label in zip(result, labels)}
+        return {self.identifier: result}
 
 def _task(filepath, operations, parameters):
     surface = Surface.load(filepath)
@@ -37,7 +45,7 @@ def _task(filepath, operations, parameters):
     results = dict(file=filepath.name)
     for parameter in parameters:
         result = parameter.calculate_from(surface)
-        results[parameter.identifier] = result
+        results.update(result)
     return results
 
 #TODO batch image export
@@ -65,7 +73,9 @@ class Batch:
         
         """
         self._filepaths = [Path(file) for file in filepaths]
-        if additional_data is not None:
+        if additional_data is None:
+            self._additional_data = None
+        else:
             self._additional_data = pd.read_excel(additional_data)
             if 'file' not in self._additional_data.columns:
                 raise ValueError("File specified by 'additional_data' does not contain column named 'file'.")
@@ -96,6 +106,8 @@ class Batch:
         return df
 
     def execute(self, multiprocessing=True, saveto=None):
+        if not self._parameters and not self._operations:
+            raise BatchError('No operations of parameters defined.')
         results = self._disptach_tasks(multiprocessing=multiprocessing)
         df = self._construct_dataframe(results)
         if saveto is not None:
@@ -178,7 +190,6 @@ class Batch:
     def roughness_parameters(self, parameters=None):
         if parameters is None:
             parameters = list(Surface.AVAILABLE_PARAMETERS)
-            print(parameters)
         for parameter in parameters:
             if isinstance(parameter, str):
                 parameter = Parameter(parameter)
