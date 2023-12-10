@@ -559,13 +559,15 @@ class Surface:
         return Surface(data, self.step_x, self.step_y)
 
     
-    def align(self, inplace=False):
+    def align(self, axis='y', inplace=False):
         """
         Computes the dominant orientation of the surface pattern and alignes the orientation with the horizontal
         or vertical axis.
 
         Parameters
         ----------
+        axis: {'x', 'y'}, default 'y'
+            The axis with which to align the texture with.
         inplace: bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self
@@ -575,7 +577,11 @@ class Surface:
         surface: surfalize.Surface
             Surface object.
         """
+        if axis not in ('x', 'y'):
+            raise ValueError('Invalid axis specified.')
         angle = self.orientation()
+        if axis == 'x':
+            angle += 90
         return self.rotate(-angle, inplace=inplace)
 
     @lru_cache
