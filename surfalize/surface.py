@@ -576,7 +576,7 @@ class Surface:
             Surface object.
         """
         angle = self.orientation()
-        return self.rotate(angle, inplace=inplace)
+        return self.rotate(-angle, inplace=inplace)
 
     @lru_cache
     def _get_fourier_peak_dx_dy(self):
