@@ -134,7 +134,7 @@ class Batch:
         self._operations.append(operation)
         return self
             
-    def fill_nonmeasured(self, mode='nearest'):
+    def fill_nonmeasured(self, method='nearest'):
         """
         Calls the 'fill_nonmeasured' method of each surface in the batch with the inplace argument
         specified as True.
