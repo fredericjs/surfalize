@@ -139,7 +139,7 @@ class Batch:
         Calls the 'fill_nonmeasured' method of each surface in the batch with the inplace argument
         specified as True.
         """
-        operation = Operation('fill_nonmeasured', kwargs=dict(mode=mode, inplace=True))
+        operation = Operation('fill_nonmeasured', kwargs=dict(method=method, inplace=True))
         self._operations.append(operation)
         return self
             
