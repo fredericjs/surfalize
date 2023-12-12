@@ -1239,10 +1239,7 @@ class Surface:
         period: float
         """
         dx, dy = self._get_fourier_peak_dx_dy()
-        period = 2/np.hypot(dx, dy)
-        if full:
-            return period, 2/dx, 2/dy
-        return period
+        return 2/np.hypot(dx, dy)
 
     CACHED_METODS.append(period)
 
