@@ -1,9 +1,7 @@
 # Standard imports
-from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
-FORMAT = "[%(filename)s:%(lineno)s - %(funcName)20s() ] %(message)s"
 logging.basicConfig(format=FORMAT)
 from functools import wraps, lru_cache
 from collections import namedtuple
@@ -13,7 +11,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import pandas as pd
 from scipy.linalg import lstsq
 from scipy.interpolate import griddata
 from scipy.signal import find_peaks
@@ -64,6 +61,19 @@ def _period_from_profile(profile):
     return period
            
 def no_nonmeasured_points(function):
+    """
+    Decorator that raises an Exception if the method is called on a surface object that contains non-measured points.
+    This decorator should be used for any method that does not compute correctly if nan values are present in the array.
+
+    Parameters
+    ----------
+    function: function
+        Function to be decorated.
+
+    Returns
+    -------
+    Wrapped function
+    """
     @wraps(function)
     def wrapper_function(self, *args, **kwargs):
         if self._nonmeasured_points_exist:
@@ -73,10 +83,80 @@ def no_nonmeasured_points(function):
 
 
 class Surface:
-    
+    """
+    Representation a 2D-topography characterised by a 2d array of height data and an associated stepsize in x and y.
+    x hereby denotes the horizontal axis, which corresponds to the second array dimension, while y denotes the vertical
+    axis corresponding to the first array dimension. Generally, the code is written with equal stepsize in both axes
+    in mind. Undexpected behavior may occur if the stepsize is not equal in both axes. This has to be tested in the
+    future.
+
+    The class implements methods to calculate roughness parameters defined in ISO 25178 as well as custom parameters
+    for surfaces that exhibit 1D-periodic textures. Moreover, it implements methods for data processing and correction.
+
+    Overview over available ISO-25178 roughness parameters:
+
+    - Height parameters: Sa, Sq, Sz, Sv, Sp, Ssk, Sku
+    - Hybrid parameters: Sdr, Sdq
+    - Functional parameters: Sk, Svk, Spk, Smr1, Smr2, Sxp, Smr(c), Smc(mr)
+    - Functional volume parameters: Vmc, Vmp, Vvc, Vvv
+    - Spatial parameters: Sal, Str
+
+    Periodic parameters:
+    - Spatial period: computed from Frourier transform
+    - Structure depth: computed from n profiles
+    - Structure aspect ratio: computed from depth and period
+    - Structure homogeneity: computed using Gini coefficient
+    - Structure orientation: Angle of the dominant texture towards the vertical axis
+
+    Overview of data operations:
+    - Zeroing: Setting lowest height value to zero
+    - Centering: Centering height values around the mean
+    - Cropping: Cropping to specified borders
+    - Zooming: Magnification by factor around the center
+    - Rotating: Rotating surface by angle
+    - Aligning: Aligning the surface to the dominant texture direction
+    - Levelling: Leveling by least squares plane
+    - Filtering: Applying lowpass, highpass or bandpass filters
+    - Removing outliers: Remove outliers by mean of median filters
+    - Thresholding: Thresholding based on areal material ratio
+    - Filling non-measured points: Interpolating non-measured points
+
+    Plotting:
+    - Surface data
+    - Abbott-Firestone curve
+    - Fourier Transform
+
+    Parameters
+    ----------
+    height_data: ndarray
+        A 2d numpy array containing the height data
+    step_x: float
+        Interval between two datapoints in x-axis (horizontal axis, second array dimension)
+    step_y: float
+        Interval between two datapoints in y-axis (vertical axis, first array dimension)
+
+    Examples
+    --------
+    Constructing a surface from a 2d array.
+
+    >>> step_x = step_y = 0.1 # mm
+    >>> size_x = 200
+    >>> size_y = 100
+    >>> period = 5
+    >>> y, x = np.mgrid[0:size_y:step_y, 0:size_x:step_x]
+    >>> height_data = np.sin(x / period * 2 * np.pi)
+    >>> surface = Surface(height_data, step_x, step_y)
+
+    Use the load class method to load a topography from a file.
+
+    >>> filepath = r'path\to\surface.plu'
+    >>> surface = Surface.load(filepath)
+    """
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
                             'homogeneity')
+
+    # List of methods that implement lru cache
     CACHED_METODS = []
     
     def __init__(self, height_data, step_x, step_y):
@@ -90,13 +170,52 @@ class Surface:
 
     @property
     def size(self):
+        """
+        Returns the size of the height data array in pixels as a namedtuple of the form (y, x).
+        The elements can be accessed either through indexing or dot notation.
+        >>> surface.size
+        (y=768, x=1024)
+        >>> surface.size[0]
+        768
+        >>> surface.size.y
+        768
+
+        Returns
+        -------
+        size: namedtuple(y, x)
+        """
         return size(*self.data.shape)
 
     def _clear_cache(self):
+        """
+        Clears the lru_cache of all methods registered in Surface.CACHED_METHODS.
+
+        Returns
+        -------
+        None
+        """
         for method in self.CACHED_METODS:
             method.cache_clear()
             
     def _set_data(self, data=None, step_x=None, step_y=None):
+        """
+        Overwrites the data of the surface. Used to modify surfaces inplace and recalculate the width_um and height_um
+        attributes as well as clear the cache on all lru_cached methods. This method should be used by any method
+        that modifys the surface object data inplace.
+
+        Parameters
+        ----------
+        data: ndarray
+        A 2d numpy array containing the height data.
+        step_x: float
+            Interval between two datapoints in x-axis (horizontal axis, second array dimension).
+        step_y: float
+            Interval between two datapoints in y-axis (vertical axis, first array dimension).
+
+        Returns
+        -------
+        None
+        """
         if data is not None:
             self.data = data
         if step_x is not None:
@@ -119,6 +238,17 @@ class Surface:
 
     @classmethod
     def load(cls, filepath):
+        """
+        Classmethod to load a topography from a file.
+
+        Parameters
+        ----------
+        filepath: str | pathlib.Path
+            Filepath pointing to the topography file.
+        Returns
+        -------
+        surface: surfalize.Surface
+        """
         return cls(*load_file(filepath))
         
     def get_horizontal_profile(self, y, average=1, average_step=None):
@@ -200,8 +330,32 @@ class Surface:
         idx_max = self.size.x if idx_max > self.size.x else idx_max
         data = self.data[:, idx_min:idx_max + 1:average_step_px].mean(axis=1)
         return Profile(data, self.step_y, self.height_um)
-    
+
+    #TODO: implement averaging
     def get_oblique_profile(self, x0, y0, x1, y1):
+        """
+         Extracts an oblique profile from the surface.
+
+         Parameters
+         ----------
+         x0: float
+            starting point of the profile in x.
+         y0: float
+            starting point of the profile in y.
+         x1: float
+            end point of the profile in x.
+         y1: float
+            end point of the profile in y.
+
+         Raises
+         ------
+         ValueError
+            If the points lie outside the definition area.
+
+         Returns
+         -------
+         profile: surfalize.Profile
+         """
         x0px = int(x0 / self.width_um * self.size.x)
         y0px = int(y0 / self.height_um * self.size.y)
         x1px = int(x1 / self.width_um * self.size.x)
@@ -347,6 +501,22 @@ class Surface:
         return Surface(data, self.step_x, self.step_y)
 
     def fill_nonmeasured(self, method='nearest', inplace=False):
+        """
+        Fills the non-measured points by interpolation.
+
+        Parameters
+        ----------
+        method: {‘linear’, ‘nearest’, ‘cubic’}, default 'nearest'
+            Method by which to perform the interpolation. See scipy.interpolate.griddata for details.
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
         if not self._nonmeasured_points_exist:
             return self
         values = self.data.ravel()
@@ -365,7 +535,20 @@ class Surface:
     
     @no_nonmeasured_points
     def level(self, inplace=False):
-        #self.period.cache_clear() # Clear the LRU cache of the period method
+        """
+        Levels the surface by subtraction of a least squares fit plane.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
         x, y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
         # Flatten the x, y, and height_data arrays
         x_flat = x.flatten()
@@ -389,6 +572,23 @@ class Surface:
     
     @no_nonmeasured_points
     def rotate(self, angle, inplace=False):
+        """
+        Rotates the surface counterclockwise by the specified angle and crops it to largest possible rectangle with
+        the same aspect ratio as the original surface that does not contain any invalid points.
+
+        Parameters
+        ----------
+        angle: float
+            Angle in degrees.
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
         rotated = ndimage.rotate(self.data, angle, reshape=True)
 
         aspect_ratio = self.size.y / self.size.x
@@ -640,35 +840,93 @@ class Surface:
     
     @no_nonmeasured_points
     def Sa(self):
+        """
+        Calcualtes the arithmetic mean height Sa according to ISO 25178-2.
+
+        Returns
+        -------
+        Sa: float
+        """
         return (np.abs(self.data - self.data.mean()).sum() / self.data.size)
     
     @no_nonmeasured_points
     def Sq(self):
+        """
+        Calcualtes the root mean square height Sq according to ISO 25178-2.
+
+        Returns
+        -------
+        Sq: float
+        """
         return np.sqrt(((self.data - self.data.mean()) ** 2).sum() / self.data.size).round(8)
     
     @no_nonmeasured_points
     def Sp(self):
+        """
+        Calcualtes the maximum peak height Sp according to ISO 25178-2.
+
+        Returns
+        -------
+        Sp: float
+        """
         return (self.data - self.data.mean()).max()
     
     @no_nonmeasured_points
     def Sv(self):
+        """
+        Calcualtes the maximum pit height Sv according to ISO 25178-2.
+
+        Returns
+        -------
+        Sv: float
+        """
         return np.abs((self.data - self.data.mean()).min())
     
     @no_nonmeasured_points
     def Sz(self):
+        """
+        Calcualtes the skewness Ssk according to ISO 25178-2.
+
+        Returns
+        -------
+        Ssk: float
+        """
         return self.Sp() + self.Sv()
     
     @no_nonmeasured_points
     def Ssk(self):
+        """
+        Calcualtes the skewness Ssk according to ISO 25178-2. It is the quotient of the mean cube value of the ordinate
+        values and the cube of Sq within a definition area.
+
+        Returns
+        -------
+        Ssk: float
+        """
         return ((self.data - self.data.mean()) ** 3).sum() / self.data.size / self.Sq()**3
     
     @no_nonmeasured_points
     def Sku(self):
+        """
+        Calcualtes the kurtosis Sku  according to ISO 25178-2. It is the quotient of the mean quartic value of the
+        ordinate values and the fourth power of Sq within a definition area.
+
+        Returns
+        -------
+        Sku: float
+        """
         return ((self.data - self.data.mean()) ** 4).sum() / self.data.size / self.Sq()**4
     
     # Hybrid parameters ################################################################################################
     
     def projected_area(self):
+        """
+        Calculates the projected surface area.
+
+        Returns
+        -------
+        projected area: float
+        """
         return (self.width_um - self.step_x) * (self.height_um - self.step_y)
     
     @no_nonmeasured_points
@@ -714,6 +972,13 @@ class Surface:
     
     @no_nonmeasured_points
     def Sdq(self):
+        """
+        Calculates the root mean square gradient Sdq according to ISO 25178-2.
+
+        Returns
+        -------
+        Sdq: float
+        """
         A = self.size.y * self.size.x
         diff_x = np.diff(self.data, axis=1) / self.step_x
         diff_y = np.diff(self.data, axis=0) / self.step_y
@@ -723,6 +988,14 @@ class Surface:
 
     @lru_cache
     def _get_autocorrelation_function(self):
+        """
+        Instantiates and returns an AutocorrelationFunction object. LRU cache is used to return the same object with
+        every function call.
+
+        Returns
+        -------
+        AutocorrelationFunction
+        """
         return AutocorrelationFunction(self)
 
     CACHED_METODS.append(_get_autocorrelation_function)
@@ -774,6 +1047,14 @@ class Surface:
     
     @lru_cache
     def _get_abbott_firestone_curve(self):
+        """
+        Instantiates and returns an AbbottFirestoneCurve object. LRU cache is used to return the same object with
+        every function call.
+
+        Returns
+        -------
+        AbbottFirestoneCurve
+        """
         return AbbottFirestoneCurve(self)
 
     CACHED_METODS.append(_get_abbott_firestone_curve)
@@ -879,15 +1160,69 @@ class Surface:
     # Functional volume parameters ######################################################################################
 
     def Vmp(self, p=10):
+        """
+        Calculates the peak material volume at p. The default value of p is 10% according to ISO-25178-3.
+
+        Parameters
+        ----------
+        p: float, default 10.
+            areal material ratio in %.
+
+        Returns
+        -------
+        Vmp: float
+        """
         return self._get_abbott_firestone_curve().Vmp(p=p)
 
     def Vmc(self, p=10, q=80):
+        """
+        Calculates the difference in material volume between the p and q material ratio. The default value of p and q
+        are is 10% and 80%, respectively, according to ISO-25178-3.
+
+        Parameters
+        ----------
+        p: float, default 10.
+            areal material ratio in %.
+        q: float, default 80.
+            areal material ratio in %.
+
+        Returns
+        -------
+        Vmc: float
+        """
         return self._get_abbott_firestone_curve().Vmc(p=p, q=q)
 
     def Vvv(self, q=80):
+        """
+        Calculates the dale volume at p material ratio. The default value of p is 80% according to ISO-25178-3.
+
+        Parameters
+        ----------
+        p: float, default 80.
+            areal material ratio in %.
+
+        Returns
+        -------
+        Vvv: float
+        """
         return self._get_abbott_firestone_curve().Vvv(q=q)
 
     def Vvc(self, p=10, q=80):
+        """
+        Calculates the difference in void volume between p and q material ratio. The default value of p and q
+        are is 10% and 80%, respectively, according to ISO-25178-3.
+
+        Parameters
+        ----------
+        p: float, default 10.
+            areal material ratio in %.
+        q: float, default 80.
+            areal material ratio in %.
+
+        Returns
+        -------
+        Vvc: float
+        """
         return self._get_abbott_firestone_curve().Vvc(p=p, q=q)
 
     # Non-standard parameters ##########################################################################################
@@ -896,7 +1231,9 @@ class Surface:
     @no_nonmeasured_points
     def period(self):
         """
-        Calculates the spatial period based on the Fourier transform.
+        Calculates the spatial period based on the Fourier transform. This can yield unexcepted resutls if the surface
+        contains peaks at lower spatial frequencies than the frequency of the periodic structure the be evaluated.
+        It is advised to perform appropriate lowpass filtering before invoking this method.
 
         Returns
         -------
@@ -928,6 +1265,13 @@ class Surface:
     @lru_cache
     @no_nonmeasured_points
     def orientation(self):
+        """
+        Computes the orientation angle of the dominant texture from the peaks of the Fourier transform.
+
+        Returns
+        -------
+        orientation: float
+        """
         dx, dy = self._get_fourier_peak_dx_dy()
         #Account for special cases
         if dx == 0:
@@ -993,6 +1337,29 @@ class Surface:
     @lru_cache
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=True, plot=False):
+        """
+        Calculates the peak-to-valley depth of a periodically grooved surface texture. It samples a specified number
+        of equally spaced apart profiles from the surface and fits them with a sinusoid. It then evaluates the actual
+        profile data in a specified interval around the minima and maxima of the sinusoid and computes their median
+        value to reduce the influence of outliers. It then computes the depth by taking the absoulte distance between
+        two adjacent maxima and minima. The overall depth is then calculated as the mean of all peak-to-valley depths
+        over all sampled profiles.
+
+        Parameters
+        ----------
+        nprofiles: int, default 30
+            Number of profiles to sample from the surface.
+        sampling_width: float, defualt 0.2
+            Sampling width around the extrema of the sinusoid as a fraction of the spatial period.
+        retstd: bool, default True
+            Return the standard deviation.
+        plot: bool, default False
+            Plot one profile to exemplify the depth calculation.
+
+        Returns
+        -------
+        Mean depth and standard deviation: tuple[float, float] or only mean depth if retstd is False.
+        """
         # Check if alignment is more vertical or horizontal
         aligned_vertically = True if -45 < self.orientation() < 45 else False
         size = self.size
@@ -1084,6 +1451,22 @@ class Surface:
         return self.depth(retstd=False) / self.period()
 
     def roughness_parameters(self, parameters=None):
+        """
+        Computes multiple roughness parameters at once and returns them in a dictionary.
+
+        Example:
+        >> surface.roughness_parameters(['Sa', 'Sq', 'Sz'])
+        {'Sa': 1.23, 'Sq': 1.87, 'Sz': 2.51}
+
+        Parameters
+        ----------
+        parameters: list-like[str], default None
+            List-like object of parameters to evaluate. If None, all available parameters are evaluated.
+
+        Returns
+        -------
+        parameters: dict[str: float]
+        """
         if parameters is None:
             parameters = self.AVAILABLE_PARAMETERS
         results = dict()
@@ -1096,6 +1479,18 @@ class Surface:
 
     # Plotting #########################################################################################################
     def plot_abbott_curve(self, nbars=20):
+        """
+        Plots the Abbott-Firestone curve.
+
+        Parameters
+        ----------
+        nbars: int
+            Number of bars to display for the material density
+
+        Returns
+        -------
+        None
+        """
         abbott_curve = self._get_abbott_firestone_curve()
         abbott_curve.plot(nbars=nbars)
         
@@ -1174,6 +1569,20 @@ class Surface:
         return ax
     
     def show(self, cmap='jet', maskcolor='black'):
+        """
+        Creates a 2D-plot of the surface using matplotlib.
+
+        Parameters
+        ----------
+        cmap: str | mpl.cmap, default 'jet'
+            Colormap to apply on the data.
+        maskcolor: str, default 'Black'
+            Color for masked values.
+
+        Returns
+        -------
+        None.
+        """
         cmap = plt.get_cmap(cmap).copy()
         cmap.set_bad(maskcolor)
         fig, ax = plt.subplots(dpi=150)
