@@ -1,8 +1,12 @@
 - Implement export of images in plotting functions as well as in the Batch class
-- Consider surface orientation in structure depth calculation
 - Omit profiles from structure depth calculation that have a large deviation from the spatial period
 - Create better plots for profiles
 - Test profile roughness parameters
 - Add functional profile roughness parameters
 - Write tests for batch processing
 - Write documentation
+- Fix vk6/vk7 format
+- Rework file parsing
+- Implement 3d plots
+- Implement Gaussian Filter
+- Add license
