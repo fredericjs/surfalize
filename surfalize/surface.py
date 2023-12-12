@@ -2,7 +2,6 @@
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
-logging.basicConfig(format=FORMAT)
 from functools import wraps, lru_cache
 from collections import namedtuple
 
