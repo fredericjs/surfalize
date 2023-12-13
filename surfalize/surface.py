@@ -17,7 +17,7 @@ from scipy.optimize import curve_fit
 import scipy.ndimage as ndimage
 
 # Custom imports
-from .fileloader import load_file
+from .file import load_file
 from .utils import argclosest, interp1d, is_list_like
 from .common import sinusoid, register_returnlabels
 from .autocorrelation import AutocorrelationFunction

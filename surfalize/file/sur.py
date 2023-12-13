@@ -1,110 +1,101 @@
-import os
 import struct
+from .common import read_binary_layout, get_unit_conversion
+from ..exceptions import CorruptedFileError
 import numpy as np
 
-from ..exceptions import FileFormatError, CorruptedFileError
+# This is not fully implemented! Won't work with all SUR files.
 
-MAGIC_NUMBER = 'DIGITAL SURF'
+MAGIC = 'DIGITAL SURF'
+HEADER_SIZE = 512
 
-FORMAT_SUR = (
-    ('Code', 's', 12),
-    ('Format', 'h', 2),
-    ('Number of objects', 'h', 2),
-    ('Version number', 'h', 2),
-    ('Studiable type', 'h', 2),
-    ('Name object', 's', 30),
-    ('Name operator', 's', 30),
-    (None, None, 6), # Reserved
-    ('Non measured points', 'h', 2),
-    ('Absolute Z axis', 'h', 2),
-    (None, None, 8), # Reserved
-    ('Nb of bits of points', 'h', 2),
-    ('Minimum point', 'i', 4),
-    ('Maximum point', 'i', 4),
-    ('Nb of points of a line', 'i', 4),
-    ('Nb of lines', 'i', 4),
-    ('Total nb of points', 'i', 4),
-    ('Spacing in X', 'f', 4),
-    ('Spacing in y', 'f', 4),
-    ('Spacing in Z', 'f', 4),
-    ('Name of X axis', 's', 16),
-    ('Name of Y axis', 's', 16),
-    ('Name of Z axis', 's', 16),
-    ('Unit of step in X', 's', 16),
-    ('Unit of step in Y', 's', 16),
-    ('Unit of step in Z', 's', 16),
-    ('Length unit of X axis', 's', 16),
-    ('Length unit of Y axis', 's', 16),
-    ('Length unit of Z axis', 's', 16),
-    ('Unit ratio in X', 'f', 4),
-    ('Unit ratio in Y', 'f', 4),
-    ('Unit ratio in Z', 'f', 4),
-    ('Replica', 'h', 2),
-    ('Inverted', 'h', 2),
-    ('Leveled', 'h', 2),
-    (None, None, 12), # Reserved
-    ('Seconds', 'h', 2),
-    ('Minutes', 'h', 2),
-    ('Hours', 'h', 2),
-    ('Day', 'h', 2),
-    ('Month', 'h', 2),
-    ('Year', 'h', 2),
-    ('Week day', 'h', 2),
-    ('Measurement duration', 'f', 4),
-    (None, None, 10), # Reserved
-    ('Length of comment zone', 'h', 2),
-    ('Length of private zone', 'h', 2),
-    ('Client zone', 's', 128),
-    ('Offset in X', 'f', 4),
-    ('Offset in Y', 'f', 4),
-    ('Offset in Z', 'f', 4),
-    ('Spacing in T', 'f', 4),
-    ('Offset in T', 'f', 4),
-    ('Name of T axis', 's', 13),
-    ('Unit of step in T', 's', 13)
+LAYOUT_HEADER = (
+    ('code', '12s', False),
+    ('format', 'h', False),
+    ('n_objects', 'h', False),
+    ('version_number', 'h', True),
+    ('studiable_type', 'h', True),
+    ('name_object', '30s', True),
+    ('name_operator', '30s', True),
+    (None, 6, None), # Reserved
+    ('non_measured_points', 'h', False),
+    ('absolute_z_axis', 'h', False),
+    (None, 8, None), # Reserved
+    ('bits_per_point', 'h', False),
+    ('min_point', 'i', False),
+    ('max_point', 'i', False),
+    ('n_points_per_line', 'i', False),
+    ('n_lines', 'i', False),
+    ('n_total_points', 'i', False),
+    ('spacing_x', 'f', False),
+    ('spacing_y', 'f', False),
+    ('spacing_z', 'f', False),
+    ('name_x', '16s', True),
+    ('name_y', '16s', True),
+    ('name_z', '16s', True),
+    ('unit_step_x', '16s', False),
+    ('unit_step_y', '16s', False),
+    ('unit_step_z', '16s', False),
+    ('unit_x', '16s', False),
+    ('unit_y', '16s', False),
+    ('unit_z', '16s', False),
+    ('unit_ratio_x', 'f', False),
+    ('unit_ratio_y', 'f', False),
+    ('unit_ratio_z', 'f', False),
+    ('replica', 'h', False),
+    ('inverted', 'h', False),
+    ('leveled', 'h', False),
+    (None, 12, None), # Reserved
+    ('seconds', 'h', True),
+    ('minutes', 'h', True),
+    ('hours', 'h', True),
+    ('day', 'h', True),
+    ('month', 'h', True),
+    ('year', 'h', True),
+    ('week_day', 'h', True),
+    ('measurement_duration', 'f', True),
+    (None, 10, None), # Reserved
+    ('length_comment', 'h', False),
+    ('length_private', 'h', False),
+    ('client_zone', '128s', True),
+    ('offset_x', 'f', True),
+    ('offset_y', 'f', True),
+    ('offset_z', 'f', True),
+    ('spacing_t', 'f', True),
+    ('offset_T', 'f', True),
+    ('name_t', '13s', True),
+    ('unit_step_t', '13s', True)
 )
 
-class SurfFileReader:
+POINTSIZE = {16: 'h', 32: 'i'}
 
-    def __init__(self, filepath, format_specification):
-        self.filepath = filepath
-        self.filesize = os.path.getsize(filepath)
-        self.format_specification = format_specification
+def read_sur(filepath):
+    filesize = filepath.stat().st_size
+    with open(filepath, 'rb') as filehandle:
+        header = read_binary_layout(filehandle, LAYOUT_HEADER)
 
-    def _read_header(self, filehandle):
-        header = dict()
-        for field, type_, size in self.format_specification:
-            if field is None:
-                filehandle.seek(size, 1)  # 1 means relative to current position of file pointer
-                continue
-            n = int(size / struct.calcsize(type_))
-            unpacked_data = struct.unpack(f'{n}{type_}', file.read(size))[0]
-            if isinstance(unpacked_data, bytes):
-                unpacked_data = unpacked_data.decode().strip()
-            header[filed] = unpacked_data
-        print(filehandle.tell())
+        if header['code'] != MAGIC or header['version_number'] != 1:
+            raise CorruptedFileError
 
-    def _read_data(self, filehandle):
-        filehandle.seek(self.header['Length of comment zone'], 1)
-        filehandle.seek(self.header['Length of private zone'], 1)
-        pointsize_bits = self.header['Nb of bits of points']
-        if pointsize_bits == 8:
-            type_ = 'e'
-        if pointsize_bits == 16:
-            type_ = 'f'
-        elif pointsize_bits == 32:
-            type_ = 'd'
-        else:
-            raise FileFormatError('Invalid point size detected.')
-        data_size = self.header['Total nb of points'] * struct.calcsize(type_)
-        print(data_size)
-        data = filehandle.read(data_size)
-        print(len(data))
-        data = np.array(struct.unpack(f"<{self.header['Total nb of points']}{type_}", data))
-        data = data.reshape(self.header['Nb of lines'], self.header['Nb of points of a line'])
-        return data
+        if header['unit_x'] != 1 or header['unit_y'] != 1 or header['unit_z'] != 1:
+            raise NotImplementedError("This file type cannot be correctly read currently.")
 
-    def read_file(self):
-        with open(self.filepath, 'rb') as filehandle:
-            self._read_header(filehandle)
-            return self._read_data(filehandle)
+        filehandle.seek(header['length_comment'], 1)
+        filehandle.seek(header['length_private'], 1)
+        dtype = POINTSIZE[header['bits_per_point']]
+        dsize = struct.calcsize(dtype)
+        data_size = header['n_total_points'] * dsize
+
+        data_size = header['n_total_points'] * dsize
+        total_header_size = HEADER_SIZE + header['length_comment'] + header['length_private']
+        expected_data_size = header['n_total_points'] * dsize
+        if filesize - total_header_size > expected_data_size:
+            filehandle.seek(filesize - data_size, 0)
+        shape = (header['n_lines'], header['n_points_per_line'])
+        data = np.fromfile(filehandle, dtype=np.dtype(dtype)).reshape(shape)
+
+
+        data = data * get_unit_conversion(header['unit_z'], 'um') * header['spacing_z']
+        step_x = get_unit_conversion(header['unit_x'], 'um') * header['spacing_x']
+        step_y = get_unit_conversion(header['unit_y'], 'um') * header['spacing_y']
+
+        return (data, step_x, step_y)

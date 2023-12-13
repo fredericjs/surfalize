@@ -1,45 +1,29 @@
 import struct
-from abc import ABC, abstractmethod
-from collections.abc import MutableMapping
 
-def read_binary_layout(filehandle, layout):
+units = {
+    'mm': 10**-3,
+    'um': 10**-6,
+    'nm': 10**-9,
+    'pm': 10**-12
+}
+
+def get_unit_conversion(from_unit, to_unit):
+    return units[from_unit] / units[to_unit]
+
+
+def read_binary_layout(filehandle, layout, fast=True):
     result = dict()
     for name, format, skip_fast in layout:
+        if name is None:
+            filehandle.seek(format, 1)
+            continue
         size = struct.calcsize(format)
+        if fast and skip_fast:
+            filehandle.seek(size, 1)
+            continue
         unpacked_data = struct.unpack(f'{format}', filehandle.read(size))[0]
         if isinstance(unpacked_data, bytes):
             unpacked_data = unpacked_data.decode().strip()
         result[name] = unpacked_data
     return result
-
-
-class BinaryLayout(MutableMapping):
-
-    def __init__(self, fields, format):
-        self._format = format
-        self._fields = dict()
-
-    def __getattr__(self, item):
-        return self._fields[item]
-
-    def read(self, filehandle):
-        for field in self._format:
-            data = field.read()
-            if data is None:
-                continue
-            self._fields[field.name] = data
-
-class BaseReader(ABC):
-
-    def __init__(self, filepath):
-        self._filepath = filepath
-
-    @abstractmethod
-    def read_data(self):
-        pass
-
-    @abstractmethod
-    def read(self):
-        pass
-
 
