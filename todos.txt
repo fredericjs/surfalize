@@ -5,8 +5,5 @@
 - Add functional profile roughness parameters
 - Write tests for batch processing
 - Write documentation
-- Fix vk6/vk7 format
-- Rework file parsing
 - Implement 3d plots
 - Implement Gaussian Filter
-- Add license
