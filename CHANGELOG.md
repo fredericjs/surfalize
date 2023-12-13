@@ -9,6 +9,8 @@
 - Surface.depth now considers orientation of the structure and uses correct period in x or y depending on it. It also
   now uses either horizontal or vertical profiles depending on the orientation. Moreover, it doesn't compute the period
   initial guess from each profile anymore but only once from the fourier transform.
+- Reworked file loading code
+- Added support for sur files
 ## v0.3.0:
 - Removed underscore from Surface._data, ._step_x, ._step_y, ._width_um, ._height_um since they are supposed to be
   public attributes
