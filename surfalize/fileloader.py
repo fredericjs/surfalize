@@ -273,7 +273,6 @@ def load_vk6_vk7(filepath):
     data = img_data['data'].reshape(img_data['height'], img_data['width']) / 10000
     
     return (data, step_x, step_y)
-    
 
 def load_vk4(filepath):
     with open(filepath, 'rb') as file:
@@ -294,11 +293,6 @@ dispatch = {
     '.plu': load_plu,
     '.plux': load_plux,
 }
-
-
-class UnsupportedFileFormatError(Exception):
-    pass
-
 
 def load_file(filepath):
     filepath = Path(filepath)
