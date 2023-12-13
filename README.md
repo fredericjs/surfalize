@@ -13,6 +13,7 @@ replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion f
 | Keyence      | *.vk4*, *.vk6*, *.vk7* |
 | Leica        | *.plu*                 |
 | Sensofar     | *.plu*, *.plux*        |
+| Digital Surf | *.sur*                 |
 
 ## Supported roughness parameters
 
@@ -58,6 +59,7 @@ dimensional periodic structures. The following parameters can be calculated:
 | Depth        | Peak-to-valley depth of the 1d-texture profiles              | 
 | Aspect ratio | Ratio of peak-to-valley depth to spatial period              |
 | Homogeneity  | Homogeneity factor (0 < H < 1) calculated from Gini analysis |
+| Orientation  | Clockwise angle of the dominant texture to the vertical axis |
 
 ## Supported operations
 
