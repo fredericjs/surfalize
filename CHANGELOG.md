@@ -11,6 +11,7 @@
   initial guess from each profile anymore but only once from the fourier transform.
 - Reworked file loading code
 - Added support for sur files
+- Added basic operator overloading for arithmetic operations to Surface, e.g. "surface + 5.2" or "surface1 - surface2"
 ## v0.3.0:
 - Removed underscore from Surface._data, ._step_x, ._step_y, ._width_um, ._height_um since they are supposed to be
   public attributes

@@ -235,6 +235,55 @@ class Surface:
         """
         self.show()
 
+    def _arithmetic_operation(self, other, func):
+        """
+        Generic template method to be used for arithmetic dunder methods.
+
+        Parameters
+        ----------
+        other: float | Surface
+            other operand.
+        func: function
+            arithmetic function to be applied.
+
+        Returns
+        -------
+        Surface
+        """
+        if isinstance(other, Surface):
+            if self.step_x != other.step_x or self.step_y != other.step_y or self.size != other.size:
+                raise ValueError('Surface objects must have same dimensions and stepsize.')
+            return Surface(func(self.data, other.data), self.step_x, self.step_y)
+        elif isinstance(other, (int, float)):
+            return Surface(func(self.data, other), self.step_x, self.step_y)
+        raise ValueError(f'Adding of {type(other)} not supported.')
+    def __add__(self, other):
+        return self._arithmetic_operation(other, lambda a, b: a+b)
+
+    __radd__ = __add__
+
+    def __sub__(self, other):
+        return self._arithmetic_operation(other, lambda a, b: a-b)
+
+    __rsub__ = __sub__
+
+    def __mul__(self, other):
+        return self._arithmetic_operation(other, lambda a, b: a*b)
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, other):
+        return self._arithmetic_operation(other, lambda a, b: a/b)
+
+    def __eq__(self, other):
+        if not isinstance(other, Surface):
+            return False
+        if self.step_x != other.step_x or self.step_y != other.step_y or self.size != other.size:
+            return False
+        if np.any(self.data != other.data):
+            return False
+        return True
+
     @classmethod
     def load(cls, filepath):
         """
