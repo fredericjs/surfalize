@@ -152,10 +152,10 @@ class Batch:
    parameters Sa, Sq and Sz can be registered for later calculation in the following manner:
 
    >>> batch = Batch(filespaths)
-   >>> batch.level().filter(10, mode='lowpass').align().Sa().Sq().Sz()
+   >>> batch.level().filter(filter_type='lowpass', cutoff=10).align().Sa().Sq().Sz()
 
    Or on separate lines:
-   >>> batch.level().filter(10, mode='lowpass').align()
+   >>> batch.level().filter(filter_type='lowpass', cutoff=10).align()
    >>> batch.Sa()
    >>> batch.Sq()
    >>> batch.Sz()
@@ -183,7 +183,7 @@ class Batch:
     >>> from pathlib import Path
     >>> files = Path().cwd().glob('*.vk4')
     >>> batch = Batch(filespaths, addition_data='additional_data.xlsx')
-    >>> batch.level().filter(10, mode='lowpass').Sa().Sq().Sdr()
+    >>> batch.level().filter('lowpass', 10).Sa().Sq().Sdr()
    """
     
     def __init__(self, filepaths, additional_data=None):
@@ -364,18 +364,19 @@ class Batch:
         self._operations.append(operation)
         return self
             
-    def filter(self, cutoff, *, mode, cutoff2=None):
+    def filter(self, filter_type, cutoff, cutoff2=None):
         """
-        Registers Surface.filter for later execution. Inplace is True by default.
+        Registers Surface.filter for later execution. Inplace is True by default. The filter_type both cannot be used
+        for batch analysis.
 
         Parameters
         ----------
+        filter_type: str
+            Mode of filtering. Possible values: 'highpass', 'lowpass', 'bandpass'.
         cutoff: float
             Cutoff frequency in 1/µm at which the high and low spatial frequencies are separated.
             Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
-        mode: str
-            Mode of filtering. Possible values: 'highpass', 'lowpass', 'both', 'bandpass'.
-        cutoff2: float
+        cutoff2: float | None, default None
             Used only in mode='bandpass'. Specifies the lower cutoff frequency of the bandpass filter. Must be greater
             than cutoff.
 
@@ -383,7 +384,8 @@ class Batch:
         -------
         self
         """
-        operation = Operation('filter', args=(cutoff,), kwargs=dict(mode=mode, cutoff2=cutoff2, inplace=True))
+        operation = Operation('filter', args=(filter_type, cutoff),
+                              kwargs=dict(cutoff2=cutoff2, inplace=True))
         self._operations.append(operation)
         return self
     
