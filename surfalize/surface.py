@@ -23,6 +23,7 @@ from .common import sinusoid, register_returnlabels
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
+from .filter import GaussianFilter
 try:
     from .calculations import surface_area
     CYTHON_DEFINED = True
@@ -672,13 +673,11 @@ class Surface:
         return Surface(rotated_cropped, step_x, step_y)
     
     @no_nonmeasured_points
-    def filter(self, cutoff, *, mode, cutoff2=None, inplace=False):
+    def filter(self, filter_type, cutoff, cutoff2=None, inplace=False):
         """
-        Filters the surface by zeroing bins in the Fourier Transform. This introduces errors since the direct zeroing
-        of bins is equivalent to applying a rectangular windowing function to the dft, which is equivalent to the
-        convolution of the signal with a sinc(x) function! Use at your own risk.
+        Filters the surface by applying a Gaussian filter.
 
-        There a several possible modes of filtering:
+        There a several types of filtering:
 
         - 'highpass': computes spatial frequencies above the specified cutoff value
         - 'lowpass': computes spatial frequencies below the specified cutoff value
@@ -690,12 +689,12 @@ class Surface:
 
         Parameters
         ----------
+        filter_type: str
+            Mode of filtering. Possible values: 'highpass', 'lowpass', 'both', 'bandpass'.
         cutoff: float
             Cutoff frequency in 1/µm at which the high and low spatial frequencies are separated.
             Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
-        mode: str
-            Mode of filtering. Possible values: 'highpass', 'lowpass', 'both', 'bandpass'.
-        cutoff2: float
+        cutoff2: float | None, default None
             Used only in mode='bandpass'. Specifies the lower cutoff frequency of the bandpass filter. Must be greater
             than cutoff.
         inplace: bool, default False
@@ -708,51 +707,35 @@ class Surface:
         surface: surfalize.Surface
             Surface object.
         """
-        if mode not in ('highpass', 'lowpass', 'both', 'bandpass'):
+        if filter_type not in ('highpass', 'lowpass', 'both', 'bandpass'):
             raise ValueError("Invalid mode selected")
-        if mode == 'both' and inplace:
+        if filter_type == 'both' and inplace:
             raise ValueError(
                 "Mode 'both' does not support inplace operation since two Surface objects will be returned")
 
-        if mode == 'bandpass':
+        if filter_type == 'bandpass':
             if cutoff2 is None:
                 raise ValueError("cutoff2 must be provided.")
             if cutoff2 <= cutoff:
                 raise ValueError("The value of cutoff2 must be greater than the value of cutoff.")
-            cutoff_freq2 = 1 / cutoff2
 
-        cutoff_freq = 1 / cutoff
-        dft = np.fft.fftshift(np.fft.fft2(self.data))
-        freq_y = np.fft.fftshift(np.fft.fftfreq(self.size.y, self.step_y))
-        freq_x = np.fft.fftshift(np.fft.fftfreq(self.size.x, self.step_x))
-        freq_x, freq_y = np.meshgrid(freq_x, freq_y)
-        freq = np.sqrt(freq_x ** 2 + freq_y ** 2)
-        filter_ = freq <= cutoff_freq
-        if mode == 'lowpass':
-            data_filtered = np.fft.ifft2(np.fft.ifftshift(dft * filter_)).real
-            if inplace:
-                self._set_data(data=data_filtered)
-                return self
-            return Surface(data_filtered, self.step_x, self.step_y)
-        if mode == 'highpass':
-            data_filtered = np.fft.ifft2(np.fft.ifftshift(dft * ~filter_)).real
-            if inplace:
-                self._set_data(data=data_filtered)
-                return self
-            return Surface(data_filtered, self.step_x, self.step_y)
-        if mode == 'both':
-            data_lowpass = np.fft.ifft2(np.fft.ifftshift(dft * filter_)).real
-            data_highpass = np.fft.ifft2(np.fft.ifftshift(dft * ~filter_)).real
-            return Surface(data_lowpass, self.step_x, self.step_y), Surface(data_highpass, self.step_x, self.step_y)
-        if mode == 'bandpass':
-            filter_lowpass = filter_
-            filter_highpass = freq >= cutoff_freq2
-            data_filtered = np.fft.ifft2(np.fft.ifftshift(dft * filter_lowpass * filter_highpass)).real
-            if inplace:
-                self._set_data(data=data_filtered)
-                return self
-            return Surface(data_filtered, self.step_x, self.step_y)
-        
+            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
+            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff2)
+            return highpass_filter(lowpass_filter(self, inplace=inplace), inplace=inplace)
+
+        if filter_type == 'lowpass':
+            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
+            return lowpass_filter(self, inplace=inplace)
+
+        if filter_type == 'highpass':
+            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff)
+            return highpass_filter(self, inplace=inplace)
+
+        # If filter_type == 'both' is only remaining option
+        highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff)
+        lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
+        return highpass_filter(self, inplace=False), lowpass_filter(self, inplace=False)
+
     def zoom(self, factor, inplace=False):
         """
         Magnifies the surface by the specified factor.

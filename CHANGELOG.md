@@ -9,9 +9,9 @@
 - Surface.depth now considers orientation of the structure and uses correct period in x or y depending on it. It also
   now uses either horizontal or vertical profiles depending on the orientation. Moreover, it doesn't compute the period
   initial guess from each profile anymore but only once from the fourier transform.
-- Reworked file loading code
-- Added support for sur files
+- Reworked file loading code and added support for .sur files
 - Added basic operator overloading for arithmetic operations to Surface, e.g. "surface + 5.2" or "surface1 - surface2"
+- Added Gaussian filter and removed FFT-filter. Surface.filter now invokes a Gaussian filter. 
 ## v0.3.0:
 - Removed underscore from Surface._data, ._step_x, ._step_y, ._width_um, ._height_um since they are supposed to be
   public attributes

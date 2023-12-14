@@ -82,18 +82,18 @@ dimensional periodic structures. The following parameters can be calculated:
 
 ## Supported operations
 
-| Operation       | Description                                                                                                        |
-|-----------------|--------------------------------------------------------------------------------------------------------------------|
-| Leveling        | Subtraction of least squares fit to a plane                                                                        | 
-| Zeroing         | Sets the lowest datapoint of the surface to zero                                                                   | 
-| Centering       | Sets the average value of the surface elevation to zero                                                            |
-| Zooming         | Magnifies the surface by a specified factor                                                                        |
-| Cropping        | Crops the surface in a specified rectangle                                                                         |
-| Rotation        | Rotates the surface by a specified angle in degrees                                                                |
-| Alignment       | Aligns the surface with the dominant texture direction by rotation                                                 |
-| Outlier removal | Removes outliers outside n standard deviation from the mean                                                        |
-| Thresholding    | Thresholding based on areal material ratio                                                                         |
-| Filtering       | Applies a highpass, lowpass or bandpass filter to the <br/>surface by zeroing of the bins of the Fourier transform |
+| Operation       | Description                                                        |
+|-----------------|--------------------------------------------------------------------|
+| Leveling        | Subtraction of least squares fit to a plane                        | 
+| Zeroing         | Sets the lowest datapoint of the surface to zero                   | 
+| Centering       | Sets the average value of the surface elevation to zero            |
+| Zooming         | Magnifies the surface by a specified factor                        |
+| Cropping        | Crops the surface in a specified rectangle                         |
+| Rotation        | Rotates the surface by a specified angle in degrees                |
+| Alignment       | Aligns the surface with the dominant texture direction by rotation |
+| Outlier removal | Removes outliers outside n standard deviation from the mean        |
+| Thresholding    | Thresholding based on areal material ratio                         |
+| Filtering       | Applies a Gaussian highpass, lowpass or bandpass filter            |
 
 ## Basic Usage
 
@@ -152,7 +152,7 @@ surface.rotate(10)
 These methods can be chained:
 
 ```
-surface = Surface.load(filepath).level().filter(0.8, mode='lowpass')
+surface = Surface.load(filepath).level().filter(filter_type='lowpass', cutoff=0.8)
 surface.show()
 ```
 
@@ -172,12 +172,12 @@ All operations of the surface can be applied to the Batch analogously to a Surfa
 However, they are not applied immediately but registered for later execution.
 ```
 batch.level()
-batch.filter(20, mode='highpass')
+batch.filter('highpass', 20)
 ```
 
 Each operation on the batch returns the Batch object, allowing for method chaining.
 ```
-batch = Batch(filepaths).level().filter(20, mode='highpass').align().center()
+batch = Batch(filepaths).level().filter('highpass', 20).align().center()
 ```
 The calculation of roughness parameters can be done indiviually and chained.
 ```
@@ -215,7 +215,7 @@ Dataframe that is returned by `Batch.execute`.
 
 ```
 batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\laserparameters.xlsx')
-batch.level().filter(20, mode='highpass').align().roughness_parameters()
+batch.level().filter('highpass', 20).align().roughness_parameters()
 df = batch.execute()
 ```
 
