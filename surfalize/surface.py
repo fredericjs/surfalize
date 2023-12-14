@@ -286,7 +286,7 @@ class Surface:
         return True
 
     def __hash__(self):
-        return hash(self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std())
+        return hash((self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std()))
 
     @classmethod
     def load(cls, filepath):
