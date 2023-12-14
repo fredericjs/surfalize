@@ -1,4 +1,4 @@
-## v0.0.4:
+## v0.4.0:
 - Reduced file load times by >90% using numpy.fromfile to read the height data
 - Leveling now no longer also centers the data around the mean
 - Fixed wrong alignment direction in Surface.align
