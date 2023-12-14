@@ -12,7 +12,7 @@ LAYOUT_HEADER = (
     ('code', '12s', False),
     ('format', 'h', False),
     ('n_objects', 'h', False),
-    ('version_number', 'h', True),
+    ('version_number', 'h', False),
     ('studiable_type', 'h', True),
     ('name_object', '30s', True),
     ('name_operator', '30s', True),
@@ -76,7 +76,7 @@ def read_sur(filepath):
         if header['code'] != MAGIC or header['version_number'] != 1:
             raise CorruptedFileError
 
-        if header['unit_x'] != 1 or header['unit_y'] != 1 or header['unit_z'] != 1:
+        if header['unit_ratio_x'] != 1 or header['unit_ratio_y'] != 1 or header['unit_ratio_z'] != 1:
             raise NotImplementedError("This file type cannot be correctly read currently.")
 
         filehandle.seek(header['length_comment'], 1)
