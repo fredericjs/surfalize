@@ -133,13 +133,13 @@ surface = surface.level()
 surface.level(inplace=True)
 
 # Filters the surface using the Fourier transform
-surface_low = surface.filter(10, mode='highpass', inplace=False)
+surface_low = surface.filter(filter_type='highpass', cutoff=10, inplace=False)
 
 # Filter form and noise
-surface_filtered = surface.filter(0.8, mode='bandpass', cutoff2=10)
+surface_filtered = surface.filter(filter_type='bandpass', cutoff=0.8, cutoff2=10)
 
 # # Separate waviness and roughness and return both
-surface_roughness, surface_waviness = surface.filter(10, mode='both')
+surface_roughness, surface_waviness = surface.filter('highpass', 10)
 
 # If the surface contains any non-measured points, the points must be interpolated before any other operation can be applied
 surface = surface.fill_nonmeasured(mode='nearest')
