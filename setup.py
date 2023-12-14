@@ -20,6 +20,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
+    python_requires='>=3.6',
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',

@@ -38,29 +38,29 @@ be aware that a change of the pyx files does not reinvoke the Cython build proce
 
 This package aims to implement all parameters defined in ISO 25178. Currently, the following parameters are supported:
 
-| Category            | Parameter       | Full name                        | Validated against                  |
-|---------------------|-----------------|----------------------------------|------------------------------------|
-| Height              | Sa              | Arithmetic mean height           | Gwyddion, MountainsMap             |
-|                     | Sq              | Root mean square height          | Gwyddion, MountainsMap             |
-|                     | Sp              | Maximum peak height              | Gwyddion, MountainsMap             |
-|                     | Sv              | Maximum valley depth             | Gwyddion, MountainsMap             |
-|                     | Sz              | Maximum height                   | Gwyddion, MountainsMap             |
-|                     | Ssk             | Skewness                         | Gwyddion, MountainsMap             |
-|                     | Sku             | Kurtosis                         | Gwyddion, MountainsMap             |  
-| Hybrid              | Sdr<sup>1</sup> | Developed interfacial area ratio | Gwyddion<sup>2</sup>, MountainsMap |
-|                     | Sdq             | Root mean square gradient        | MountainsMap                       |
- | Spatial             | Sal             | Autocorrelation length           | -                                  |
-|                     | Str             | Texture aspect ratio             | -                                  |
-| Functional          | Sk              | Core roughness depth             | MountainsMap                       |
-|                     | Spk             | Reduced peak height              | MountainsMap                       |
-|                     | Svk             | Reduced dale height              | MountainsMap                       |
-|                     | Smr2            | Material ratio 1                 | MountainsMap                       |
-|                     | Smr1            | Material ratio 2                 | MountainsMap                       |
-|                     | Sxp             | Peak extreme height              | MountainsMap                       |
-| Functional (volume) | Vmp             | Peak material volume             | MountainsMap                       |
-|                     | Vmc             | Core material volume             | MountainsMap                       |
-|                     | Vvv             | Dale void volume                 | MountainsMap                       |
-|                     | Vvc             | Core void volume                 | MountainsMap                       |
+| Category            | Parameter       | Full name                         | Validated against                  |
+|---------------------|-----------------|-----------------------------------|------------------------------------|
+| Height              | Sa              | Arithmetic mean height            | Gwyddion, MountainsMap             |
+|                     | Sq              | Root mean square height           | Gwyddion, MountainsMap             |
+|                     | Sp              | Maximum peak height               | Gwyddion, MountainsMap             |
+|                     | Sv              | Maximum valley depth              | Gwyddion, MountainsMap             |
+|                     | Sz              | Maximum height                    | Gwyddion, MountainsMap             |
+|                     | Ssk             | Skewness                          | Gwyddion, MountainsMap             |
+|                     | Sku             | Kurtosis                          | Gwyddion, MountainsMap             |  
+| Hybrid              | Sdr<sup>1</sup> | Developed interfacial area ratio  | Gwyddion<sup>2</sup>, MountainsMap |
+|                     | Sdq             | Root mean square gradient         | MountainsMap                       |
+| Spatial             | Sal             | Autocorrelation length            | -                                  |
+|                     | Str             | Texture aspect ratio              | -                                  |
+| Functional          | Sk              | Core roughness depth              | MountainsMap                       |
+|                     | Spk             | Reduced peak height               | MountainsMap                       |
+|                     | Svk             | Reduced dale height               | MountainsMap                       |
+|                     | Smr1            | Material ratio 1                  | MountainsMap                       |
+|                     | Smr2            | Material ratio 2                  | MountainsMap                       |
+|                     | Sxp             | Peak extreme height               | MountainsMap                       |
+| Functional (volume) | Vmp             | Peak material volume              | MountainsMap                       |
+|                     | Vmc             | Core material volume              | MountainsMap                       |
+|                     | Vvv             | Dale void volume                  | MountainsMap                       |
+|                     | Vvc             | Core void volume                  | MountainsMap                       |
 
 <sup>1</sup> Per default, Sdr calculation uses the algorithm proposed by ISO 25178 and also used by MountainsMap
 By keyword argument, the Gwyddion algorithm can be used instead.\
@@ -122,7 +122,9 @@ all_available_parameters = surace.roughness_parameters()
 ```
 
 ### Performing surface operations
-
+Surface operations return a new `Surface` object by default. If `inplace=True` is specified, the operation applies
+to the `Surface` object it is called on and returns it to allow for method chaining. Inplace is generally faster since 
+it does not copy the data and does not need to instantiate a new object.
 ```
 # Levelling the surface using least-sqaures plane compensation
 
@@ -132,21 +134,32 @@ surface = surface.level()
 # Returns self (to allow for method chaining)
 surface.level(inplace=True)
 
-# Filters the surface using the Fourier transform
-surface_low = surface.filter(filter_type='highpass', cutoff=10, inplace=False)
+# Filters the surface using a Gaussian filter
+surface_low = surface.filter(filter_type='highpass', cutoff=10)
 
 # Filter form and noise
 surface_filtered = surface.filter(filter_type='bandpass', cutoff=0.8, cutoff2=10)
 
-# # Separate waviness and roughness and return both
-surface_roughness, surface_waviness = surface.filter('highpass', 10)
+# Separate waviness and roughness at a cutoff wavelength of 10 µm and return both
+surface_roughness, surface_waviness = surface.filter('both', 10)
 
 # If the surface contains any non-measured points, the points must be interpolated before any other operation can be applied
 surface = surface.fill_nonmeasured(mode='nearest')
 
 # The surface can be rotated by a specified angle in degrees
 # The resulting surface will automatically be cropped to not contain any areas without data
-surface.rotate(10)
+surface = surface.rotate(10)
+
+# Aligning the surface texture to a specified axis by rotation, default is y
+surface = surface.align(axis='y')
+
+# Remove outliers
+surface = surace.remove_outliers()
+
+# Threshold the surface, default threshold value is 0.5% of the AbbottCurve
+surface = surface.threshold(threshold=0.5)
+# Non-symmetrical tresholds can be specified
+surface = surface.threshold(threshold=(0.2, 0.5))
 ```
 
 These methods can be chained:
@@ -154,6 +167,24 @@ These methods can be chained:
 ```
 surface = Surface.load(filepath).level().filter(filter_type='lowpass', cutoff=0.8)
 surface.show()
+```
+
+### Plotting
+
+The `Surface` object offers multiple types of plots.
+
+Plotting the topography itself is done using `Surface.show()`. If the repr of a `Surface` object is
+invoked by Jupyter Notebook, it will automaticall call `Surface.show()`.
+```
+# Some arguments can be specified 
+surface.show(cmap='viridis', maskcolor='red')
+```
+The Abbott-Firestone curve and Fourier Transform can be plotted using:
+```
+surface.plot_abbott_curve()
+# Here we apply a Hanning window to mitigate spectral leakage (recommended) as crop the plotted range of 
+frequencies to fxmax and fymax.
+surface.plot_fourier_transform(hanning=True, fxmax=2, fymax=1)
 ```
 
 ### Batch processing
