@@ -237,7 +237,7 @@ from surfalize import Batch
 
 filepaths = Path(r'C:\users\exampleuser\documents\topo_files').glob('*.vk4')
 batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\topo_files\laserparameters.xlsx')
-batch.level().filter(20, mode='highpass').align().roughness_parameters(['Sa', 'Sq', 'Sz'])
+batch.level().filter('highpass', 20).align().roughness_parameters(['Sa', 'Sq', 'Sz'])
 batch.execute(multiprocessing=True, saveto=r'C:\users\exampleuser\documents\roughness_results.xlsx')
 ```
 
