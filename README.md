@@ -6,6 +6,25 @@ surfalize is a python package for analyzing microscope topography measurement da
 rouggness and other topographic parameters. It is intended primarily for microtextured surfaces and is supposed to 
 replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion for the most common tasks.
 
+## How to install
+
+To install the latest release of surfalize, run the following command: 
+```commandline
+pip install surfalize
+```
+If you want to build from source, clone this git repository and run the following command in the root folder
+of the cloned repository.
+```commandline
+pip install .
+```
+However, you will need to have both `Cython` and a C-Compiler installed (MSVC on Windows, 
+gcc on Linux, MinGW is not supported currently). If you install in editable mode using
+```
+pip install -e .
+```
+be aware that a change of the pyx files does not reinvoke the Cython build process. 
+
+
 ## Currently supported file formats
 
 | Manufacturer | Format                 |
