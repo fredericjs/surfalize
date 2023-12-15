@@ -1,3 +1,6 @@
+## [unreleased changes]
+- Added algorithm for computing texture orientation with significantly higher precision than the current fft-based 
+  method. The purely fft-based method can still be selected via keyword argument.
 ## v0.4.0:
 - Reduced file load times by >90% using numpy.fromfile to read the height data
 - Leveling now no longer also centers the data around the mean

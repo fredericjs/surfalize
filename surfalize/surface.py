@@ -19,7 +19,7 @@ import scipy.ndimage as ndimage
 # Custom imports
 from .file import load_file
 from .utils import argclosest, interp1d, is_list_like
-from .common import sinusoid, register_returnlabels
+from .common import sinusoid, fit_sinusoid, register_returnlabels
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -793,7 +793,7 @@ class Surface:
         return Surface(data, self.step_x, self.step_y)
 
     
-    def align(self, axis='y', inplace=False):
+    def align(self, axis='y', method='fft_refined', inplace=False):
         """
         Computes the dominant orientation of the surface pattern and alignes the orientation with the horizontal
         or vertical axis.
@@ -802,6 +802,9 @@ class Surface:
         ----------
         axis: {'x', 'y'}, default 'y'
             The axis with which to align the texture with.
+        method: {'fft_refined', 'fft'}
+            Method by which to calculate the orientation. Default is 'fft_refined'. See Surface.orientation for more
+            details.
         inplace: bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self
@@ -813,7 +816,7 @@ class Surface:
         """
         if axis not in ('x', 'y'):
             raise ValueError('Invalid axis specified.')
-        angle = self.orientation()
+        angle = self.orientation(method=method)
         if axis == 'x':
             angle += 90
         return self.rotate(-angle, inplace=inplace)
@@ -1292,26 +1295,104 @@ class Surface:
         periodx = np.inf if dx == 0 else np.abs(2/dx)
         periody = np.inf if dy == 0 else np.abs(2/dy)
         return periodx, periody
+
+    def _orientation_fft(self):
+        """
+        Computes the orientation angle of the dominant texture towards the vertical axis from the peaks of the Fourier
+        transform.
+
+        Returns
+        -------
+        angle: float
+            Angle of the dominant texture to the vertical axis
+        """
+        dx, dy = self._get_fourier_peak_dx_dy()
+        # Account for special cases
+        if dx == np.inf:
+            return 90
+        if dy == np.inf:
+            return 0
+        return np.rad2deg(np.arctan(dy / dx))
+
+    def _orientation_refined(self):
+        """
+        Computes the orientation angle of the dominant texture towards the vertical axis using a refined algorithm.
+        This method is more costly than the FFT-based method, but offers significantly better angular resolution.
+
+        Returns
+        -------
+        angle: float
+            Angle of the dominant texture to the vertical axis
+        """
+        SAMPLE_RATE_FACTOR = 0.25
+        period_x, period_y = self.period_x_y()
+
+        if period_y > period_x:
+            # We sample at 0.25 * period because we need to at least obey the Nyquist theorem
+            period_px = int(period_x / self.step_x)
+            dist_px = int(period_px * SAMPLE_RATE_FACTOR)
+            nprofiles = int(self.size.y / dist_px)
+            get_profile = lambda idx: self.data[idx]
+        else:
+            period_px = int(period_y / self.step_y)
+            dist_px = int(period_px * SAMPLE_RATE_FACTOR)
+            nprofiles = int(self.size.x / dist_px)
+            get_profile = lambda idx: self.data[:, idx]
+
+        xfp = np.zeros(nprofiles)
+        for i in range(nprofiles):
+            profile = get_profile(i * dist_px)
+            # We make an initial guess for the fit
+            p0 = ((profile.max() - profile.min()) / 2, period_px, 0, profile.mean())
+            _, p, x0, _ = fit_sinusoid(np.arange(profile.size), profile, p0=p0)
+            # This computes the position of the first peak of the sinusoid
+            xfp[i] = (x0 + p / 4) % p
+
+        # Now we need to get rid of the points where the first peak jumps by one period
+        diff = np.diff(xfp)
+        # We compute the absolute difference to the median slope
+        # We assume that we have more values that correspond to the correct slope than outliers where the peak
+        # jumps back by one period. For this to be true, we need to sample at least a couple points between each
+        # periodic interval, which is determined by SAMPLE_RATE_FACTOR
+        diff_norm = np.abs((diff - np.median(diff)))
+        diff_norm = diff_norm / np.abs(diff_norm).max()
+        # Here we remove all values that deviate more than 5% from the median slope
+        THRESHOLD = 0.05
+        d = diff[diff_norm < THRESHOLD].mean()
+
+        # Compute the angle
+        angle = np.rad2deg(np.arctan(d / dist_px))
+        # If the texture is more aligned with the horizontal axis, we need to correct the angle
+        if period_x > period_y:
+            angle = np.sign(angle) * 90 - angle
+        return angle
     
     @lru_cache
     @no_nonmeasured_points
-    def orientation(self):
+    def orientation(self, method='fft_refined'):
         """
-        Computes the orientation angle of the dominant texture from the peaks of the Fourier transform.
+        Computes the orientation angle of the dominant texture to the vertical axis in degree. The fft method
+        estimates the angle from the peak positions in the 2d Fourier transform. However, the angular resolution for
+        low frequencies is quite poor and therefore deviations of up to multiple degree should be expected depending on
+        the angle. The fft_refined method refines the estimate from the Fourier transform by sampling profiles along
+        the texture, fitting the profiles with a sinusoid and computing the drift of the position of the first peak.
+        From this drift, the angle can be obtained with much better precision. The tradeoff is longer computing time.
+
+        Parameters
+        ----------
+        method: {'fft_refined', 'fft'}
+            Method by which to calculate the orientation. Default is 'fft_refined'.
 
         Returns
         -------
         orientation: float
+            Angle of dominant texture to vertical axis in degree.
         """
-        dx, dy = self._get_fourier_peak_dx_dy()
-        #Account for special cases
-        if dx == 0:
-            orientation = 90
-        elif dy == 0:
-            orientation = 0
-        else:
-            orientation = np.rad2deg(np.arctan(dy/dx))
-        return orientation
+        if method == 'refined':
+            return self._orientation_refined()
+        elif method == 'fft':
+            return self._orientation_fft()
+        raise ValueError('Invalid method specified.')
 
     _CACHED_METHODS.append(orientation)
     
