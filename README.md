@@ -144,7 +144,7 @@ surface_filtered = surface.filter(filter_type='bandpass', cutoff=0.8, cutoff2=10
 surface_roughness, surface_waviness = surface.filter('both', 10)
 
 # If the surface contains any non-measured points, the points must be interpolated before any other operation can be applied
-surface = surface.fill_nonmeasured(mode='nearest')
+surface = surface.fill_nonmeasured(method='nearest')
 
 # The surface can be rotated by a specified angle in degrees
 # The resulting surface will automatically be cropped to not contain any areas without data
