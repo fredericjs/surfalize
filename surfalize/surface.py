@@ -1380,7 +1380,7 @@ class Surface:
         ----------
         nprofiles: int, default 30
             Number of profiles to sample from the surface.
-        sampling_width: float, defualt 0.2
+        sampling_width: float, default 0.2
             Sampling width around the extrema of the sinusoid as a fraction of the spatial period.
         retstd: bool, default True
             Return the standard deviation.
