@@ -1289,8 +1289,8 @@ class Surface:
         (periodx, periody): tuple[float, float]
         """
         dx, dy = self._get_fourier_peak_dx_dy()
-        periodx = 0 if dx == 0 else np.abs(2/dx)
-        periody = 0 if dy == 0 else np.abs(2/dy)
+        periodx = np.inf if dx == 0 else np.abs(2/dx)
+        periody = np.inf if dy == 0 else np.abs(2/dy)
         return periodx, periody
     
     @lru_cache
