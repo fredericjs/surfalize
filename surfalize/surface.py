@@ -157,7 +157,7 @@ class Surface:
                             'homogeneity')
 
     # List of methods that implement lru cache
-    CACHED_METODS = []
+    _CACHED_METHODS = []
     
     def __init__(self, height_data, step_x, step_y):
         self.data = height_data
@@ -194,7 +194,7 @@ class Surface:
         -------
         None
         """
-        for method in self.CACHED_METODS:
+        for method in self._CACHED_METHODS:
             method.cache_clear()
             
     def _set_data(self, data=None, step_x=None, step_y=None):
@@ -866,7 +866,7 @@ class Surface:
 
         return dx, dy
 
-    CACHED_METODS.append(_get_fourier_peak_dx_dy)
+    _CACHED_METHODS.append(_get_fourier_peak_dx_dy)
 
     # Characterization #################################################################################################
    
@@ -1032,7 +1032,7 @@ class Surface:
         """
         return AutocorrelationFunction(self)
 
-    CACHED_METODS.append(_get_autocorrelation_function)
+    _CACHED_METHODS.append(_get_autocorrelation_function)
 
     def Sal(self, s=0.2):
         """
@@ -1091,7 +1091,7 @@ class Surface:
         """
         return AbbottFirestoneCurve(self)
 
-    CACHED_METODS.append(_get_abbott_firestone_curve)
+    _CACHED_METHODS.append(_get_abbott_firestone_curve)
 
     def Sk(self):
         """
@@ -1276,7 +1276,7 @@ class Surface:
         dx, dy = self._get_fourier_peak_dx_dy()
         return 2/np.hypot(dx, dy)
 
-    CACHED_METODS.append(period)
+    _CACHED_METHODS.append(period)
 
     @lru_cache
     @no_nonmeasured_points
@@ -1313,7 +1313,7 @@ class Surface:
             orientation = np.rad2deg(np.arctan(dy/dx))
         return orientation
 
-    CACHED_METODS.append(orientation)
+    _CACHED_METHODS.append(orientation)
     
     @no_nonmeasured_points
     def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr')):
@@ -1469,7 +1469,7 @@ class Surface:
             return np.nanmean(depths), np.nanstd(depths)
         return np.nanmean(depths)
 
-    CACHED_METODS.append(depth)
+    _CACHED_METHODS.append(depth)
 
     def aspect_ratio(self):
         """
