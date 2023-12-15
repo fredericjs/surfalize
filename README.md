@@ -101,7 +101,7 @@ dimensional periodic structures. The following parameters can be calculated:
 
 ## Basic Usage
 
-```
+```Python
 from surfalize import Surface
 
 filepath = 'example.vk4'
@@ -111,7 +111,7 @@ surface.show()
 
 ### Extracting roughness and topographic parameters
 
-```
+```Python
 # Individual calculation of parameters
 sa = surface.Sa()
 sq = surface.Sq()
@@ -129,7 +129,7 @@ all_available_parameters = surace.roughness_parameters()
 Surface operations return a new `Surface` object by default. If `inplace=True` is specified, the operation applies
 to the `Surface` object it is called on and returns it to allow for method chaining. Inplace is generally faster since 
 it does not copy the data and does not need to instantiate a new object.
-```
+```Python
 # Levelling the surface using least-sqaures plane compensation
 
 # Returns new Surface object 
@@ -168,7 +168,7 @@ surface = surface.threshold(threshold=(0.2, 0.5))
 
 These methods can be chained:
 
-```
+```Python
 surface = Surface.load(filepath).level().filter(filter_type='lowpass', cutoff=0.8)
 surface.show()
 ```
@@ -179,12 +179,12 @@ The `Surface` object offers multiple types of plots.
 
 Plotting the topography itself is done using `Surface.show()`. If the repr of a `Surface` object is
 invoked by Jupyter Notebook, it will automaticall call `Surface.show()`.
-```
+```Python
 # Some arguments can be specified 
 surface.show(cmap='viridis', maskcolor='red')
 ```
 The Abbott-Firestone curve and Fourier Transform can be plotted using:
-```
+```Python
 surface.plot_abbott_curve()
 # Here we apply a Hanning window to mitigate spectral leakage (recommended) as crop the plotted range of 
 frequencies to fxmax and fymax.
@@ -193,7 +193,9 @@ surface.plot_fourier_transform(hanning=True, fxmax=2, fymax=1)
 
 ### Batch processing
 
-```
+surfalize provides a module for batch processing and surface roughness evaluation of large sets of measurement files.
+
+```Python
 from pathlib import Path
 from surfalize import Batch
 
@@ -205,32 +207,32 @@ batch = Batch(filepaths)
 
 All operations of the surface can be applied to the Batch analogously to a Surface object.
 However, they are not applied immediately but registered for later execution.
-```
+```Python
 batch.level()
 batch.filter('highpass', 20)
 ```
 
 Each operation on the batch returns the Batch object, allowing for method chaining.
-```
+```Python
 batch = Batch(filepaths).level().filter('highpass', 20).align().center()
 ```
 The calculation of roughness parameters can be done indiviually and chained.
-```
+```Python
 batch.Sa().Sq().Sq().Sdr()
 ```
 Arguments to the roughness parameter calculations, such as _p_ and _q_ can be provided in the individual call.
-```
+```Python
 batch.Vmc(p=10, q=80)
 ```
 Parameters can also be calculated in bulk using `Batch.roughness_parameters()`:
-```
+```Python
 # Computes Sa, Sq, Sz
 batch.roughness_parameters(['Sa', 'Sq', 'Sz'])
 # Computes all available parameters
 batch.roughness_parameters()
 ```
 If arguments need to be supplied, the parameter must be constructed as a `Parameter` object:
-```
+```Python
 from surfalize.batch import Parameter
 Vmc = Parameter('Vmc', kwargs=dict(p=10, q=80))
 batch.roughness_parameters(['Sa', 'Sq', 'Sz', Vmc])
@@ -239,7 +241,7 @@ batch.roughness_parameters(['Sa', 'Sq', 'Sz', Vmc])
 Finally, the batch processing is executed by calling `Batch.execute`, returning a `pd.DataFrame`. Optionally, 
 `multiprocessing=True` can be specified to split the load among all available CPU cores. Moreover, the results 
 can be saved to an Excel Spread sheet by specifiying a path for `saveto=r'path\to\excel_file.xlsx`.
-```
+```Python
 df = batch.execute(multiprocessing=True)
 ```
 
@@ -248,7 +250,7 @@ parameters, such as laser parameters. The file must contain a column `file`, whi
 extension in the form `name.ext`, e.g. `topography_50X.vk4`. All other columns will be merged into the resulting
 Dataframe that is returned by `Batch.execute`. 
 
-```
+```Python
 batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\laserparameters.xlsx')
 batch.level().filter('highpass', 20).align().roughness_parameters()
 df = batch.execute()
@@ -266,7 +268,7 @@ Excel files located in `C:\users\exampleuser\documents\topo_files\laserparameter
 | topo3.vk4 | 100   | 50            | 12.5           |
 | topo4.vk4 | 50    | 50            | 12.5           |
 
-```
+```Python
 from pathlib import Path
 from surfalize import Batch
 
