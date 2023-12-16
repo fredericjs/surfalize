@@ -1388,7 +1388,7 @@ class Surface:
         orientation: float
             Angle of dominant texture to vertical axis in degree.
         """
-        if method == 'refined':
+        if method == 'fft_refined':
             return self._orientation_refined()
         elif method == 'fft':
             return self._orientation_fft()

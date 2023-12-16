@@ -51,7 +51,7 @@ class Profile:
         return np.abs((self._data - self._data.mean()).min())
 
     def Rz(self):
-        return self.Sp() + self.Sv()
+        return self.Rp() + self.Rv()
 
     def Rsk(self):
         return ((self._data - self._data.mean()) ** 3).sum() / self._data.size / self.Rq() ** 3
@@ -113,5 +113,7 @@ class Profile:
     def show(self):
         fig, ax = plt.subplots(figsize=(10, 3))
         ax.set_xlim(0, self._length_um)
-        ax.plot(np.linspace(0, self._length_um, self._data.size), self._data, c='k')
+        ax.set_xlabel('x [µm]')
+        ax.set_ylabel('z [µm]')
+        ax.plot(np.linspace(0, self._length_um, self._data.size), self._data, c='k', lw=1)
         plt.show()
