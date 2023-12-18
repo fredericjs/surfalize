@@ -1,4 +1,4 @@
-## [unreleased changes]
+## v0.5.0
 - Added algorithm for computing texture orientation with significantly higher precision than the current fft-based 
   method. The purely fft-based method can still be selected via keyword argument.
 - Replaced functools.lru_cache with custom cache implementation since lru_cache causes memory leaks when applied to 

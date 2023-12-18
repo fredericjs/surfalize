@@ -6,4 +6,3 @@
 - Write tests for batch processing
 - Write documentation
 - Implement 3d plots
-- Implement Gaussian Filter
