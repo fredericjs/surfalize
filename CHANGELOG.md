@@ -1,6 +1,10 @@
 ## [unreleased changes]
 - Added algorithm for computing texture orientation with significantly higher precision than the current fft-based 
   method. The purely fft-based method can still be selected via keyword argument.
+- Replaced functools.lru_cache with custom cache implementation since lru_cache causes memory leaks when applied to 
+  instance methods. This would result in a substantial memory leak during batch processing because the surface objects
+  would not be garbage collected once they went out of scope. 
+- Added cache to the height paramters, reducing calculation time by ~20% since Sq is invoked multiple times. 
 ## v0.4.0:
 - Reduced file load times by >90% using numpy.fromfile to read the height data
 - Leveling now no longer also centers the data around the mean
