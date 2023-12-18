@@ -682,10 +682,10 @@ class Surface(CachedInstance):
         filter_type: str
             Mode of filtering. Possible values: 'highpass', 'lowpass', 'both', 'bandpass'.
         cutoff: float
-            Cutoff frequency in 1/µm at which the high and low spatial frequencies are separated.
+            Cutoff wavelength in µm at which the high and low spatial frequencies are separated.
             Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
         cutoff2: float | None, default None
-            Used only in mode='bandpass'. Specifies the lower cutoff frequency of the bandpass filter. Must be greater
+            Used only in mode='bandpass'. Specifies the larger cutoff wavelength of the bandpass filter. Must be greater
             than cutoff.
         inplace: bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
