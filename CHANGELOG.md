@@ -7,6 +7,7 @@
 - Added cache to the height paramters, reducing calculation time by ~20% since Sq is invoked multiple times. 
 - Fixed dtype mismatch in Cython code for topographies with float32 instead of float64 dtype (usually plu and plux 
   files) 
+- Leveling now works on surfaces with non-measured points
 ## v0.4.0:
 - Reduced file load times by >90% using numpy.fromfile to read the height data
 - Leveling now no longer also centers the data around the mean

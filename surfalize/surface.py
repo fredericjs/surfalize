@@ -570,8 +570,7 @@ class Surface(CachedInstance):
             self._nonmeasured_points_exist = False
             return self
         return Surface(data_interpolated, self.step_x, self.step_y)
-    
-    @no_nonmeasured_points
+
     def level(self, inplace=False):
         """
         Levels the surface by subtraction of a least squares fit plane.
@@ -588,10 +587,12 @@ class Surface(CachedInstance):
             Surface object.
         """
         x, y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
-        # Flatten the x, y, and height_data arrays
-        x_flat = x.flatten()
-        y_flat = y.flatten()
+        # Use only valid values
         height_flat = self.data.flatten()
+        mask = ~np.isnan(height_flat)
+        x_flat = x.flatten()[mask]
+        y_flat = y.flatten()[mask]
+        height_flat = height_flat[mask]
         # Create a design matrix A for linear regression
         A = np.column_stack((x_flat, y_flat, np.ones_like(x_flat)))
         # Use linear regression to fit a plane to the data
