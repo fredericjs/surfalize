@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -7,6 +5,18 @@ from .utils import argclosest, interp1d
 from .common import CachedInstance, cache
 
 class AbbottFirestoneCurve(CachedInstance):
+    """
+    Represents the Abbott-Firestone curve of a Surface object and provides methods to calculate the functional
+    roughness parameters derived from it.
+
+    Parameters
+    ----------
+    surface: Surface
+        Surface object from which to calcualte the Abbott-Firestone curve
+    nbins: int, default 10000
+        Number of bins for the material density histogram. Large numbers result in longer computation time but increased
+        accuracy of results. The default value of 10000 represents a reasonable compromise.
+    """
     # Width of the equivalence line in % as defined by ISO 25178-2
     EQUIVALENCE_LINE_WIDTH = 40
 
@@ -18,6 +28,13 @@ class AbbottFirestoneCurve(CachedInstance):
 
     @cache
     def _get_material_ratio_curve(self):
+        """
+        Computes the height bins and cumulated material ratio.
+
+        Returns
+        -------
+        height, material_ratio: tuple[ndarray[float], ndarray[float]]
+        """
         hist, height = np.histogram(self._surface.data, bins=self._nbins)
         hist = hist[::-1]  # sort descending
         height = height[::-1]  # sort descending
@@ -27,6 +44,15 @@ class AbbottFirestoneCurve(CachedInstance):
 
     # This is a bit hacky right now with the modified state. Maybe clean that up in the future
     def _calculate_curve(self):
+        """
+        Performs the calculations necessary for evaluation of the functional parameters. First, the function finds
+        the 40% equivalence line and computes its slope as well as intercept with 0% and 100% material ratio.
+        The resulting values and a linear interpolator for Smc and Smr are saved in instance attributes.
+
+        Returns
+        -------
+        None
+        """
         parameters = dict()
         # Using the potentially cached values here
         height, material_ratio = self._get_material_ratio_curve()

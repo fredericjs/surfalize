@@ -1,4 +1,3 @@
-from functools import lru_cache
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.signal import correlate
@@ -6,7 +5,15 @@ from .common import CachedInstance, cache
 
 
 class AutocorrelationFunction(CachedInstance):
+    """
+    Represents the 2d autocorrelation function of a Surface object and provides methods to calculate the autocorrelation
+    length Sal and texture aspect ratio Str.
 
+    Parameters
+    ----------
+    surface: Surface
+        Surface object on which to calculate the 2d autocorrelation function.
+    """
     def __init__(self, surface):
         super().__init__()
         # For now we level and center. In the future, we should replace that with lookups of booleans

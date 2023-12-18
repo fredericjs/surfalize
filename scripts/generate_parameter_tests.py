@@ -9,39 +9,39 @@ args = parser.parse_args()
 preamble = """from surfalize import Surface
 import numpy as np
 from pytest import approx
+"""
 
-np.random.seed(0)
-
-period = 20
+code_generate_surface ="""
+step = 0.1
+period = 20 / step
+period_lipss = 1 / step
 nx = 1000
 ny = 700
 x = np.arange(nx)
 y = np.arange(ny)
 x, y = np.meshgrid(x, y)
-z = np.sin(x/period * 2 * np.pi)
+z = np.sin(x/period * 2 * np.pi) + 10
+z += 0.5*(np.sin((x-period/2)/period * 2 * np.pi) + 1  0.3 * *)np.sin((np.sin(y/10) + x)/period_lipss * 2 * np.pi)
+z += np.random.normal(size=z.shape) / 5
 surface = Surface(z, 0.1, 0.1)
+"""
 
-period = 80
-nx = 1000
-ny = 700
-x = np.arange(nx)
-y = np.arange(ny)
-x, y = np.meshgrid(x, y)
-z = np.sin(x/period * 2 * np.pi)
-z_noise = z + np.random.normal(size=z.shape) / 5
-surface_noise = Surface(z_noise, 0.1, 0.1)
+fixture = f"""
+@pytest.fixture
+def surface():
+    {code_generate_surface}
+    return surface
 """
 
 exec(preamble)
+exec(code_generate_surface)
 
 text = preamble + '\n\n'
 AVAILABLE_PARAMETERS = Surface.AVAILABLE_PARAMETERS
-surf_objs = {'surface': surface, 'surface_noise': surface_noise}
 for par in AVAILABLE_PARAMETERS:
-    test = f'def test_{par}():\n'
-    for name, surf_obj in surf_objs.items():
-        res = round(getattr(surf_obj, par)(), 8)
-        test += f'    assert {name}.{par}() == approx({res})\n'
+    test = f'def test_{par}(surface):\n'
+    res = round(getattr(surface, par)(), 8)
+    test += f'    assert surface.{par}() == approx({res})\n'
     text += test + '\n'
 
 with open(args.output, 'w') as file:
