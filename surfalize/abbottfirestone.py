@@ -4,17 +4,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .utils import argclosest, interp1d
+from .common import CachedInstance, cache
 
-class AbbottFirestoneCurve:
+class AbbottFirestoneCurve(CachedInstance):
     # Width of the equivalence line in % as defined by ISO 25178-2
     EQUIVALENCE_LINE_WIDTH = 40
 
     def __init__(self, surface, nbins=10000):
+        super().__init__()
         self._surface = surface
         self._nbins = nbins
         self._calculate_curve()
 
-    @lru_cache
+    @cache
     def _get_material_ratio_curve(self):
         hist, height = np.histogram(self._surface.data, bins=self._nbins)
         hist = hist[::-1]  # sort descending
@@ -70,7 +72,7 @@ class AbbottFirestoneCurve:
         self._height = height
         self._material_ratio = material_ratio
 
-    @lru_cache
+    @cache
     def Sk(self):
         return self._yupper - self._ylower
 
@@ -80,15 +82,15 @@ class AbbottFirestoneCurve:
     def Smc(self, mr):
         return float(self._smc_fit(mr))
 
-    @lru_cache
+    @cache
     def Smr1(self):
         return self.Smr(self._yupper)
 
-    @lru_cache
+    @cache
     def Smr2(self):
         return self.Smr(self._ylower)
 
-    @lru_cache
+    @cache
     def Spk(self):
         # For now we are using the closest value in the array to ylower
         # This way, we are losing or gaining a bit of area. In the future we might use some
@@ -100,7 +102,7 @@ class AbbottFirestoneCurve:
         Spk = 2 * A1 / self.Smr1()
         return Spk
 
-    @lru_cache
+    @cache
     def Svk(self):
         # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
         idx = argclosest(self._ylower, self._height)
@@ -108,22 +110,22 @@ class AbbottFirestoneCurve:
         Svk = 2 * A2 / (100 - self.Smr2())
         return Svk
 
-    @lru_cache
+    @cache
     def Vmp(self, p=10):
         idx = argclosest(self.Smc(p), self._height)
         return np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100
 
-    @lru_cache
+    @cache
     def Vmc(self, p=10, q=80):
         idx = argclosest(self.Smc(q), self._height)
         return np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100 - self.Vmp(p)
 
-    @lru_cache
+    @cache
     def Vvv(self, q=80):
         idx = argclosest(self.Smc(80), self._height)
         return np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100
 
-    @lru_cache
+    @cache
     def Vvc(self, p=10, q=80):
         idx = argclosest(self.Smc(10), self._height)
         return np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.Vvv(q)

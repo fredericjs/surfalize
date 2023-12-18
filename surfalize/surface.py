@@ -1,8 +1,7 @@
 # Standard imports
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
-from functools import wraps, lru_cache
+from functools import wraps
 from collections import namedtuple
 
 # Scipy stack
@@ -19,7 +18,7 @@ import scipy.ndimage as ndimage
 # Custom imports
 from .file import load_file
 from .utils import argclosest, interp1d, is_list_like
-from .common import sinusoid, fit_sinusoid, register_returnlabels
+from .common import sinusoid, fit_sinusoid, register_returnlabels, CachedInstance, cache
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -82,7 +81,7 @@ def no_nonmeasured_points(function):
     return wrapper_function
 
 
-class Surface:
+class Surface(CachedInstance):
     """
     Representation a 2D-topography characterised by a 2d array of height data and an associated stepsize in x and y.
     x hereby denotes the horizontal axis, which corresponds to the second array dimension, while y denotes the vertical
@@ -155,11 +154,9 @@ class Surface:
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
                             'homogeneity')
-
-    # List of methods that implement lru cache
-    _CACHED_METHODS = []
     
     def __init__(self, height_data, step_x, step_y):
+        super().__init__() # Initialize cached instance
         self.data = height_data
         self.step_x = step_x
         self.step_y = step_y
@@ -185,17 +182,6 @@ class Surface:
         size: namedtuple(y, x)
         """
         return size(*self.data.shape)
-
-    def _clear_cache(self):
-        """
-        Clears the lru_cache of all methods registered in Surface.CACHED_METHODS.
-
-        Returns
-        -------
-        None
-        """
-        for method in self._CACHED_METHODS:
-            method.cache_clear()
             
     def _set_data(self, data=None, step_x=None, step_y=None):
         """
@@ -224,7 +210,7 @@ class Surface:
             self.step_y = step_y
         self.width_um = (self.size.x - 1) * self.step_x
         self.height_um = (self.size.y - 1) * self.step_y
-        self._clear_cache()
+        self.clear_cache() # Calls method from parent class
         
     def __repr__(self):
         return f'{self.__class__.__name__}({self.width_um:.2f} x {self.height_um:.2f} µm²)'
@@ -821,7 +807,7 @@ class Surface:
             angle += 90
         return self.rotate(-angle, inplace=inplace)
 
-    @lru_cache
+    @cache
     def _get_fourier_peak_dx_dy(self):
         """
         Calculates the distance in x and y in spatial frequency length units. The zero peak is avoided by
@@ -869,13 +855,12 @@ class Surface:
 
         return dx, dy
 
-    _CACHED_METHODS.append(_get_fourier_peak_dx_dy)
-
     # Characterization #################################################################################################
    
     # Height parameters ################################################################################################
     
     @no_nonmeasured_points
+    @cache
     def Sa(self):
         """
         Calcualtes the arithmetic mean height Sa according to ISO 25178-2.
@@ -887,6 +872,7 @@ class Surface:
         return (np.abs(self.data - self.data.mean()).sum() / self.data.size)
     
     @no_nonmeasured_points
+    @cache
     def Sq(self):
         """
         Calcualtes the root mean square height Sq according to ISO 25178-2.
@@ -898,6 +884,7 @@ class Surface:
         return np.sqrt(((self.data - self.data.mean()) ** 2).sum() / self.data.size).round(8)
     
     @no_nonmeasured_points
+    @cache
     def Sp(self):
         """
         Calcualtes the maximum peak height Sp according to ISO 25178-2.
@@ -909,6 +896,7 @@ class Surface:
         return (self.data - self.data.mean()).max()
     
     @no_nonmeasured_points
+    @cache
     def Sv(self):
         """
         Calcualtes the maximum pit height Sv according to ISO 25178-2.
@@ -920,6 +908,7 @@ class Surface:
         return np.abs((self.data - self.data.mean()).min())
     
     @no_nonmeasured_points
+    @cache
     def Sz(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2.
@@ -931,6 +920,7 @@ class Surface:
         return self.Sp() + self.Sv()
     
     @no_nonmeasured_points
+    @cache
     def Ssk(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2. It is the quotient of the mean cube value of the ordinate
@@ -943,6 +933,7 @@ class Surface:
         return ((self.data - self.data.mean()) ** 3).sum() / self.data.size / self.Sq()**3
     
     @no_nonmeasured_points
+    @cache
     def Sku(self):
         """
         Calcualtes the kurtosis Sku  according to ISO 25178-2. It is the quotient of the mean quartic value of the
@@ -955,7 +946,8 @@ class Surface:
         return ((self.data - self.data.mean()) ** 4).sum() / self.data.size / self.Sq()**4
     
     # Hybrid parameters ################################################################################################
-    
+
+    @cache
     def projected_area(self):
         """
         Calculates the projected surface area.
@@ -967,6 +959,7 @@ class Surface:
         return (self.width_um - self.step_x) * (self.height_um - self.step_y)
     
     @no_nonmeasured_points
+    @cache
     def surface_area(self, method='iso'):
         """
         Calculates the surface area of the surface. The method parameter can be either 'iso' or 'gwyddion'. The default
@@ -989,6 +982,7 @@ class Surface:
         return surface_area(self.data, self.step_x, self.step_y, method=method)
     
     @no_nonmeasured_points
+    @cache
     def Sdr(self, method='iso'):
         """
         Calculates Sdr. The method parameter can be either 'iso' or 'gwyddion'. The default method is the 'iso' method
@@ -1008,6 +1002,7 @@ class Surface:
         return (self.surface_area(method=method) / self.projected_area() -1) * 100
     
     @no_nonmeasured_points
+    @cache
     def Sdq(self):
         """
         Calculates the root mean square gradient Sdq according to ISO 25178-2.
@@ -1023,7 +1018,7 @@ class Surface:
 
     # Spatial parameters ###############################################################################################
 
-    @lru_cache
+    @cache
     def _get_autocorrelation_function(self):
         """
         Instantiates and returns an AutocorrelationFunction object. LRU cache is used to return the same object with
@@ -1035,8 +1030,7 @@ class Surface:
         """
         return AutocorrelationFunction(self)
 
-    _CACHED_METHODS.append(_get_autocorrelation_function)
-
+    @cache
     def Sal(self, s=0.2):
         """
         Calculates the autocorrelation length Sal. Sal represents the horizontal distance of the f_ACF(tx,ty)
@@ -1058,6 +1052,7 @@ class Surface:
         """
         return self._get_autocorrelation_function().Sal(s=s)
 
+    @cache
     def Str(self, s=0.2):
         """
         Calculates the texture aspect ratio Str. Str represents the ratio of the horizontal distance of the f_ACF(tx,ty)
@@ -1082,7 +1077,7 @@ class Surface:
     
     # Functional parameters ############################################################################################
     
-    @lru_cache
+    @cache
     def _get_abbott_firestone_curve(self):
         """
         Instantiates and returns an AbbottFirestoneCurve object. LRU cache is used to return the same object with
@@ -1093,8 +1088,6 @@ class Surface:
         AbbottFirestoneCurve
         """
         return AbbottFirestoneCurve(self)
-
-    _CACHED_METHODS.append(_get_abbott_firestone_curve)
 
     def Sk(self):
         """
@@ -1264,7 +1257,7 @@ class Surface:
 
     # Non-standard parameters ##########################################################################################
     
-    @lru_cache
+    @cache
     @no_nonmeasured_points
     def period(self):
         """
@@ -1279,9 +1272,7 @@ class Surface:
         dx, dy = self._get_fourier_peak_dx_dy()
         return 2/np.hypot(dx, dy)
 
-    _CACHED_METHODS.append(period)
-
-    @lru_cache
+    @cache
     @no_nonmeasured_points
     def period_x_y(self):
         """
@@ -1367,7 +1358,7 @@ class Surface:
             angle = np.sign(angle) * 90 - angle
         return angle
     
-    @lru_cache
+    @cache
     @no_nonmeasured_points
     def orientation(self, method='fft_refined'):
         """
@@ -1393,10 +1384,9 @@ class Surface:
         elif method == 'fft':
             return self._orientation_fft()
         raise ValueError('Invalid method specified.')
-
-    _CACHED_METHODS.append(orientation)
     
     @no_nonmeasured_points
+    @cache
     def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr')):
         """
         Calculates the homogeneity of a periodic surface through Gini coefficient analysis. It returns 1 - Gini, which
@@ -1446,7 +1436,7 @@ class Surface:
         return np.mean(h).round(4)
 
     @register_returnlabels(('mean', 'std'))
-    @lru_cache
+    @cache
     @no_nonmeasured_points
     def depth(self, nprofiles=30, sampling_width=0.2, retstd=True, plot=False):
         """
@@ -1550,8 +1540,7 @@ class Surface:
             return np.nanmean(depths), np.nanstd(depths)
         return np.nanmean(depths)
 
-    _CACHED_METHODS.append(depth)
-
+    @cache
     def aspect_ratio(self):
         """
         Calculates the aspect ratio of a periodic texture as the ratio of the structure depth and the structure period.

@@ -2,11 +2,13 @@ from functools import lru_cache
 import numpy as np
 import scipy.ndimage as ndimage
 from scipy.signal import correlate
+from .common import CachedInstance, cache
 
 
-class AutocorrelationFunction:
+class AutocorrelationFunction(CachedInstance):
 
     def __init__(self, surface):
+        super().__init__()
         # For now we level and center. In the future, we should replace that with lookups of booleans
         # to avoid double computation
         self._surface = surface.level().center()
@@ -29,8 +31,7 @@ class AutocorrelationFunction:
         -------
         None
         """
-        self.Sal.cache_clear()
-        self.Str.cache_clear()
+        self.clear_cache()
         self._current_threshold = s
         self._autocorr = correlate(self._surface.data, self._surface.data, mode='same')
         #threshold = self._autocorr.min() + (self._autocorr.max() - self._autocorr.min()) * s
@@ -58,7 +59,7 @@ class AutocorrelationFunction:
         distances = np.linalg.norm(indices - self.center, axis=1)
         self._idx_max = indices[np.argmax(distances)]
 
-    @lru_cache
+    @cache
     def Sal(self, s=0.2):
         """
         Calculates the autocorrelation length Sal. Sal represents the horizontal distance of the f_ACF(tx,ty)
@@ -84,7 +85,7 @@ class AutocorrelationFunction:
         Sal = np.hypot(dx * self._surface.step_x, dy * self._surface.step_y) - self._surface.step_x/2
         return Sal
 
-    @lru_cache
+    @cache
     def Str(self, s=0.2):
         """
         Calculates the texture aspect ratio Str. Str represents the ratio of the horizontal distance of the f_ACF(tx,ty)
