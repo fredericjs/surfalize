@@ -31,7 +31,7 @@ be aware that a change of the pyx files does not reinvoke the Cython build proce
 
 ## Documentation
 
-The documentation is hosted on [readthedocs](surfalize.readthedocs.io).
+The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en/latest/).
 
 ## Currently supported file formats
 
