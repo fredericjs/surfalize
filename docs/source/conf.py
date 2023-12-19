@@ -19,6 +19,8 @@ release = '0.5.0'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
+master_doc = 'index'
+
 extensions = [
     'sphinx.ext.autodoc',
     'numpydoc',
