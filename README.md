@@ -4,6 +4,7 @@
 
 [![PyPI version](https://badge.fury.io/py/surfalize.svg)](https://badge.fury.io/py/surfalize)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10382975.svg)](https://doi.org/10.5281/zenodo.10382975)
+[![Documentation Status](https://readthedocs.org/projects/surfalize/badge/?version=latest)](https://surfalize.readthedocs.io/en/latest/?badge=latest)
 
 
 surfalize is a python package for analyzing microscope topography measurement data in terms of surface
@@ -28,6 +29,9 @@ pip install -e .
 ```
 be aware that a change of the pyx files does not reinvoke the Cython build process. 
 
+## Documentation
+
+The documentation is hosted on [readthedocs](surfalize.readthedocs.io).
 
 ## Currently supported file formats
 
