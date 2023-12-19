@@ -190,7 +190,7 @@ def cache(method):
     @functools.wraps(method)
     def wrapped_method(self, *args, **kwargs):
         # This only work for hashable arguments
-        key = (method.__name__, *args, *tuple(kwargs.items()))
+        key = (method.__name__, str(args), str(kwargs.items()))
         try:
             # Cache hit
             value = self._method_cache[key]
