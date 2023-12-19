@@ -148,7 +148,7 @@ class Surface(CachedInstance):
 
     Use the load class method to load a topography from a file.
 
-    >>> filepath = r'path\to\surface.plu'
+    >>> filepath = r'path\\to\\surface.plu'
     >>> surface = Surface.load(filepath)
     """
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
@@ -170,16 +170,21 @@ class Surface(CachedInstance):
         """
         Returns the size of the height data array in pixels as a namedtuple of the form (y, x).
         The elements can be accessed either through indexing or dot notation.
-        >>> surface.size
-        (y=768, x=1024)
-        >>> surface.size[0]
-        768
-        >>> surface.size.y
-        768
 
         Returns
         -------
         size: namedtuple(y, x)
+
+        Examples
+        --------
+        >>> surface.size
+        (y=768, x=1024)
+
+        >>> surface.size[0]
+        768
+
+        >>> surface.size.y
+        768
         """
         return size(*self.data.shape)
             
@@ -1393,23 +1398,31 @@ class Surface(CachedInstance):
         Calculates the homogeneity of a periodic surface through Gini coefficient analysis. It returns 1 - Gini, which
         is distributed on in the range between 0 and 1, where 0 represents minimum and 1 represents maximum homogeneity.
         The homogeneity factor is calculated for each roughness parameter specified in 'parameters' and the mean value
-        is returned. However, note that only parameters which do not yield negative number qualify for the Gini analysis
-        (e.g. the skewness 'Ssk' is not a valid input).
-
-        The algorithm is based on references [1] and [2].
-
-        [1] Lechthaler et al., https://doi.org/10.1038/s41598-020-70758-9
-        [2] Soldera et al., https://doi.org/0.2961/jlmn.2022.02.2002
+        is returned.
 
         Parameters
         ----------
-        parameters: tuple[str]
-            Roughness parameters that are evaluated for their homogeneity distribution.
+        parameters: tuple[str], optional
+            Roughness parameters that are evaluated for their homogeneity distribution. Defaults to ['Sa', 'Sku', Sdr'].
 
         Returns
         -------
         Homogeneity: float
             Value between 0 and 1.
+
+        Notes
+        -----
+        The algoritm used by this function was proposed by Lechthaler et al. [1]_ and parctically applied by Soldera et
+        al. [2]_. Note that only surface rougness parameters which do not yield negative number qualify for the Gini
+        analysis  (e.g. the skewness 'Ssk' is not a valid input).
+
+        References
+        ----------
+        .. [1] Lechthaler, B., Pauly, C. & Mücklich, F. Objective homogeneity quantification of a periodic surface using
+           the Gini coefficient. Sci Rep 10, 14516 (2020). https://doi.org/10.1038/s41598-020-70758-9
+
+        .. [2] Soldera, S., Reichel, C., Kuisat, F., Lasagni, A. F. Topography Analysis and Homogeneity Quantification
+           of Laser-Patterned Periodic Surface Structures. JLMN 17, 81 (2022). https://doi.org/0.2961/jlmn.2022.02.2002
         """
         period = self.period()
         cell_length = int(period / self.height_um * self.size.y)
@@ -1556,8 +1569,10 @@ class Surface(CachedInstance):
         """
         Computes multiple roughness parameters at once and returns them in a dictionary.
 
-        Example:
-        >> surface.roughness_parameters(['Sa', 'Sq', 'Sz'])
+        Examples
+        --------
+
+        >>> surface.roughness_parameters(['Sa', 'Sq', 'Sz'])
         {'Sa': 1.23, 'Sq': 1.87, 'Sz': 2.51}
 
         Parameters
@@ -1618,6 +1633,7 @@ class Surface(CachedInstance):
         adjust_colormap: bool, Default True
             If True, the colormap starts at the mean and ends at 0.7 time the maximum of the data
             to increase peak visibility.
+
         Returns
         -------
         ax: matplotlib.axes

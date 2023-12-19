@@ -55,11 +55,23 @@ class Parameter:
     Parameters
     ----------
     identifier: str
-    Name of the method. Must be identical to a method of the Surface class.
+        Name of the method. Must be identical to a method of the Surface class.
     args: tuple
-    Tuple of positional arguments that should be passed to the Surface method.
+        Tuple of positional arguments that should be passed to the Surface method.
     kwargs: dict
-    Dictionary of keyword arguments that should be passed to the Surface method.
+        Dictionary of keyword arguments that should be passed to the Surface method.
+
+    Examples
+    --------
+    Customize the arguments for `Surface.homogeneity()` to include Sa, Sdr, Sk and Sal.
+
+    >>> homogeneity = Parameter('homogeneity', kwargs=dict(parameters=['Sa', 'Sdr', 'Sk', 'Sal']))
+    >>> homogeneity.calculate_from(surface)
+
+    The intended use is to supply it to `Batch.roughness_parameters()` instead of a string.
+
+    >>> batch.roughness_parameters(['Sa', 'Sq', 'Sz', homogeneity])
+    >>> batch.execute()
     """
     def __init__(self, identifier, args=None, kwargs=None):
         self.identifier = identifier
@@ -74,17 +86,6 @@ class Parameter:
         the order they are returned. Each value in the return dictionary will then have a key that consists of the
         identifier as well as the corresponding return value label joined by an underscore:
 
-        Example:
-
-        @register_returnlabels(('value1, value2'))
-        def example_parameter(self, arg, kwarg=None):
-            # do computation
-            return val1, val2
-
-        >>> parameter = Parameter('exmaple_parameter', args=(1, ), kwargs=dict(kwarg=True))
-        >>> parameter.calculate_from(surface)
-        {'example_parameter_value1': 1.25, 'example_parameter_value2': 2.56}
-
         Parameters
         ----------
         surface: surfalize.Surface
@@ -92,7 +93,7 @@ class Parameter:
 
         Returns
         -------
-        None.
+        None
         """
         method = getattr(surface, self.identifier)
         result = method(*self.args, **self.kwargs)
@@ -472,16 +473,19 @@ class Batch:
 
         Examples
         --------
-        Here, only the specified parameters will be calculated .
+        Here, only the specified parameters will be calculated.
+
         >>> batch = Batch(filepaths)
         >>> batch.roughness_parameters(['Sa', 'Sq', 'Sz', 'Sdr', 'Vmc'])
 
         In this case, all available parameters will be calculated.
+
         >>> batch = Batch(filepaths)
         >>> batch.roughness_parameters()
 
         Here, we define a custom Parameter class that allows for the specification of keyword arguments. Note that we
         are passing the Parameter to the method instead of the string version.
+
         >>> from surfalize.batch import Parameter
         >>> Vmc = Parameter('Vmc', kwargs=dict(p=5, q=95))
         >>> batch.roughness_parameters(['Sa', 'Sq', 'Sz', 'Sdr', Vmc])
