@@ -18,7 +18,7 @@ import scipy.ndimage as ndimage
 # Custom imports
 from .file import load_file
 from .utils import argclosest, interp1d, is_list_like
-from .common import sinusoid, fit_sinusoid, register_returnlabels, CachedInstance, cache
+from .common import Sinusoid, register_returnlabels, CachedInstance, cache
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -31,33 +31,6 @@ except ImportError:
     CYTHON_DEFINED = False
 
 size = namedtuple('Size', ['y', 'x'])
-
-# Deprecate
-def _period_from_profile(profile):
-    """
-    Extracts the period in pixel units from a surface profile using the Fourier transform.
-    Parameters
-    ----------
-    profile: array or arra-like
-
-    Returns
-    -------
-    period
-    """
-    # Estimate the period by means of fourier transform on first profile
-    fft = np.abs(np.fft.fft(profile))
-    freq = np.fft.fftfreq(profile.shape[0])
-    peaks, properties = find_peaks(fft.flatten(), distance=10, prominence=10)
-    # Find the prominence of the peaks
-    prominences = properties['prominences']
-    # Sort in descending order by computing sorting indices
-    sorted_indices = np.argsort(prominences)[::-1]
-    # Sort peaks in descending order
-    peaks_sorted = peaks[sorted_indices]
-    # Rearrange prominences based on the sorting of peaks
-    prominences_sorted = prominences[sorted_indices]
-    period = 1/np.abs(freq[peaks_sorted[0]])
-    return period
            
 def no_nonmeasured_points(function):
     """
@@ -1341,9 +1314,9 @@ class Surface(CachedInstance):
             profile = get_profile(i * dist_px)
             # We make an initial guess for the fit
             p0 = ((profile.max() - profile.min()) / 2, period_px, 0, profile.mean())
-            _, p, x0, _ = fit_sinusoid(np.arange(profile.size), profile, p0=p0)
+            sinusoid = Sinusoid.from_fit(np.arange(profile.size), profile, p0=p0)
             # This computes the position of the first peak of the sinusoid
-            xfp[i] = (x0 + p / 4) % p
+            xfp[i] = sinusoid.first_extremum()
 
         # Now we need to get rid of the points where the first peak jumps by one period
         diff = np.diff(xfp)
@@ -1510,26 +1483,24 @@ class Surface(CachedInstance):
             # Define initial guess for fit parameters
             p0=((line.max() - line.min())/2, period_px, 0, line.mean())
             # Fit the data to the general sine function
-            popt, pcov = curve_fit(sinusoid, xp, line, p0=p0)
-            # Extract the refined period estimate from the sine function period
-            period_sin = popt[1]
-            # Extract the lateral shift of the sine fit
-            x0 = popt[2]
-
+            sinusoid = Sinusoid.from_fit(xp, line, p0=p0)
+            first_extremum = sinusoid.first_extremum()
+            # Allocate depth array for line
             depths_line = np.zeros(nintervals * 2)
 
-            if plot and i == 4:
+            if plot and i in plot:
                 fig, ax = plt.subplots(figsize=(16,4))
                 ax.plot(xp, line, lw=1.5, c='k', alpha=0.7)
-                ax.plot(xp, sinusoid(xp, *popt), c='orange', ls='--')
+                ax.plot(xp, sinusoid(xp), c='orange', ls='--')
                 ax.set_xlim(xp.min(), xp.max())
 
             # Loop over each interval
             for j in range(nintervals*2):
-                idx = (0.25 + 0.5*j) * period_sin + x0        
+                #idx = (0.25 + 0.5*j) * sinusoid.period + sinusoid.x0
+                idx = (0.5 * j) * sinusoid.period + first_extremum
 
-                idx_min = int(idx) - int(period_sin * sampling_width/2)
-                idx_max = int(idx) + int(period_sin * sampling_width/2)
+                idx_min = int(idx) - int(sinusoid.period * sampling_width/2)
+                idx_max = int(idx) + int(sinusoid.period * sampling_width/2)
                 if idx_min < 0 or idx_max > line.size-1:
                     depths_line[j] = np.nan
                     continue
@@ -1537,7 +1508,7 @@ class Surface(CachedInstance):
                 depth_median = np.median(line[idx_min:idx_max+1])
                 depths_line[j] = depth_median
                 # For plotting
-                if plot and i == 4:          
+                if plot and i in plot:
                     rx = xp[idx_min:idx_max+1].min()
                     ry = line[idx_min:idx_max+1].min()
                     rw = xp[idx_max] - xp[idx_min+1]
