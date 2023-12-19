@@ -2,8 +2,13 @@
 Installation
 ============
 
-To install `surfalize` from PyPI run `pip install surfalize`. Alternatively,
-you can clone the git repository, navigate to the root folder and run
+To install `surfalize` from PyPI run:
+
+.. code::
+
+    pip install surfalize
+
+Alternatively, you can clone the git repository, navigate to the root folder and run:
 
 .. code::
 
