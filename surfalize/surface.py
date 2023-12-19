@@ -1452,7 +1452,7 @@ class Surface(CachedInstance):
     @register_returnlabels(('mean', 'std'))
     @cache
     @no_nonmeasured_points
-    def depth(self, nprofiles=30, sampling_width=0.2, retstd=True, plot=False):
+    def depth(self, nprofiles=30, sampling_width=0.2, retstd=True, plot=None):
         """
         Calculates the peak-to-valley depth of a periodically grooved surface texture. It samples a specified number
         of equally spaced apart profiles from the surface and fits them with a sinusoid. It then evaluates the actual
@@ -1469,8 +1469,8 @@ class Surface(CachedInstance):
             Sampling width around the extrema of the sinusoid as a fraction of the spatial period.
         retstd: bool, default True
             Return the standard deviation.
-        plot: bool, default False
-            Plot one profile to exemplify the depth calculation.
+        plot: None | list-like[int], default None
+            List of number of profiles to plot.
 
         Returns
         -------
@@ -1518,7 +1518,7 @@ class Surface(CachedInstance):
 
             depths_line = np.zeros(nintervals * 2)
 
-            if plot and i == 4:
+            if plot and i in plot:
                 fig, ax = plt.subplots(figsize=(16,4))
                 ax.plot(xp, line, lw=1.5, c='k', alpha=0.7)
                 ax.plot(xp, sinusoid(xp, *popt), c='orange', ls='--')
@@ -1537,7 +1537,7 @@ class Surface(CachedInstance):
                 depth_median = np.median(line[idx_min:idx_max+1])
                 depths_line[j] = depth_median
                 # For plotting
-                if plot and i == 4:          
+                if plot and i in plot:
                     rx = xp[idx_min:idx_max+1].min()
                     ry = line[idx_min:idx_max+1].min()
                     rw = xp[idx_max] - xp[idx_min+1]
