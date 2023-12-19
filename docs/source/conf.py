@@ -32,6 +32,14 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 numpydoc_class_members_toctree = False
 autodoc_member_order = 'bysource'
 
+autodoc_mock_imports = [
+    'numpy',
+    'matplotlib',
+    'pandas',
+    'scipy',
+    'tqdm',
+]
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
