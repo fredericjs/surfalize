@@ -1,3 +1,12 @@
+## [unreleased changes]
+- Changed plot parameter of Surface.depth to plot a specific or multiple profiles
+- Fixed hashing of mutable types for caching of method calls with mutable parameters
+- Added sphinx documentation and readthedocs page
+- Added Sinusoid class that can be constructed from parameters or from fitting and implements a method for calculation
+  of the position of the first extremum
+- Depth calculation now starts from first extremum, which now makes sure to be independent of possibly large fit values
+  of x0
+
 ## v0.5.0
 - Added algorithm for computing texture orientation with significantly higher precision than the current fft-based 
   method. The purely fft-based method can still be selected via keyword argument.
