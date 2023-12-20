@@ -21,7 +21,7 @@ def get_period_fft_1d(xdata, ydata):
     period: float
     """
     fft = np.abs(np.fft.fft(ydata))
-    freq = np.fft.fftfreq(len(data), d=xdata[1] - xdata[0])
+    freq = np.fft.fftfreq(len(ydata), d=xdata[1] - xdata[0])
     peaks, properties = find_peaks(fft.flatten(), distance=10, prominence=10)
     # Find the prominence of the peaks
     prominences = properties['prominences']
@@ -142,7 +142,11 @@ class Sinusoid:
         -------
         xfe: float
         """
-        return self.x0 % (self.period / 4) + self.period / 4
+        # position of first extremum for x > x0
+        x0e = self.x0 + self.period / 4
+        # position of first extremum for x >= 0
+        xfe = x0e - (x0e // (self.period / 2)) * self.period / 2
+        return xfe
 
 def register_returnlabels(labels):
     """
