@@ -148,6 +148,20 @@ class Sinusoid:
         xfe = x0e - (x0e // (self.period / 2)) * self.period / 2
         return xfe
 
+    def first_peak(self):
+        """
+        Compute the position of the first peak for x >= 0.
+
+        Returns
+        -------
+        xfp: float
+        """
+        x0e = self.x0 + self.period / 4
+        # position of first peak for x >= 0
+        xfp = x0e - (x0e // (self.period)) * self.period
+        return xfp
+
+
 def register_returnlabels(labels):
     """
     Decorator that registers return labels to be used by surfalize.Batch when evaluating methods with multiple return
