@@ -805,23 +805,13 @@ class Surface(CachedInstance):
         # Calculate the frequency values for the x and y axes
         freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self.width_um / M))  # Frequency values for the x-axis
         freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self.height_um / N))  # Frequency values for the y-axis
-        # Find the peaks in the magnitude spectrum
-        peaks, properties = find_peaks(fft.flatten(), distance=10, prominence=10)
-        # Find the prominence of the peaks
-        prominences = properties['prominences']
         # Sort in descending order by computing sorting indices
-        sorted_indices = np.argsort(prominences)[::-1]
-        # Sort peaks in descending order
-        peaks_sorted = peaks[sorted_indices]
-        # Rearrange prominences based on the sorting of peaks
-        prominences_sorted = prominences[sorted_indices]
-        # Get peak coordinates in pixels
-        peaks_y_px, peaks_x_px = np.unravel_index(peaks_sorted, fft.shape)
+        idx_x, idx_y = np.unravel_index(np.argsort(fft.flatten())[::-1], fft.shape)
         # Transform into spatial frequencies in length units
         # If this is not done, the computed angle will be wrong since the frequency per pixel
         # resolution is different in x and y due to the different sampling length!
-        peaks_x = freq_x[peaks_x_px]
-        peaks_y = freq_y[peaks_y_px]
+        peaks_x = freq_x[idx_x]
+        peaks_y = freq_y[idx_y]
         # Create peak tuples for ease of use
         peak0 = (peaks_x[0], peaks_y[0])
         peak1 = (peaks_x[1], peaks_y[1])
