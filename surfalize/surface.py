@@ -1627,7 +1627,8 @@ class Surface(CachedInstance):
         freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self.height_um / N))  # Frequency values for the y-axis
 
         if log:
-            fft = np.log10(fft)
+            # We add a small offset to avoid ln(0)
+            fft = np.log10(fft+ 1e-10)
         ixmin = 0
         ixmax = M-1
         iymin = 0
