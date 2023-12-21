@@ -1294,7 +1294,7 @@ class Surface(CachedInstance):
         angle: float
             Angle of the dominant texture to the vertical axis
         """
-        SAMPLE_RATE_FACTOR = 0.25
+        SAMPLE_RATE_FACTOR = 0.1
         period_x, period_y = self.period_x_y()
 
         if period_y > period_x:
@@ -1463,11 +1463,11 @@ class Surface(CachedInstance):
             # Calculate the number of intervals per profile
             nintervals = int(self.width_um / periodx)
             period_px = periodx / self.step_x
-            profile_dist_px = int(size.y / nprofiles)
+            profile_dist_px = int(size.y / (nprofiles-1))
         else:
             nintervals = int(self.height_um / periody)
             period_px = periody / self.step_y
-            profile_dist_px = int(size.x / nprofiles)
+            profile_dist_px = int(size.x / (nprofiles-1))
 
         # Allocate depth array with twice the length of the number of periods to accommodate both peaks and valleys
         # multiplied by the number of sampled profiles
@@ -1657,7 +1657,7 @@ class Surface(CachedInstance):
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         return ax
     
-    def show(self, cmap='jet', maskcolor='black'):
+    def show(self, cmap='jet', maskcolor='black', ax=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1667,14 +1667,19 @@ class Surface(CachedInstance):
             Colormap to apply on the data.
         maskcolor: str, default 'Black'
             Color for masked values.
+        ax: matplotlib axis, default None
+            If specified, the plot will be drawn the specified axis.
 
         Returns
         -------
-        None.
+        ax.
         """
         cmap = plt.get_cmap(cmap).copy()
         cmap.set_bad(maskcolor)
-        fig, ax = plt.subplots(dpi=150)
+        if ax is None:
+            fig, ax = plt.subplots(dpi=150)
+        else:
+            fig = ax.figure
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         im = ax.imshow(self.data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um))
@@ -1684,4 +1689,4 @@ class Surface(CachedInstance):
         if self._nonmeasured_points_exist:
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
-        plt.show()
+        return ax
