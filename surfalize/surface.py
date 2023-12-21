@@ -806,7 +806,7 @@ class Surface(CachedInstance):
         freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self.width_um / M))  # Frequency values for the x-axis
         freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self.height_um / N))  # Frequency values for the y-axis
         # Sort in descending order by computing sorting indices
-        idx_x, idx_y = np.unravel_index(np.argsort(fft.flatten())[::-1], fft.shape)
+        idx_y, idx_x = np.unravel_index(np.argsort(fft.flatten())[::-1], fft.shape)
         # Transform into spatial frequencies in length units
         # If this is not done, the computed angle will be wrong since the frequency per pixel
         # resolution is different in x and y due to the different sampling length!
