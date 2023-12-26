@@ -26,7 +26,7 @@ def _sanitize_mu(string):
     -------
     str
     """
-    for alias, replacement in MU_ALIASES:
+    for alias, replacement in MU_ALIASES.items():
         string = string.replace(alias, replacement)
     return string
 
