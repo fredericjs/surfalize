@@ -352,6 +352,23 @@ class Batch:
         operation = Operation('fill_nonmeasured', kwargs=dict(method=method, inplace=True))
         self._operations.append(operation)
         return self
+
+    def crop(self, box):
+        """
+        Registers Surface.crop for later execution. Inplace is True by default.
+
+        Parameters
+        ----------
+        box: tuple[float, float, float, float]
+            The crop rectangle, as a (x0, x1, y0, y1) tuple.
+
+        Returns
+        -------
+        self
+        """
+        operation = Operation('crop', args=(box,), kwargs=dict(inplace=True))
+        self._operations.append(operation)
+        return self
             
     def level(self):
         """
