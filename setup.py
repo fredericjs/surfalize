@@ -13,7 +13,7 @@ extensions = [
 
 setup(
     name='surfalize',
-    version='0.5.0',
+    version='0.5.1',
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',
