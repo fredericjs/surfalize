@@ -1,3 +1,5 @@
+## [unreleased changes]
+- Added Zeta .zmg file format
 ## v0.5.1
 - Changed plot parameter of Surface.depth to plot a specific or multiple profiles
 - Fixed hashing of mutable types for caching of method calls with mutable parameters
