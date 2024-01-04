@@ -23,12 +23,12 @@ Extracting roughness and topographic parameters
     sq = surface.Sq()
 
     # Calculation in batch
-    parameters = surace.roughness_parameters(['Sa', 'Sq', 'Sz'])
+    parameters = surface.roughness_parameters(['Sa', 'Sq', 'Sz'])
     >>> parameters
     {'Sa': 1.25, 'Sq': 1.47, 'Sz': 2.01}
 
     # Calculation in batch of all available parameters
-    all_available_parameters = surace.roughness_parameters()
+    all_available_parameters = surface.roughness_parameters()
 
 
 Performing surface operations
