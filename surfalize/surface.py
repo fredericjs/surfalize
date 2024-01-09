@@ -1387,12 +1387,7 @@ class Surface(CachedInstance):
         .. [2] Soldera, S., Reichel, C., Kuisat, F., Lasagni, A. F. Topography Analysis and Homogeneity Quantification
            of Laser-Patterned Periodic Surface Structures. JLMN 17, 81 (2022). https://doi.org/0.2961/jlmn.2022.02.2002
         """
-        DISALLOWED_PARAMETERS = {'depth',
-                                 'homogeneity',
-                                 'Ssk',
-                                 'orientation',
-                                 'aspect_ratio',
-                                 'period'}
+        DISALLOWED_PARAMETERS = {'Ssk', 'depth', 'homogeneity', 'orientation', 'aspect_ratio', 'period'}
         if params := set(parameters) & DISALLOWED_PARAMETERS:
             raise ValueError('Parameter{} {} {} not allowed for homogeneity calculation.'.format(
                 's' if len(params) > 1 else '', ", ".join(params), "are" if len(params) > 1 else "is")
