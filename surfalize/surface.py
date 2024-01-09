@@ -1391,9 +1391,12 @@ class Surface(CachedInstance):
                                  'homogeneity',
                                  'Ssk',
                                  'orientation',
+                                 'aspect_ratio',
                                  'period'}
         if params := set(parameters) & DISALLOWED_PARAMETERS:
-            raise ValueError(f'Parameters {", ".join(params)} are not allowed for homogeneity calculation.')
+            raise ValueError('Parameter{} {} {} not allowed for homogeneity calculation.'.format(
+                's' if len(params) > 1 else '', ", ".join(params), "are" if len(params) > 1 else "is")
+                            )
 
         period = self.period()
         cell_length = int(period / self.height_um * self.size.y)
