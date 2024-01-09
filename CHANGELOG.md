@@ -1,5 +1,6 @@
 ## [unreleased changes]
 - Added Zeta .zmg file format
+- Homogeneity now raises value error if any periodic or negative parameter is specified as input
 ## v0.5.1
 - Changed plot parameter of Surface.depth to plot a specific or multiple profiles
 - Fixed hashing of mutable types for caching of method calls with mutable parameters
