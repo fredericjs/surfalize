@@ -1,15 +1,20 @@
+from pathlib import Path
 from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
+import numpy
 
 with open('README.md', 'r', encoding='utf-8') as file:
     long_description = file.read()
 
-extensions = [
-    Extension(
-        'surfalize.calculations',
-        sources=['surfalize/calculations.pyx'],
-    ),
-]
+def find_cython_files(directory='.'):
+    cython_files = []
+    directory = Path(directory)
+    for path in directory.rglob('*.pyx'):
+        cython_files.append(str(path))
+    return cython_files
+
+cython_files = find_cython_files()
+ext_modules = cythonize(cython_files)
 
 setup(
     name='surfalize',
@@ -38,5 +43,6 @@ setup(
         'scipy>=1.4.1',
         'tqdm'
     ],
-    ext_modules=cythonize(extensions)
+    include_dirs=[numpy.get_include()],
+    ext_modules=ext_modules
 )

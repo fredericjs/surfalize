@@ -23,12 +23,7 @@ from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
 from .filter import GaussianFilter
-try:
-    from .calculations import surface_area
-    CYTHON_DEFINED = True
-except ImportError:
-    logger.warning('Could not import cythonized code. Surface area calculation unavailable.')
-    CYTHON_DEFINED = False
+from .roughness import height_parameters, surface_area
 
 size = namedtuple('Size', ['y', 'x'])
            
@@ -827,9 +822,10 @@ class Surface(CachedInstance):
     # Characterization #################################################################################################
    
     # Height parameters ################################################################################################
-    
-    @no_nonmeasured_points
-    @cache
+
+    def height_parameters(self):
+        return height_parameters(self.data, self.data.mean())
+
     def Sa(self):
         """
         Calcualtes the arithmetic mean height Sa according to ISO 25178-2.
@@ -838,10 +834,8 @@ class Surface(CachedInstance):
         -------
         Sa: float
         """
-        return (np.abs(self.data - self.data.mean()).sum() / self.data.size)
-    
-    @no_nonmeasured_points
-    @cache
+        return self.height_parameters()['Sa']
+
     def Sq(self):
         """
         Calcualtes the root mean square height Sq according to ISO 25178-2.
@@ -850,10 +844,8 @@ class Surface(CachedInstance):
         -------
         Sq: float
         """
-        return np.sqrt(((self.data - self.data.mean()) ** 2).sum() / self.data.size).round(8)
-    
-    @no_nonmeasured_points
-    @cache
+        return self.height_parameters()['Sq']
+
     def Sp(self):
         """
         Calcualtes the maximum peak height Sp according to ISO 25178-2.
@@ -862,10 +854,8 @@ class Surface(CachedInstance):
         -------
         Sp: float
         """
-        return (self.data - self.data.mean()).max()
-    
-    @no_nonmeasured_points
-    @cache
+        return self.height_parameters()['Sp']
+
     def Sv(self):
         """
         Calcualtes the maximum pit height Sv according to ISO 25178-2.
@@ -874,10 +864,8 @@ class Surface(CachedInstance):
         -------
         Sv: float
         """
-        return np.abs((self.data - self.data.mean()).min())
-    
-    @no_nonmeasured_points
-    @cache
+        return self.height_parameters()['Sv']
+
     def Sz(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2.
@@ -886,10 +874,8 @@ class Surface(CachedInstance):
         -------
         Ssk: float
         """
-        return self.Sp() + self.Sv()
-    
-    @no_nonmeasured_points
-    @cache
+        return self.height_parameters()['Sz']
+
     def Ssk(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2. It is the quotient of the mean cube value of the ordinate
@@ -899,10 +885,8 @@ class Surface(CachedInstance):
         -------
         Ssk: float
         """
-        return ((self.data - self.data.mean()) ** 3).sum() / self.data.size / self.Sq()**3
-    
-    @no_nonmeasured_points
-    @cache
+        return self.height_parameters()['Ssk']
+
     def Sku(self):
         """
         Calcualtes the kurtosis Sku  according to ISO 25178-2. It is the quotient of the mean quartic value of the
@@ -912,7 +896,7 @@ class Surface(CachedInstance):
         -------
         Sku: float
         """
-        return ((self.data - self.data.mean()) ** 4).sum() / self.data.size / self.Sq()**4
+        return self.height_parameters()['Sku']
     
     # Hybrid parameters ################################################################################################
 
@@ -929,46 +913,26 @@ class Surface(CachedInstance):
     
     @no_nonmeasured_points
     @cache
-    def surface_area(self, method='iso'):
+    def surface_area(self):
         """
-        Calculates the surface area of the surface. The method parameter can be either 'iso' or 'gwyddion'. The default
-        method is the 'iso' method proposed by ISO 25178 and used by MountainsMap, whereby two triangles are
-        spanned between four corner points. The 'gwyddion' method implements the approach used by the open-source
-        software Gwyddion, whereby four triangles are spanned between four corner points and their calculated center
-        point. The method is detailed here: http://gwyddion.net/documentation/user-guide-en/statistical-analysis.html.
+        Calculates the surface area of the surface according to the method proposed by ISO 25178 and used by
+        MountainsMap, whereby two triangles are spanned between four corner points.
 
-        Parameters
-        ----------
-        method: str, Default 'iso'
-            The method by which to calculate the surface area.
         Returns
         -------
         area: float
         """
-        if not CYTHON_DEFINED:
-            raise NotImplementedError("Surface area calculation is based on cython code. Compile cython code to run this"
-                                      "method")
-        return surface_area(self.data, self.step_x, self.step_y, method=method)
-    
-    @no_nonmeasured_points
-    @cache
-    def Sdr(self, method='iso'):
-        """
-        Calculates Sdr. The method parameter can be either 'iso' or 'gwyddion'. The default method is the 'iso' method
-        proposed by ISO 25178 and used by MountainsMap, whereby two triangles are spanned between four corner points.
-        The 'gwyddion' method implements the approach used by the open-source software Gwyddion, whereby four triangles
-        are spanned between four corner points and their calculated center point. The method is detailed here:
-        http://gwyddion.net/documentation/user-guide-en/statistical-analysis.html.
+        return surface_area(self.data, self.step_x, self.step_y)
 
-        Parameters
-        ----------
-        method: str, Default 'iso'
-            The method by which to calculate the surface area.
+    def Sdr(self):
+        """
+        Calculates the developed interfacial area ratio according to ISO 25178-2.
+
         Returns
         -------
         area: float
         """
-        return (self.surface_area(method=method) / self.projected_area() -1) * 100
+        return (self.surface_area() / self.projected_area() -1) * 100
     
     @no_nonmeasured_points
     @cache
