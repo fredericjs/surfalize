@@ -10,9 +10,15 @@ with open('README.md', 'r', encoding='utf-8') as file:
     long_description = file.read()
 
 def is_package_dir(dirpath):
+    """
+    Returns True if directory contains an __init__.py file and is therefore a python package.
+    """
     return '__init__.py' in [path.name for path in dirpath.iterdir()]
 
 def resolve_full_module_name(modulepath):
+    """
+    Returns the full package of a module file, e.g. 'surfalize.roughness.height'.
+    """
     package = [modulepath.stem]
     directory = modulepath.parent
     while is_package_dir(directory):
@@ -20,7 +26,10 @@ def resolve_full_module_name(modulepath):
         directory = directory.parent
     return '.'.join(reversed(package))
 
-def compile_cython_extensions(root='.')
+def compile_cython_extensions(root='.'):
+    """
+    Finds and compiles all cython extensions.
+    """
     root = Path(root)
     extensions = []
     for pyxpath in root.rglob('*.pyx'):
