@@ -3,18 +3,32 @@ from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
 import numpy
 
+NUMPY_INCLUDE_DIR = numpy.get_include()
+NUMPY_MACROS = ("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")
+
 with open('README.md', 'r', encoding='utf-8') as file:
     long_description = file.read()
 
-def find_cython_files(directory='.'):
-    cython_files = []
-    directory = Path(directory)
-    for path in directory.rglob('*.pyx'):
-        cython_files.append(str(path))
-    return cython_files
+def is_package_dir(dirpath):
+    return '__init__.py' in [path.name for path in dirpath.iterdir()]
 
-cython_files = find_cython_files()
-ext_modules = cythonize(cython_files)
+def resolve_full_module_name(modulepath):
+    package = [modulepath.stem]
+    directory = modulepath.parent
+    while is_package_dir(directory):
+        package.append(directory.name)
+        directory = directory.parent
+    return '.'.join(reversed(package))
+
+root = Path('.')
+extensions = []
+for pyxpath in root.rglob('*.pyx'):
+    extension = Extension(resolve_full_module_name(pyxpath), [str(pyxpath)],
+                          include_dirs=[NUMPY_INCLUDE_DIR],
+                          define_macros=[NUMPY_MACROS])
+    extensions.append(extension)
+
+ext_modules = cythonize(extensions)
 
 setup(
     name='surfalize',
@@ -43,6 +57,5 @@ setup(
         'scipy>=1.4.1',
         'tqdm'
     ],
-    include_dirs=[numpy.get_include()],
     ext_modules=ext_modules
 )
