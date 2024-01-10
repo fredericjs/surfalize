@@ -20,15 +20,18 @@ def resolve_full_module_name(modulepath):
         directory = directory.parent
     return '.'.join(reversed(package))
 
-root = Path('.')
-extensions = []
-for pyxpath in root.rglob('*.pyx'):
-    extension = Extension(resolve_full_module_name(pyxpath), [str(pyxpath)],
-                          include_dirs=[NUMPY_INCLUDE_DIR],
-                          define_macros=[NUMPY_MACROS])
-    extensions.append(extension)
+def compile_cython_extensions(root='.')
+    root = Path(root)
+    extensions = []
+    for pyxpath in root.rglob('*.pyx'):
+        extension = Extension(resolve_full_module_name(pyxpath), [str(pyxpath)],
+                              include_dirs=[NUMPY_INCLUDE_DIR],
+                              define_macros=[NUMPY_MACROS])
+        extensions.append(extension)
+    ext_modules = cythonize(extensions)
+    return ext_modules
 
-ext_modules = cythonize(extensions)
+ext_modules = compile_cython_extensions()
 
 setup(
     name='surfalize',
