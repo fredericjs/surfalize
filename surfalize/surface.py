@@ -1356,17 +1356,21 @@ class Surface(CachedInstance):
     
     @no_nonmeasured_points
     @cache
-    def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr')):
+    def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr'), period=None):
         """
         Calculates the homogeneity of a periodic surface through Gini coefficient analysis. It returns 1 - Gini, which
         is distributed on in the range between 0 and 1, where 0 represents minimum and 1 represents maximum homogeneity.
         The homogeneity factor is calculated for each roughness parameter specified in 'parameters' and the mean value
-        is returned.
+        is returned. The surface is divided into square unit cells with a side length equivalent to the period, for
+        which each parameter is evaluated.
 
         Parameters
         ----------
         parameters: tuple[str], optional
             Roughness parameters that are evaluated for their homogeneity distribution. Defaults to ['Sa', 'Sku', Sdr'].
+        period: None | float, optional
+            The period which is used to devide the surface into unit cells. If None, the period is automatically
+            computed from the fourier transform.
 
         Returns
         -------
@@ -1393,7 +1397,8 @@ class Surface(CachedInstance):
                 's' if len(params) > 1 else '', ", ".join(params), "are" if len(params) > 1 else "is")
                             )
 
-        period = self.period()
+        if period is None:
+            period = self.period()
         cell_length = int(period / self.height_um * self.size.y)
         ncells = int(self.size.y / cell_length) * int(self.size.x / cell_length)
         results = np.zeros((len(parameters), ncells))
