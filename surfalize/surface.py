@@ -1230,9 +1230,10 @@ class Surface(CachedInstance):
     @no_nonmeasured_points
     def period(self):
         """
-        Calculates the spatial period based on the Fourier transform. This can yield unexcepted results if the surface
-        contains peaks at lower spatial frequencies than the frequency of the periodic structure to be evaluated.
-        It is advised to perform appropriate filtering to remove waviness before invoking this method.
+        Calculates the 1d spatial period based on the Fourier transform. This can yield unexcepted results if the
+        surface contains peaks at lower spatial frequencies than the frequency of the periodic structure to be
+        evaluated. It is advised to perform appropriate filtering and leveling to remove waviness before invoking this
+        method.
 
         Returns
         -------
