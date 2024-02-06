@@ -17,6 +17,8 @@ dispatcher = {
     '.zmg': read_zmg
 }
 
+supported_formats = list(dispatcher.keys())
+
 def load_file(filepath):
     filepath = Path(filepath)
     try:

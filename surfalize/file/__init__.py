@@ -1,1 +1,1 @@
-from .loader import load_file
+from .loader import load_file, supported_formats
