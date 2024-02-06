@@ -216,7 +216,12 @@ class Batch:
         """
         results = []
         if multiprocessing:
-            total_tasks = len(self._filepaths)
+            # This guard clause prevents an infinite recursive spawning of processes, if this method is invoked
+            # in a script without a main guard (if __name__ == '__main__').
+            # See: https://stackoverflow.com/questions/77220442/
+            # multiprocessing-pool-in-a-python-class-without-name-main-guard
+            if not mp.current_process().name == 'MainProcess':
+                return
             description = f'Processing on {mp.cpu_count()} cores'
             with mp.Pool() as pool:
                 task = partial(_task, operations=self._operations, parameters=self._parameters)
