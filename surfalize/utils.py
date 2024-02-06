@@ -88,3 +88,19 @@ def is_list_like(obj):
     if isinstance(obj, (list, tuple, np.ndarray)):
         return True
     return False
+
+def sanitize_file_extension(file_extension):
+    """
+    Removes leading '*' and '.' from file extension strings.
+
+    Parameters
+    ----------
+    file_extension: str
+
+    Returns
+    -------
+    sanitized file extension
+    """
+    file_extension = file_extension.lstrip('*')
+    file_extension = file_extension.lstrip('.')
+    return file_extension
