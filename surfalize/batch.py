@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from .surface import Surface
-from .utils import is_list_like
+from .utils import is_list_like, sanitize_file_extension
 
 class BatchError(Exception):
     pass
@@ -197,6 +197,37 @@ class Batch:
                 raise ValueError("File specified by 'additional_data' does not contain column named 'file'.")
         self._operations = []
         self._parameters = []
+
+    @classmethod
+    def from_dir(cls, dir_path, file_extensions, additional_data=None):
+        """
+        Alternative constructor for Batch class that takes a directory path as well as a string or list of strings
+        of file extensions as positional arguments.
+
+        Parameters
+        ----------
+        dir_path: str | pathlib.Path
+            Path to the directory containing the files
+        file_extensions: str | list-like
+            File extension or list of file extensions to be searched for, eg. 'vk4', 'plu'.
+        additional_data: str, pathlib.Path
+            Path to an Excel file containing additional parameters, such as
+            input parameters. Excel file must contain a column 'file' with
+            the filename including the file extension. Otherwise, an arbitrary
+            number of additional columns can be supplied.
+
+        Returns
+        -------
+        Batch
+        """
+        filepaths = []
+        if not is_list_like(file_extensions):
+            file_extensions = [file_extensions]
+        for extension in file_extensions:
+            extension = sanitize_file_extension(extension)
+            filepaths.extend(list(dir_path.glob(f'*.{extension}')))
+        return cls(filepaths, additional_data=additional_data)
+
 
     def _disptach_tasks(self, multiprocessing=True):
         """
