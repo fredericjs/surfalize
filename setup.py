@@ -13,7 +13,7 @@ extensions = [
 
 setup(
     name='surfalize',
-    version='0.5.1',
+    version='0.5.2',
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',
@@ -36,7 +36,8 @@ setup(
         'matplotlib>=3.1.1',
         'pandas>=1.0.1',
         'scipy>=1.4.1',
-        'tqdm'
+        'tqdm>=4.64.1',
+        'openpyxl>=3.1.2'
     ],
     ext_modules=cythonize(extensions)
 )
