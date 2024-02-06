@@ -1,7 +1,11 @@
-## [unreleased changes]
+## v0.6.0
 - Added Zeta .zmg file format
 - Homogeneity now raises value error if any periodic or negative parameter is specified as input
 - Period can now be manually set for homogeneity calculation by keyword argument
+- Fixed multiprocessing error on Windows that caused infinite spawning of child processes
+- Added openpyxl as dependency
+- Added from_dir constructor classmethod to Batch, to initialize batch object from a directory path that contains the
+  topogrpahy files as a convenience function
 ## v0.5.1
 - Changed plot parameter of Surface.depth to plot a specific or multiple profiles
 - Fixed hashing of mutable types for caching of method calls with mutable parameters

@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from .surface import Surface
-from .utils import is_list_like, sanitize_file_extension
+from .utils import is_list_like
+from .file import supported_formats
 
 class BatchError(Exception):
     pass
@@ -199,7 +200,7 @@ class Batch:
         self._parameters = []
 
     @classmethod
-    def from_dir(cls, dir_path, file_extensions, additional_data=None):
+    def from_dir(cls, dir_path, file_extensions=None, additional_data=None):
         """
         Alternative constructor for Batch class that takes a directory path as well as a string or list of strings
         of file extensions as positional arguments.
@@ -208,24 +209,32 @@ class Batch:
         ----------
         dir_path: str | pathlib.Path
             Path to the directory containing the files
-        file_extensions: str | list-like
-            File extension or list of file extensions to be searched for, eg. 'vk4', 'plu'.
-        additional_data: str, pathlib.Path
+        file_extensions: str | list-like, optional
+            File extension or list of file extensions to be searched for, eg. '.vk4', '.plu'. The file extension must
+            be prefixed by a dot. If no file extensions are specified, all files are added to the batch that have a file
+            extension that corresponds to a supported file format.
+        additional_data: str, pathlib.Path, optional
             Path to an Excel file containing additional parameters, such as
             input parameters. Excel file must contain a column 'file' with
             the filename including the file extension. Otherwise, an arbitrary
             number of additional columns can be supplied.
+
+        Examples
+        --------
+        >>> directory = 'C:\\topography_files'
+        >>> batch = Batch.from_dir(directory)
 
         Returns
         -------
         Batch
         """
         filepaths = []
-        if not is_list_like(file_extensions):
+        if file_extensions is None:
+            file_extensions = supported_formats
+        elif isinstance(file_extensions, str):
             file_extensions = [file_extensions]
         for extension in file_extensions:
-            extension = sanitize_file_extension(extension)
-            filepaths.extend(list(dir_path.glob(f'*.{extension}')))
+            filepaths.extend(list(dir_path.glob(f'*{extension}')))
         return cls(filepaths, additional_data=additional_data)
 
 
