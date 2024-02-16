@@ -6,6 +6,7 @@
 - Added openpyxl as dependency
 - Added from_dir constructor classmethod to Batch, to initialize batch object from a directory path that contains the
   topogrpahy files as a convenience function
+- Fixed bug with loading Gwyddion exported SUR files due to Gwyddion filling strings with null instead of spaces
 ## v0.5.1
 - Changed plot parameter of Surface.depth to plot a specific or multiple profiles
 - Fixed hashing of mutable types for caching of method calls with mutable parameters
