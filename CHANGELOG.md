@@ -7,6 +7,8 @@
 - Added from_dir constructor classmethod to Batch, to initialize batch object from a directory path that contains the
   topogrpahy files as a convenience function
 - Fixed bug with loading Gwyddion exported SUR files due to Gwyddion filling strings with null instead of spaces
+- Added OPD file format (OPD files may have differing values of step_x and step_y, this could cause unexpected errors 
+  in the calculation of some parameters)
 ## v0.5.1
 - Changed plot parameter of Surface.depth to plot a specific or multiple profiles
 - Fixed hashing of mutable types for caching of method calls with mutable parameters

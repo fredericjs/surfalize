@@ -6,6 +6,7 @@ from .plu import read_plu
 from .plux import read_plux
 from .sur import read_sur
 from .zmg import read_zmg
+from .opd import read_opd
 
 dispatcher = {
     '.sur': read_sur,
@@ -14,7 +15,8 @@ dispatcher = {
     '.vk7': read_vk6_vk7,
     '.plu': read_plu,
     '.plux': read_plux,
-    '.zmg': read_zmg
+    '.zmg': read_zmg,
+    '.opd': read_opd
 }
 
 supported_formats = list(dispatcher.keys())
