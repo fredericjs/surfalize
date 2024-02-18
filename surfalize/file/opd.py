@@ -83,7 +83,7 @@ def read_opd(filepath):
 
         data *= scale_z
 
-        step_x = pixel_size
-        step_y = pixel_size * aspect
+        step_x = pixel_size * 1e-3
+        step_y = pixel_size * aspect * 1e-3
 
         return data, step_x, step_y
