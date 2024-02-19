@@ -3,7 +3,7 @@
 </h1><br>
 
 [![PyPI version](https://badge.fury.io/py/surfalize.svg)](https://badge.fury.io/py/surfalize)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10382975.svg)](https://doi.org/10.5281/zenodo.10382975)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10451663.svg)](https://doi.org/10.5281/zenodo.10451663)
 [![Documentation Status](https://readthedocs.org/projects/surfalize/badge/?version=latest)](https://surfalize.readthedocs.io/en/latest/?badge=latest)
 
 
