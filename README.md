@@ -41,6 +41,9 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Leica        | *.plu*                 |
 | Sensofar     | *.plu*, *.plux*        |
 | Digital Surf | *.sur*                 |
+| KLA Zeta     | *.zmg*                 |
+| Wyko         | *.opd*                 |
+| General      | *.xyz*                 |
 
 ## Supported roughness parameters
 
