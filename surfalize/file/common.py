@@ -96,7 +96,7 @@ def read_binary_layout(filehandle, layout, fast=True):
             continue
         unpacked_data = struct.unpack(f'{format}', filehandle.read(size))[0]
         if isinstance(unpacked_data, bytes):
-            unpacked_data = unpacked_data.decode().strip()
+            unpacked_data = unpacked_data.decode().rstrip(' \x00')
         result[name] = unpacked_data
     return result
 
