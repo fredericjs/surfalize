@@ -5,7 +5,7 @@
 - Fixed multiprocessing error on Windows that caused infinite spawning of child processes
 - Added openpyxl as dependency
 - Added from_dir constructor classmethod to Batch, to initialize batch object from a directory path that contains the
-  topogrpahy files as a convenience function
+  topography files as a convenience function
 ## v0.5.1
 - Changed plot parameter of Surface.depth to plot a specific or multiple profiles
 - Fixed hashing of mutable types for caching of method calls with mutable parameters
