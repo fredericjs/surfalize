@@ -228,6 +228,7 @@ class Batch:
         -------
         Batch
         """
+        dir_path = Path(dir_path)
         filepaths = []
         if file_extensions is None:
             file_extensions = supported_formats
@@ -269,6 +270,8 @@ class Batch:
                     for result in pool.imap_unordered(task, self._filepaths):
                         results.append(result)
                         progress_bar.update()
+                pool.close()
+                pool.join()
             return results
 
         for filepath in tqdm(self._filepaths, desc='Processing'):
@@ -500,6 +503,18 @@ class Batch:
         self
         """
         operation = Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
+        self._operations.append(operation)
+        return self
+
+    def stepheight_level(self):
+        """
+        Registers Surface.stepheight_level for later execution. Inplace is True by default.
+
+        Returns
+        -------
+        self
+        """
+        operation = Operation('stepheight_level', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 

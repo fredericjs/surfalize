@@ -14,6 +14,7 @@ from scipy.interpolate import griddata
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 import scipy.ndimage as ndimage
+from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import load_file
@@ -126,7 +127,7 @@ class Surface(CachedInstance):
     """
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
-                            'homogeneity')
+                            'homogeneity', 'stepheight', 'cavity_volume')
     
     def __init__(self, height_data, step_x, step_y):
         super().__init__() # Initialize cached instance
@@ -823,6 +824,117 @@ class Surface(CachedInstance):
         dy = peak0[1] - peak1[1]
 
         return dx, dy
+
+    # Stepheight #######################################################################################################
+
+    @cache
+    def _stepheight_get_mask(self):
+        """
+        Uses k-means algorithm to segment the upper and lower surface of a rectangular ablation cavity.
+        Returns a numpy array mask which is true for points that belong to the upper surface level.
+
+        Returns
+        -------
+        np.array[bool]
+        """
+        flattened_data = self.data.flatten().reshape(-1, 1)
+        kmeans = KMeans(n_clusters=2, random_state=42)
+        kmeans.fit(flattened_data)
+        cluster_labels = kmeans.labels_
+        mask = cluster_labels.reshape(self.size).astype('bool')
+        if self.data[~mask].mean() > self.data[mask].mean():
+            mask = ~mask
+        return mask
+
+    @cache
+    def stepheight_level(self, inplace=False):
+        """
+        Levels the surface only based on the datapoints from the upper level surface in a rectangular ablation cavity.
+        This function is intended to be used when the measurement contains two approximately flat surfaces on two
+        different levels.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        mask = self._stepheight_get_mask()
+        x, y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
+        x_flat = x[mask]
+        y_flat = y[mask]
+        height_flat = self.data[mask]
+        A = np.column_stack((x_flat, y_flat, np.ones_like(x_flat)))
+        # Use linear regression to fit a plane to the data
+        coefficients, _, _, _ = lstsq(A, height_flat)
+        # Extract the coefficients for the plane equation
+        a, b, c = coefficients
+        # Calculate the plane values for each point in the grid
+        plane = a * x + b * y + c
+        plane = plane - plane.mean()
+        leveled_data = self.data - plane
+        if inplace:
+            self._set_data(data=leveled_data)
+            return self
+        surface = Surface(leveled_data, self.step_x, self.step_y)
+        # This is not an ideal solution, but I can't think of a better one without major refactoring
+        # If the leveling is not done inplace, we need to somehow transfer the computed mask to the new objhect
+        # We are manually creating a cache entry for the new surface object so that we don't have to recompute the mask
+        surface.create_cache_entry(surface._stepheight_get_mask, mask, tuple(), dict())
+        return surface
+
+    @cache
+    def _stepheight_get_upper_lower_median(self):
+        """
+        Calculates the median value of the upper and lower surfaces in a stepheight calculation for a rectangular
+        ablation cavity.
+
+        Returns
+        -------
+        upper_median, lower_median: (float, flaot)
+        """
+        mask = self._stepheight_get_mask()
+        upper_median = np.median(self.data[mask])
+        lower_median = np.median(self.data[~mask])
+        return upper_median, lower_median
+
+    @cache
+    def stepheight(self):
+        """
+        Calculates the stepheight of two-level ablation experiment.
+
+        Returns
+        -------
+        stepheight: float
+        """
+        upper_median, lower_median = self._stepheight_get_upper_lower_median()
+        step_height = upper_median - lower_median
+        return step_height
+
+    def cavity_volume(self, threshold=0.50):
+        """
+        Calculates the cavity volume of a flat surface containing an ablation crater with a leveled bottom plane.
+
+        Parameters
+        ----------
+        threshold: float, default 0.5
+            Percentage threshold value for the cutoff between the upper and lower levels used to determine the area
+            inside which the volume is calculated.
+
+        Returns
+        -------
+        volume: float
+        """
+        upper_median, lower_median = self._stepheight_get_upper_lower_median()
+        stepheight = self.stepheight()
+        mask_volume = self.data < upper_median - threshold * (stepheight)
+        volume = (upper_median - self.data[mask_volume]).sum() * self.step_x * self.step_y
+        return volume
 
     # Characterization #################################################################################################
    

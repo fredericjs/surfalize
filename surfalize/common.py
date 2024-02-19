@@ -220,6 +220,9 @@ def cache(method):
     return wrapped_method
 
 
+
+
+
 class CachedInstance:
     """
     Mixin class that provides the basic facilities necessary for the cache decorator as well as a method to clear the
@@ -237,3 +240,25 @@ class CachedInstance:
         None
         """
         self._method_cache = dict()
+
+    def create_cache_entry(self, method, entry, args, kwargs):
+        """
+        Manually creates a cache entry for the specified method.
+
+        Parameters
+        ----------
+        method: function pointer
+            method to cache.
+        entry: any
+            return value that will be cached
+        args:
+            arguments to the method call for which to create the cache entry
+        kwargs
+            keyword arguments to the method call for which to create the cache entry
+
+        Returns
+        -------
+        None
+        """
+        key = (method.__name__, str(args), str(kwargs.items()))
+        self._method_cache[key] = entry
