@@ -1659,8 +1659,8 @@ class Surface(CachedInstance):
 
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         return ax
-    
-    def show(self, cmap='jet', maskcolor='black', ax=None):
+
+    def plot_2d(self, cmap='jet', maskcolor='black', ax=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1693,3 +1693,23 @@ class Surface(CachedInstance):
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         return ax
+    
+    def show(self, cmap='jet', maskcolor='black', ax=None):
+        """
+        Shows a 2D-plot of the surface using matplotlib.
+
+        Parameters
+        ----------
+        cmap: str | mpl.cmap, default 'jet'
+            Colormap to apply on the data.
+        maskcolor: str, default 'Black'
+            Color for masked values.
+        ax: matplotlib axis, default None
+            If specified, the plot will be drawn the specified axis.
+
+        Returns
+        -------
+        None.
+        """
+        self.plot_2d(cmap=cmap, maskcolor=maskcolor, ax=ax)
+        plt.show()
