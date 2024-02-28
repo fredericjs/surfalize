@@ -37,7 +37,8 @@ setup(
         'pandas>=1.0.1',
         'scipy>=1.4.1',
         'tqdm>=4.64.1',
-        'openpyxl>=3.1.2'
+        'openpyxl>=3.1.2',
+        'scikit-learn'
     ],
     ext_modules=cythonize(extensions)
 )

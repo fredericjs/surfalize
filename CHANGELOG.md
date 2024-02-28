@@ -1,3 +1,5 @@
+## [unrealeased changes]
+- Surface.zero and Surface.level fixed for surfaces with nonmeasured points
 ## v0.6.0
 - Added Zeta .zmg file format
 - Homogeneity now raises value error if any periodic or negative parameter is specified as input
