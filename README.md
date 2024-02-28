@@ -43,6 +43,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Digital Surf | *.sur*                 |
 | KLA Zeta     | *.zmg*                 |
 | Wyko         | *.opd*                 |
+| Nanofocus    | *.nms*                 |
 | General      | *.xyz*                 |
 
 ## Supported roughness parameters
