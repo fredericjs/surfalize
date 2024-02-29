@@ -2,12 +2,12 @@ import zipfile
 import xml.etree.ElementTree as ET
 import numpy as np
 
-def read_plux(filepath):
+def read_plux(filepath, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
         data = archive.read('LAYER_0.raw')
         metadata = archive.read('index.xml')
 
-    xml_str = metadata.decode('utf-8')
+    xml_str = metadata.decode(encoding)
 
     # Parse the XML string
     root = ET.fromstring(xml_str)

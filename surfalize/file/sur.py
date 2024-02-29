@@ -68,10 +68,10 @@ LAYOUT_HEADER = (
 
 POINTSIZE = {16: 'h', 32: 'i'}
 
-def read_sur(filepath):
+def read_sur(filepath, encoding='utf-8'):
     filesize = filepath.stat().st_size
     with open(filepath, 'rb') as filehandle:
-        header = read_binary_layout(filehandle, LAYOUT_HEADER)
+        header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
 
         if header['code'] != MAGIC or header['version_number'] != 1:
             raise CorruptedFileError

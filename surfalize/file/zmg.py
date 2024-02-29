@@ -14,9 +14,9 @@ LAYOUT_HEADER = (
     (None, 84, None)
 )
 
-def read_zmg(filepath):
+def read_zmg(filepath, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
-        header = read_binary_layout(filehandle, LAYOUT_HEADER)
+        header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
         filehandle.seek(header['comment_size'], 1)
         data_length = header['res_x'] * header['res_y']
         data = np.fromfile(filehandle, dtype=np.int16, count=data_length) * header['step_z']

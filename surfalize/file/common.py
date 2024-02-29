@@ -53,7 +53,7 @@ def get_unit_conversion(from_unit, to_unit):
     exponent = UNIT_EXPONENT[from_unit] - UNIT_EXPONENT[to_unit]
     return 10**exponent
 
-def read_binary_layout(filehandle, layout, fast=True):
+def read_binary_layout(filehandle, layout, fast=True, encoding='utf-8'):
     """
     Reads a binary layout specified by a tuple of tuples from an opened file and returns a dict with the read values.
     The layout must be provided in the form:
@@ -80,6 +80,8 @@ def read_binary_layout(filehandle, layout, fast=True):
         (None, <n_bytes>, None) for reserved bytes.
     fast: bool, default True
         If true, skips all values that are marked for skipping in fast mode.
+    encoding: str, Default utf-8
+            Encoding of characters in the file. Defaults to utf-8.
 
     Returns
     -------

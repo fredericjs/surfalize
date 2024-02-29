@@ -254,7 +254,7 @@ class Surface(CachedInstance):
         return hash((self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std()))
 
     @classmethod
-    def load(cls, filepath):
+    def load(cls, filepath, encoding='utf-8'):
         """
         Classmethod to load a topography from a file.
 
@@ -262,6 +262,8 @@ class Surface(CachedInstance):
         ----------
         filepath: str | pathlib.Path
             Filepath pointing to the topography file.
+        encoding: str, Default utf-8
+            Encoding of characters in the file. Defaults to utf-8.
         Returns
         -------
         surface: surfalize.Surface

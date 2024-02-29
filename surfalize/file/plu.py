@@ -44,11 +44,11 @@ LAYOUT_MEASURE_CONFIG = (
    ('factorio_delmacio', 'I', True)
 )
 
-def read_plu(filepath):
+def read_plu(filepath, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         filehandle.seek(HEADER_SIZE, 1)
-        calibration = read_binary_layout(filehandle, LAYOUT_CALIBRATION)
-        measure_config = read_binary_layout(filehandle, LAYOUT_MEASURE_CONFIG)
+        calibration = read_binary_layout(filehandle, LAYOUT_CALIBRATION, encoding=encoding)
+        measure_config = read_binary_layout(filehandle, LAYOUT_MEASURE_CONFIG, encoding=encoding)
         data_length = calibration['xres'] * calibration['yres']
         data = np.fromfile(filehandle, dtype=np.float32, count=data_length)
     data = data.reshape((calibration['yres'], calibration['xres']))

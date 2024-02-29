@@ -1,4 +1,5 @@
 from pathlib import Path
+from functools import partial
 from ..exceptions import UnsupportedFileFormatError
 
 from .vk import read_vk4, read_vk6_vk7
@@ -23,10 +24,12 @@ dispatcher = {
 
 supported_formats = list(dispatcher.keys())
 
-def load_file(filepath):
+def load_file(filepath, encoding='utf-8'):
     filepath = Path(filepath)
     try:
         loader = dispatcher[filepath.suffix]
+        if 'encoding' in loader.__code__.co_varnames:
+            loader = partial(loader, encoding=encoding)
     except KeyError:
         raise UnsupportedFileFormatError(f"File format {filepath.suffix} is currently not supported.")
     return loader(filepath)

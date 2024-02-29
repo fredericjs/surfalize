@@ -20,12 +20,12 @@ class Block:
     offset: int = None
 
 
-def read_block(filehandle):
+def read_block(filehandle, encoding='utf-8'):
     name = filehandle.read(16).decode().rstrip('\x00')
     type_, size, flags = struct.unpack('<hlH', filehandle.read(8))
     return name, Block(type_, size, flags)
 
-def read_opd(filepath):
+def read_opd(filepath, encoding='utf-8'):
     with open(filepath, 'rb') as file:
         file.read(2)  # skipping header
         name, directory_block = read_block(file)
