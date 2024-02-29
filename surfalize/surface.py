@@ -268,7 +268,7 @@ class Surface(CachedInstance):
         -------
         surface: surfalize.Surface
         """
-        return cls(*load_file(filepath))
+        return cls(*load_file(filepath, encoding=encoding))
         
     def get_horizontal_profile(self, y, average=1, average_step=None):
         """
