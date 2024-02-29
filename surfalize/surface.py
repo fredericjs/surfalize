@@ -416,7 +416,7 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
             Surface object.
         """
-        data = self.data - self.data.mean()
+        data = self.data - np.nanmean(self.data)
         if inplace:
             self._set_data(data=data)
             return self
@@ -437,7 +437,7 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
             Surface object.
         """
-        data = self.data - self.data.min()
+        data = self.data - np.nanmin(self.data)
         if inplace:
             self._set_data(data=data)
             return self
