@@ -1,7 +1,7 @@
 name: CiBuildwheel
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
   build_wheels:
@@ -10,6 +10,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
