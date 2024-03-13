@@ -20,9 +20,9 @@ def read_nms(filepath):
         file.seek(HEADER_SIZE, 0)
 
         data = np.fromfile(file, dtype=np.uint16, count=nx * ny)
-        nonmeasured_points_mask = (data == 0)
+        #nonmeasured_points_mask = (data == 0)
         data = data / (2 ** 16 - 2) * (zmax - zmin) + zmax
-        data[nonmeasured_points_mask] = np.nan
+        #data[nonmeasured_points_mask] = np.nan
         data = data.reshape(ny, nx)
 
         step_x = dx * 1e-3
