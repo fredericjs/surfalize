@@ -32,7 +32,7 @@ setup(
         'Programming Language :: Python :: 3.11',
     ],
     install_requires=[
-        'numpy>=1.18.1',
+        'numpy>=1.18.1, <2.0',
         'matplotlib>=3.1.1',
         'pandas>=1.0.1',
         'scipy>=1.4.1',
