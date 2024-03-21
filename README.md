@@ -44,6 +44,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | KLA Zeta     | *.zmg*                 |
 | Wyko         | *.opd*                 |
 | Nanofocus    | *.nms*                 |
+| Alicona      | *.al3d*                |
 | General      | *.xyz*                 |
 
 ## Supported roughness parameters
