@@ -10,6 +10,7 @@ from .zmg import read_zmg
 from .opd import read_opd
 from .xyz import read_xyz
 from .nms import read_nms
+from .al3d import read_al3d
 
 dispatcher = {
     '.sur': read_sur,
@@ -21,7 +22,8 @@ dispatcher = {
     '.zmg': read_zmg,
     '.opd': read_opd,
     '.xyz': read_xyz,
-    '.nms': read_nms
+    '.nms': read_nms,
+    '.al3d': read_al3d
 }
 
 supported_formats = list(dispatcher.keys())

@@ -1,3 +1,5 @@
+## Unreleased changes
+- Added Alicona .al3d file format 
 ## v0.7.0
 - Surface.zero and Surface.level fixed for surfaces with nonmeasured points
 - Added support for Nanofocus NMS file format
