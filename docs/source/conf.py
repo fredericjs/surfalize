@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath('../../examples'))
 project = 'surfalize'
 copyright = '2023, Frederic Schell'
 author = 'Frederic Schell'
-release = '0.5.0'
+release = '0.7.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -38,6 +38,7 @@ autodoc_mock_imports = [
     'pandas',
     'scipy',
     'tqdm',
+    'sklearn'
 ]
 
 # -- Options for HTML output -------------------------------------------------
