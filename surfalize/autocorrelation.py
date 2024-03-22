@@ -18,7 +18,7 @@ class AutocorrelationFunction(CachedInstance):
         super().__init__()
         # For now we level and center. In the future, we should replace that with lookups of booleans
         # to avoid double computation
-        self._surface = surface.level().center()
+        self._surface = surface.center()
         self._current_threshold = None
 
     def _calculate_autocorrelation(self, s):
