@@ -81,11 +81,7 @@ def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
         value = data[name]
         if isinstance(value, str):
             value = value.encode(encoding)
-        try:
-            filehandle.write(struct.pack(format_, value))
-        except:
-            print(format_, value)
-            return
+        filehandle.write(struct.pack(format_, value))
 
 def read_binary_layout(filehandle, layout, fast=True, encoding='utf-8'):
     """
