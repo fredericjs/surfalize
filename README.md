@@ -35,17 +35,17 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 
 ## Currently supported file formats
 
-| Manufacturer | Format                 |
-|--------------|------------------------|
-| Keyence      | *.vk4*, *.vk6*, *.vk7* |
-| Leica        | *.plu*                 |
-| Sensofar     | *.plu*, *.plux*        |
-| Digital Surf | *.sur*                 |
-| KLA Zeta     | *.zmg*                 |
-| Wyko         | *.opd*                 |
-| Nanofocus    | *.nms*                 |
-| Alicona      | *.al3d*                |
-| General      | *.xyz*                 |
+| Manufacturer | Format                 | Reading | Writing |
+|--------------|------------------------|---------|---------|
+| Keyence      | *.vk4*, *.vk6*, *.vk7* | Yes     | No      | 
+| Leica        | *.plu*                 | Yes     | No      | 
+| Sensofar     | *.plu*, *.plux*        | Yes     | No      | 
+| Digital Surf | *.sur*                 | Yes     | Yes     | 
+| KLA Zeta     | *.zmg*                 | Yes     | No      | 
+| Wyko         | *.opd*                 | Yes     | No      | 
+| Nanofocus    | *.nms*                 | Yes     | No      | 
+| Alicona      | *.al3d*                | Yes     | Yes     | 
+| General      | *.xyz*                 | Yes     | No      | 
 
 ## Supported roughness parameters
 
