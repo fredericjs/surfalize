@@ -17,7 +17,7 @@ import scipy.ndimage as ndimage
 from sklearn.cluster import KMeans
 
 # Custom imports
-from .file import load_file
+from .file import load_file, write_file
 from .utils import argclosest, interp1d, is_list_like
 from .common import Sinusoid, register_returnlabels, CachedInstance, cache
 from .autocorrelation import AutocorrelationFunction
@@ -269,6 +269,22 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
         """
         return cls(*load_file(filepath, encoding=encoding))
+
+    def save(self, filepath, encoding='utf-8'):
+        """
+        Saves the surface to a supported file format.
+
+        Parameters
+        ----------
+        filepath: str | pathlib.Path
+            Filepath pointing to the topography file.
+        encoding: str, Default utf-8
+            Encoding of characters in the file. Defaults to utf-8.
+        Returns
+        -------
+        None
+        """
+        write_file(filepath, self, encoding=encoding)
         
     def get_horizontal_profile(self, y, average=1, average_step=None):
         """

@@ -5,12 +5,44 @@ from ..exceptions import CorruptedFileError
 
 MAGIC = b'AliconaImaging\x00\r\n'
 TAG_LAYOUT = '20s30s2s'
+DTYPE = 'float32'
 
 def read_tag(filehandle):
     key, value, lf = [val.decode().rstrip('\x00') for val in struct.unpack(TAG_LAYOUT, filehandle.read(52))]
     if lf != '\r\n':
         raise CorruptedFileError('Tag with incorrect delimiter detected.')
     return key, value
+
+def write_tag(filehandle, key, value, encoding='utf-8'):
+    binary_tag = struct.pack(TAG_LAYOUT,
+                             key.encode(encoding),
+                             str(value).encode(encoding),
+                             '\r\n'.encode(encoding))
+    filehandle.write(binary_tag)
+
+def write_al3d(filepath, surface, encoding='utf-8'):
+    header = dict()
+    header['Version'] = 1
+    header['TagCount'] = 9
+    header['Cols'] = surface.size.x
+    header['IconOffset'] = 0
+    header['DepthImageOffset'] = 845
+    header['InvalidPixelValue'] = float('nan')
+    header['PixelSizeYMeter'] = surface.step_y * 1e-6
+    header['PixelSizeXMeter'] = surface.step_x * 1e-6
+    header['NumberOfPlanes'] = 0
+    header['Rows'] = surface.size.y
+    header['TextureImageOffset'] = 0
+
+    with open(filepath, 'wb') as file:
+        file.write(MAGIC)
+        for key, value in header.items():
+            write_tag(file, key, value, encoding=encoding)
+        pos = file.tell()
+        n_padding = header['DepthImageOffset'] - pos - 2
+        file.write(b'\x00' * n_padding + b'\r\n')
+        data = surface.data.astype(DTYPE) * 1e-6
+        data.tofile(file)
 
 def read_al3d(filepath):
     with open(filepath, 'rb') as file:

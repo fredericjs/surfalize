@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 import struct
 import numpy as np
-from ..exceptions import CorruptedFileError
+from ..exceptions import CorruptedFileError, CorruptedFileError
 
 BLOCK_SIZE = 24
 BLOCK_NAME_SIZE = 16
@@ -45,7 +45,7 @@ def read_opd(filepath, encoding='utf-8'):
         nx, ny, itemsize = struct.unpack('<HHH', file.read(6))
         data_length = nx * ny
         if data_length * itemsize != blocks['RAW_DATA'].size - 6:
-            raise CorruptedFileFormatError('Size of data does not match expected size.')
+            raise CorruptedFileError('Size of data does not match expected size.')
 
         data = np.fromfile(file, dtype=dtype[itemsize], count=data_length)
         data = np.rot90(data.reshape(nx, ny)).astype('float64')
