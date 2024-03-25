@@ -78,8 +78,8 @@ def write_sur(filepath, surface, encoding='utf-8'):
 
     INT_DATA_MIN = INT32_MIN + 2
     INT_DATA_MAX = INT32_MAX - 1
-    data_max = surface.data.max()
-    data_min = surface.data.min()
+    data_max = np.nanmax(surface.data)
+    data_min = np.nanmin(surface.data)
     data = ((surface.data - data_min) / (data_max - data_min)) * (INT_DATA_MAX - INT_DATA_MIN) + INT_DATA_MIN
     if nm_points:
         data[np.isnan(data)] = INT_DATA_MIN - 2
@@ -180,7 +180,7 @@ def read_sur(filepath, encoding='utf-8'):
 
         if header['non_measured_points'] == 1:
             invalidValue = header['min_point'] - 2
-            nan_mask = data[data == invalidValue]
+            nan_mask = (data == invalidValue)
 
         data = data * get_unit_conversion(header['unit_z'], 'um') * header['spacing_z']
         step_x = get_unit_conversion(header['unit_x'], 'um') * header['spacing_x']
