@@ -1,6 +1,7 @@
 ## Unreleased changes
 - Added Alicona .al3d file format 
 - Fixed bug resulting in negative Vmc and Vmp
+- Added Surface.save method to export a surface to different file formats. So far, .sur and .al3d are supported
 ## v0.7.0
 - Surface.zero and Surface.level fixed for surfaces with nonmeasured points
 - Added support for Nanofocus NMS file format
