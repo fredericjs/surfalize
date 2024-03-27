@@ -69,7 +69,8 @@ setup(
         'scipy>=1.4.1',
         'tqdm>=4.64.1',
         'openpyxl>=3.1.2',
-        'scikit-learn'
+        'scikit-learn',
+        'python-dateutil'
     ],
     ext_modules=ext_modules
 )
