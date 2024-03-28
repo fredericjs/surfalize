@@ -18,7 +18,7 @@ class AutocorrelationFunction(CachedInstance):
         super().__init__()
         # For now we level and center. In the future, we should replace that with lookups of booleans
         # to avoid double computation
-        self._surface = surface.level().center()
+        self._surface = surface.center()
         self._current_threshold = None
 
     def _calculate_autocorrelation(self, s):
@@ -40,7 +40,8 @@ class AutocorrelationFunction(CachedInstance):
         """
         self.clear_cache()
         self._current_threshold = s
-        self._autocorr = correlate(self._surface.data, self._surface.data, mode='same')
+        data = self._surface.data
+        self._autocorr = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.fft2(data) * np.conj(np.fft.fft2(data))))) / data.size
         #threshold = self._autocorr.min() + (self._autocorr.max() - self._autocorr.min()) * s
         threshold = s * self._autocorr.max()
         mask = (self._autocorr < threshold)

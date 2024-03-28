@@ -47,11 +47,41 @@ def get_unit_conversion(from_unit, to_unit):
     factor: float
         Factor by which to multiply the original values.
     """
+    from_unit = _sanitize_mu(from_unit)
     if from_unit not in UNIT_EXPONENT or to_unit not in UNIT_EXPONENT:
         raise ValueError('Unit does not exist.')
-    from_unit = _sanitize_mu(from_unit)
     exponent = UNIT_EXPONENT[from_unit] - UNIT_EXPONENT[to_unit]
     return 10**exponent
+
+def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
+    """
+    Writes a binary layout to a file.
+
+    Parameters
+    ----------
+    filehandle: file object
+        File-like object to read the data from.
+    layout: tuple[tuple[str, str, bool] | tuple[None, int, None]]
+        Layout of the bytes to read as a tuple of tuples in the form (<name>, <format>, <skip_fast>) or
+        (None, <n_bytes>, None) for reserved bytes.
+    data: dict[str: any]
+        Dictionary containing keys that correspond to the name value in the layout tuple and the values to write
+        to the file as keys.
+    encoding: str, Default utf-8
+            Encoding of characters in the file. Defaults to utf-8.
+
+    Returns
+    -------
+    None
+    """
+    for name, format_, _ in layout:
+        if name is None:
+            filehandle.write(b'\x00' * format_)
+            continue
+        value = data[name]
+        if isinstance(value, str):
+            value = value.encode(encoding)
+        filehandle.write(struct.pack(format_, value))
 
 def read_binary_layout(filehandle, layout, fast=True, encoding='utf-8'):
     """

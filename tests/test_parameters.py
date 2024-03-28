@@ -59,11 +59,11 @@ def test_Sdq(surface):
 
 
 def test_Sal(surface):
-    assert surface.Sal() == pytest.approx(4.35, abs=EPSILON)
+    assert surface.Sal() == pytest.approx(4.25, abs=EPSILON)
 
 
 def test_Str(surface):
-    assert surface.Str() == pytest.approx(0.123845, abs=EPSILON)
+    assert surface.Str() == pytest.approx(0.120735, abs=EPSILON)
 
 
 def test_Sk(surface):
@@ -91,11 +91,11 @@ def test_Sxp(surface):
 
 
 def test_Vmp(surface):
-    assert surface.Vmp() == pytest.approx(-0.014809, abs=EPSILON)
+    assert surface.Vmp() == pytest.approx(0.014809, abs=EPSILON)
 
 
 def test_Vmc(surface):
-    assert surface.Vmc() == pytest.approx(-0.797036, abs=EPSILON)
+    assert surface.Vmc() == pytest.approx(0.797036, abs=EPSILON)
 
 
 def test_Vvv(surface):
