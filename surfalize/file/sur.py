@@ -248,10 +248,16 @@ def read_directory(filehandle):
     return Directory(*struct.unpack('<2I', filehandle.read(8)))
 
 def read_compressed_data(filehandle, dtype):
+    # The compressed datablock begins with a uint32 that encodes the number of directories
     dir_count = struct.unpack('I', filehandle.read(4))[0]
+    # Afterwards, that number of directories is stored consecutively, containing 2 uint32 encoding the length of the
+    # raw data and the length of the zipped data in the stream associated with that directory
     directories = []
     for _ in range(dir_count):
         directories.append(read_directory(filehandle))
+    # For each directory, we read data equivalent to the compressed size attribute in the directory and descompress it
+    # using zlib. Then we concatenate the uncompressed data streams and read them with numpy
+    # each datastream into a single
     decompressed_data = b''
     for directory in directories:
         compressed_data_stream = filehandle.read(directory.len_zipped_data)
@@ -288,6 +294,8 @@ def read_sur_object(filehandle):
         data[nan_mask] = np.nan
 
     data += header['offset_z']
+
+    timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
 
     return SurObject(header, data)
 
