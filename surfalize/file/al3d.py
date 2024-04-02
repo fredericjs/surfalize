@@ -2,7 +2,6 @@ import struct
 import numpy as np
 from ..exceptions import CorruptedFileError
 
-
 MAGIC = b'AliconaImaging\x00\r\n'
 TAG_LAYOUT = '20s30s2s'
 DTYPE = 'float32'
