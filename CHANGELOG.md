@@ -4,6 +4,10 @@
 - Added Surface.save method to export a surface to different file formats. So far, .sur and .al3d are supported
 - Added .sdf file format
 - Added test files for all supported file formats and unittests for loading the testfiles
+- Switched from scipy-based calculation of autocorrelation function to fft-based implementation, which corresponds to
+  the approach that MountainsMap seems to be using
+- Autocorrelation now only centers the surface and does not level it anymore, to ensure correspondence with MountainsMap
+- Setup.py now autodetects and compiles all Cython modules 
 ## v0.7.0
 - Surface.zero and Surface.level fixed for surfaces with nonmeasured points
 - Added support for Nanofocus NMS file format
