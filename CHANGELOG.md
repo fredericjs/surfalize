@@ -3,7 +3,7 @@
 - Fixed bug resulting in negative Vmc and Vmp
 - Added Surface.save method to export a surface to different file formats. So far, .sur and .al3d are supported
 - Added .sdf file format
-
+- Added test files for all supported file formats and unittests for loading the testfiles
 ## v0.7.0
 - Surface.zero and Surface.level fixed for surfaces with nonmeasured points
 - Added support for Nanofocus NMS file format
