@@ -6,6 +6,7 @@ Setting up the batch
 ====================
 
 surfalize provides a module for batch processing and surface roughness evaluation of large sets of measurement files.
+The `Batch` object is created by supplying a list or generator object of filepaths to the topography files.
 
 .. code:: python
 
@@ -16,6 +17,15 @@ surfalize provides a module for batch processing and surface roughness evaluatio
 
     # Create a Batch object that holds the filepaths to the surface files
     batch = Batch(filepaths)
+
+Alternatively, the `Batch` class provides an alternative constructor to initialize the a `Batch` directly from a folder
+containing topography files. If the `extension` argument is not defined, all files corresponding to supported files
+formats will be loaded. Alternatively, a list of specific formats can also be supplied.
+
+.. code:: python
+
+    batch = Batch.from_dir('path/to/folder/', extension='.vk4')
+
 
 
 All operations of the surface can be applied to the Batch analogously to a Surface object.

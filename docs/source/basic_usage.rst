@@ -102,7 +102,7 @@ The Abbott-Firestone curve and Fourier Transform can be plotted using:
 
     surface.plot_abbott_curve()
     # Here we apply a Hanning window to mitigate spectral leakage (recommended) as crop the plotted range of
-    frequencies to fxmax and fymax.
+    # frequencies to fxmax and fymax.
     surface.plot_fourier_transform(hanning=True, fxmax=2, fymax=1)
 
 

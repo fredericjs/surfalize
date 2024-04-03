@@ -197,7 +197,7 @@ The Abbott-Firestone curve and Fourier Transform can be plotted using:
 ```Python
 surface.plot_abbott_curve()
 # Here we apply a Hanning window to mitigate spectral leakage (recommended) as crop the plotted range of 
-frequencies to fxmax and fymax.
+# frequencies to fxmax and fymax.
 surface.plot_fourier_transform(hanning=True, fxmax=2, fymax=1)
 ```
 
@@ -213,6 +213,12 @@ filepaths = Path('folder').glob('*.vk4')
 
 # Create a Batch object that holds the filepaths to the surface files
 batch = Batch(filepaths)
+```
+Alternatively, the `Batch` class provides an alternative constructor to initialize the a `Batch` directly from a folder 
+containing topography files. If the `extension` argument is not defined, all files corresponding to supported files 
+formats will be loaded. Alternatively, a list of specific formats can also be supplied. 
+```Python
+batch = Batch.from_dir('path/to/folder/', extension='.vk4')
 ```
 
 All operations of the surface can be applied to the Batch analogously to a Surface object.
