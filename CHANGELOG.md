@@ -1,4 +1,6 @@
 ## Unreleased changes
+- Added kwarg to Gaussian filter to define endeffect management method
+## v0.8.0
 - Added Alicona .al3d file format 
 - Fixed bug resulting in negative Vmc and Vmp
 - Added Surface.save method to export a surface to different file formats. So far, .sur and .al3d are supported
