@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .utils import argclosest, interp1d
+from .mathutils import argclosest, interp1d
 from .cache import CachedInstance, cache
 
 class AbbottFirestoneCurve(CachedInstance):
