@@ -111,7 +111,7 @@ Accessing the raw data
 The raw data of a `Surface` object can be accessed with the attribute `data` as a two-dimensional `numpy` array.
 The pixel resolution in x (horizontal) and y (vertical) is accessed through the attributes `step_x` and `step_y`.
 The width and height in micrometers are accessed through the attributed `width_um` and `height_um`. The resolution in
-pixels is encoded in the named tuple `size`.
+pixels is encoded in the named tuple `size`, holding the dimensions in the form `(y, x)`.
 
 
 .. code:: python
@@ -119,7 +119,7 @@ pixels is encoded in the named tuple `size`.
     data_2d = surface.data
     step_x = surface.step_x
     step_y = surface.step_y
-    nx, ny = surface.size
+    ny, nx = surface.size
     # or:
     nx = surface.size.x
     ny = surface.size.y
