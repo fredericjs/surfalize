@@ -18,8 +18,9 @@ from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import load_file, write_file
-from .utils import argclosest, interp1d, is_list_like
-from .common import Sinusoid, register_returnlabels, CachedInstance, cache
+from .utils import is_list_like, register_returnlabels
+from .cache import CachedInstance, cache
+from .mathutils import Sinusoid, argclosest, interp1d
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
