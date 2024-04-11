@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
+from .exceptions import FittingError
 
 
 def interp1d(xdata, ydata, assume_sorted=False):
@@ -181,7 +182,10 @@ class Sinusoid:
             x0 = 0
             y0 = np.mean(ydata)
             p0 = (a, p, x0, y0)
-        popt, _ = curve_fit(_sinusoid, xdata, ydata, p0=p0)
+        try:
+            popt, _ = curve_fit(_sinusoid, xdata, ydata, p0=p0)
+        except RuntimeError:
+            raise FittingError('Sinusoid fitting was unsuccessful.') from None
         a, p, x0, y0 = popt
         # We don't specifiy positive bounds for a, since the fit quality is worse for some reason if we do
         # Probably because scipy switches to a different algorithm internally when bounds are specified
