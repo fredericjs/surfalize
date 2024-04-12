@@ -1,3 +1,6 @@
+## unreleased changes
+- Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
+  thread pool based batch execution
 ## v0.8.1
 - Added kwarg to Gaussian filter to define endeffect management method
 - Sinusoid now raised FittingError when fitting fails

@@ -2,7 +2,7 @@ import cython
 import numpy as np
 from libc.math cimport sqrt
 
-cdef float triangle_area_f(float x0, float y0, float z0, float x1, float y1, float z1):
+cdef float triangle_area_f(float x0, float y0, float z0, float x1, float y1, float z1) nogil:
     """
     Calculates the area of a 3d triangle spanned by the points A, B, C based on the two spanning vectors
     AB and AC, where AB = (x0, y0, z0) and AC = (x1, y1, z1). The area is calculated by computing the
@@ -10,7 +10,7 @@ cdef float triangle_area_f(float x0, float y0, float z0, float x1, float y1, flo
     """
     return 0.5 * sqrt((y0*z1 - z0*y1)**2 + (z0*x1 - x0*z1)**2 + (x0*y1 - y0*x1)**2)
 
-cdef double triangle_area_d(double x0, double y0, double z0, double x1, double y1, double z1):
+cdef double triangle_area_d(double x0, double y0, double z0, double x1, double y1, double z1) nogil:
     """
     Calculates the area of a 3d triangle spanned by the points A, B, C based on the two spanning vectors
     AB and AC, where AB = (x0, y0, z0) and AC = (x1, y1, z1). The area is calculated by computing the
@@ -35,32 +35,33 @@ def _surface_area_gwyddion_cy_d(double[:,:] p, double dx, double dy):
     cdef Py_ssize_t jmax = p.shape[1]-1
     cdef double a1, a2, a3, a4
     cdef double zm
-    for i in range(imax):
-        for j in range(jmax):
-            zm = (p[i,j] + p[i+1,j] + p[i,j+1] + p[i+1,j+1]) / 4
-            a1 = triangle_area_d(0, dy, p[i+1,j] - p[i,j], dx/2, dy/2, zm - p[i,j])
-            a2 = triangle_area_d(0, dx, p[i,j+1] - p[i,j], dx/2, dy/2, zm - p[i,j])
-            a3 = triangle_area_d(0, dy, p[i+1,j] - p[i+1,j+1], dx/2, dy/2, zm - p[i+1,j+1])
-            a4 = triangle_area_d(0, dx, p[i,j+1] - p[i+1,j+1], dx/2, dy/2, zm - p[i+1,j+1])
+    with nogil:
+        for i in range(imax):
+            for j in range(jmax):
+                zm = (p[i,j] + p[i+1,j] + p[i,j+1] + p[i+1,j+1]) / 4
+                a1 = triangle_area_d(0, dy, p[i+1,j] - p[i,j], dx/2, dy/2, zm - p[i,j])
+                a2 = triangle_area_d(0, dx, p[i,j+1] - p[i,j], dx/2, dy/2, zm - p[i,j])
+                a3 = triangle_area_d(0, dy, p[i+1,j] - p[i+1,j+1], dx/2, dy/2, zm - p[i+1,j+1])
+                a4 = triangle_area_d(0, dx, p[i,j+1] - p[i+1,j+1], dx/2, dy/2, zm - p[i+1,j+1])
 
-            if i == 0:
-                a2 = 0
-                a1 /= 2
-                a4 /= 2
-            elif i == imax:
-                a3 = 0
-                a1 /= 2
-                a4 /= 2
-            if j == 0:
-                a1 = 0
-                a2 /= 2
-                a3 /= 2
-            elif j == jmax:
-                a4 = 0
-                a2 /= 2
-                a3 /= 2
+                if i == 0:
+                    a2 = 0
+                    a1 /= 2
+                    a4 /= 2
+                elif i == imax:
+                    a3 = 0
+                    a1 /= 2
+                    a4 /= 2
+                if j == 0:
+                    a1 = 0
+                    a2 /= 2
+                    a3 /= 2
+                elif j == jmax:
+                    a4 = 0
+                    a2 /= 2
+                    a3 /= 2
 
-            total_area += a1 + a2 + a3 + a4
+                total_area += a1 + a2 + a3 + a4
 
     return total_area
 
@@ -79,11 +80,12 @@ def _surface_area_iso_cy_d(double[:,:] p, double dx, double dy):
     cdef Py_ssize_t imax = p.shape[0] - 1
     cdef Py_ssize_t jmax = p.shape[1] - 1
     cdef double a1, a2
-    for i in range(imax):
-        for j in range(jmax):
-            a1 = triangle_area_d(0, dy, p[i+1,j] - p[i,j], dx, 0, p[i,j+1] - p[i,j])
-            a2 = triangle_area_d(dx, 0, p[i+1,j] - p[i+1,j+1], 0, dy, p[i,j+1] - p[i+1,j+1])
-            total_area += a1 + a2
+    with nogil:
+        for i in range(imax):
+            for j in range(jmax):
+                a1 = triangle_area_d(0, dy, p[i+1,j] - p[i,j], dx, 0, p[i,j+1] - p[i,j])
+                a2 = triangle_area_d(dx, 0, p[i+1,j] - p[i+1,j+1], 0, dy, p[i,j+1] - p[i+1,j+1])
+                total_area += a1 + a2
     return total_area
 
 @cython.boundscheck(False)  # Deactivate bounds checking
@@ -101,13 +103,13 @@ def _surface_area_iso_cy_f(float[:,:] p, double dx, double dy):
     cdef Py_ssize_t imax = p.shape[0] - 1
     cdef Py_ssize_t jmax = p.shape[1] - 1
     cdef double a1, a2
-    for i in range(imax):
-        for j in range(jmax):
-            a1 = triangle_area_f(0, dy, p[i+1,j] - p[i,j], dx, 0, p[i,j+1] - p[i,j])
-            a2 = triangle_area_f(dx, 0, p[i+1,j] - p[i+1,j+1], 0, dy, p[i,j+1] - p[i+1,j+1])
-            total_area += a1 + a2
+    with nogil:
+        for i in range(imax):
+            for j in range(jmax):
+                a1 = triangle_area_f(0, dy, p[i+1,j] - p[i,j], dx, 0, p[i,j+1] - p[i,j])
+                a2 = triangle_area_f(dx, 0, p[i+1,j] - p[i+1,j+1], 0, dy, p[i,j+1] - p[i+1,j+1])
+                total_area += a1 + a2
     return total_area
-
 
 def _extend_array(array):
     """
