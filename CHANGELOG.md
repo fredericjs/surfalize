@@ -1,6 +1,38 @@
-## [unreleased changes]
+## unreleased changes
+- Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
+  thread pool based batch execution
+## v0.8.1
+- Added kwarg to Gaussian filter to define endeffect management method
+- Sinusoid now raised FittingError when fitting fails
+- Batch.execute now uses threadpool instead of multiprocessing to avoid issues with jupyter and pickling, while
+  maintaining almost the same speed gains due to frequent GIL release in numpy-based computations
+## v0.8.0
+- Added Alicona .al3d file format 
+- Fixed bug resulting in negative Vmc and Vmp
+- Added Surface.save method to export a surface to different file formats. So far, .sur and .al3d are supported
+- Added .sdf file format
+- Added test files for all supported file formats and unittests for loading the testfiles
+- Switched from scipy-based calculation of autocorrelation function to fft-based implementation, which corresponds to
+  the approach that MountainsMap seems to be using
+- Autocorrelation now only centers the surface and does not level it anymore, to ensure correspondence with MountainsMap
+- Setup.py now autodetects and compiles all Cython modules 
+## v0.7.0
+- Surface.zero and Surface.level fixed for surfaces with nonmeasured points
+- Added support for Nanofocus NMS file format
+- Added encoding option to Surface.load as keyword argument 
+## v0.6.0
 - Added Zeta .zmg file format
 - Homogeneity now raises value error if any periodic or negative parameter is specified as input
+- Period can now be manually set for homogeneity calculation by keyword argument
+- Fixed multiprocessing error on Windows that caused infinite spawning of child processes
+- Added openpyxl as dependency
+- Added from_dir constructor classmethod to Batch, to initialize batch object from a directory path that contains the
+  topography files as a convenience function
+- Fixed bug with loading Gwyddion exported SUR files due to Gwyddion filling strings with null instead of spaces
+- Added OPD file format (OPD files may have differing values of step_x and step_y, this could cause unexpected errors 
+  in the calculation of some parameters)
+- Added XYZ file format. The reader assumes units of meters and data points on a regular grid.
+- Added methods to level and calculate stepheight and cavity volume for rectangular ablation craters
 ## v0.5.1
 - Changed plot parameter of Surface.depth to plot a specific or multiple profiles
 - Fixed hashing of mutable types for caching of method calls with mutable parameters

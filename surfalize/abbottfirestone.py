@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .utils import argclosest, interp1d
-from .common import CachedInstance, cache
+from .mathutils import argclosest, interp1d
+from .cache import CachedInstance, cache
 
 class AbbottFirestoneCurve(CachedInstance):
     """
@@ -139,12 +139,12 @@ class AbbottFirestoneCurve(CachedInstance):
     @cache
     def Vmp(self, p=10):
         idx = argclosest(self.Smc(p), self._height)
-        return np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100
+        return np.abs(np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100)
 
     @cache
     def Vmc(self, p=10, q=80):
         idx = argclosest(self.Smc(q), self._height)
-        return np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100 - self.Vmp(p)
+        return np.abs(np.trapz(self._material_ratio[:idx], x=self._height[:idx])) / 100 - self.Vmp(p)
 
     @cache
     def Vvv(self, q=80):

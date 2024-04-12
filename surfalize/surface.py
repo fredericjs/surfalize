@@ -14,11 +14,13 @@ from scipy.interpolate import griddata
 from scipy.signal import find_peaks
 from scipy.optimize import curve_fit
 import scipy.ndimage as ndimage
+from sklearn.cluster import KMeans
 
 # Custom imports
-from .file import load_file
-from .utils import argclosest, interp1d, is_list_like
-from .common import Sinusoid, register_returnlabels, CachedInstance, cache
+from .file import load_file, write_file
+from .utils import is_list_like, register_returnlabels
+from .cache import CachedInstance, cache
+from .mathutils import Sinusoid, argclosest, interp1d
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -121,7 +123,7 @@ class Surface(CachedInstance):
     """
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
-                            'homogeneity')
+                            'homogeneity', 'stepheight', 'cavity_volume')
     
     def __init__(self, height_data, step_x, step_y):
         super().__init__() # Initialize cached instance
@@ -248,7 +250,7 @@ class Surface(CachedInstance):
         return hash((self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std()))
 
     @classmethod
-    def load(cls, filepath):
+    def load(cls, filepath, encoding='utf-8'):
         """
         Classmethod to load a topography from a file.
 
@@ -256,11 +258,29 @@ class Surface(CachedInstance):
         ----------
         filepath: str | pathlib.Path
             Filepath pointing to the topography file.
+        encoding: str, Default utf-8
+            Encoding of characters in the file. Defaults to utf-8.
         Returns
         -------
         surface: surfalize.Surface
         """
-        return cls(*load_file(filepath))
+        return cls(*load_file(filepath, encoding=encoding))
+
+    def save(self, filepath, encoding='utf-8'):
+        """
+        Saves the surface to a supported file format.
+
+        Parameters
+        ----------
+        filepath: str | pathlib.Path
+            Filepath pointing to the topography file.
+        encoding: str, Default utf-8
+            Encoding of characters in the file. Defaults to utf-8.
+        Returns
+        -------
+        None
+        """
+        write_file(filepath, self, encoding=encoding)
         
     def get_horizontal_profile(self, y, average=1, average_step=None):
         """
@@ -408,7 +428,7 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
             Surface object.
         """
-        data = self.data - self.data.mean()
+        data = self.data - np.nanmean(self.data)
         if inplace:
             self._set_data(data=data)
             return self
@@ -429,7 +449,7 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
             Surface object.
         """
-        data = self.data - self.data.min()
+        data = self.data - np.nanmin(self.data)
         if inplace:
             self._set_data(data=data)
             return self
@@ -636,7 +656,7 @@ class Surface(CachedInstance):
         return Surface(rotated_cropped, step_x, step_y)
     
     @no_nonmeasured_points
-    def filter(self, filter_type, cutoff, cutoff2=None, inplace=False):
+    def filter(self, filter_type, cutoff, cutoff2=None, inplace=False, endeffect_mode='reflect'):
         """
         Filters the surface by applying a Gaussian filter.
 
@@ -664,6 +684,10 @@ class Surface(CachedInstance):
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
             objects will be returned.
+        endeffect_mode: {reflect, constant, nearest, mirror, wrap}, default reflect
+            The parameter determines how the endeffects of the filter at the boundaries of the data are managed.
+            For details, see the documentation of scipy.ndimage.gaussian_filter.
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
 
         Returns
         -------
@@ -682,21 +706,21 @@ class Surface(CachedInstance):
             if cutoff2 <= cutoff:
                 raise ValueError("The value of cutoff2 must be greater than the value of cutoff.")
 
-            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
-            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff2)
+            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
+            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff2, endeffect_mode=endeffect_mode)
             return highpass_filter(lowpass_filter(self, inplace=inplace), inplace=inplace)
 
         if filter_type == 'lowpass':
-            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
+            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
             return lowpass_filter(self, inplace=inplace)
 
         if filter_type == 'highpass':
-            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff)
+            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
             return highpass_filter(self, inplace=inplace)
 
         # If filter_type == 'both' is only remaining option
-        highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff)
-        lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
+        highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
+        lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
         return highpass_filter(self, inplace=False), lowpass_filter(self, inplace=False)
 
     def zoom(self, factor, inplace=False):
@@ -818,6 +842,117 @@ class Surface(CachedInstance):
         dy = peak0[1] - peak1[1]
 
         return dx, dy
+
+    # Stepheight #######################################################################################################
+
+    @cache
+    def _stepheight_get_mask(self):
+        """
+        Uses k-means algorithm to segment the upper and lower surface of a rectangular ablation cavity.
+        Returns a numpy array mask which is true for points that belong to the upper surface level.
+
+        Returns
+        -------
+        np.array[bool]
+        """
+        flattened_data = self.data.flatten().reshape(-1, 1)
+        kmeans = KMeans(n_clusters=2, random_state=42)
+        kmeans.fit(flattened_data)
+        cluster_labels = kmeans.labels_
+        mask = cluster_labels.reshape(self.size).astype('bool')
+        if self.data[~mask].mean() > self.data[mask].mean():
+            mask = ~mask
+        return mask
+
+    @cache
+    def stepheight_level(self, inplace=False):
+        """
+        Levels the surface only based on the datapoints from the upper level surface in a rectangular ablation cavity.
+        This function is intended to be used when the measurement contains two approximately flat surfaces on two
+        different levels.
+
+        Parameters
+        ----------
+        inplace: bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self
+
+        Returns
+        -------
+        surface: surfalize.Surface
+            Surface object.
+        """
+        mask = self._stepheight_get_mask()
+        x, y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
+        x_flat = x[mask]
+        y_flat = y[mask]
+        height_flat = self.data[mask]
+        A = np.column_stack((x_flat, y_flat, np.ones_like(x_flat)))
+        # Use linear regression to fit a plane to the data
+        coefficients, _, _, _ = lstsq(A, height_flat)
+        # Extract the coefficients for the plane equation
+        a, b, c = coefficients
+        # Calculate the plane values for each point in the grid
+        plane = a * x + b * y + c
+        plane = plane - plane.mean()
+        leveled_data = self.data - plane
+        if inplace:
+            self._set_data(data=leveled_data)
+            return self
+        surface = Surface(leveled_data, self.step_x, self.step_y)
+        # This is not an ideal solution, but I can't think of a better one without major refactoring
+        # If the leveling is not done inplace, we need to somehow transfer the computed mask to the new objhect
+        # We are manually creating a cache entry for the new surface object so that we don't have to recompute the mask
+        surface.create_cache_entry(surface._stepheight_get_mask, mask, tuple(), dict())
+        return surface
+
+    @cache
+    def _stepheight_get_upper_lower_median(self):
+        """
+        Calculates the median value of the upper and lower surfaces in a stepheight calculation for a rectangular
+        ablation cavity.
+
+        Returns
+        -------
+        upper_median, lower_median: (float, flaot)
+        """
+        mask = self._stepheight_get_mask()
+        upper_median = np.median(self.data[mask])
+        lower_median = np.median(self.data[~mask])
+        return upper_median, lower_median
+
+    @cache
+    def stepheight(self):
+        """
+        Calculates the stepheight of two-level ablation experiment.
+
+        Returns
+        -------
+        stepheight: float
+        """
+        upper_median, lower_median = self._stepheight_get_upper_lower_median()
+        step_height = upper_median - lower_median
+        return step_height
+
+    def cavity_volume(self, threshold=0.50):
+        """
+        Calculates the cavity volume of a flat surface containing an ablation crater with a leveled bottom plane.
+
+        Parameters
+        ----------
+        threshold: float, default 0.5
+            Percentage threshold value for the cutoff between the upper and lower levels used to determine the area
+            inside which the volume is calculated.
+
+        Returns
+        -------
+        volume: float
+        """
+        upper_median, lower_median = self._stepheight_get_upper_lower_median()
+        stepheight = self.stepheight()
+        mask_volume = self.data < upper_median - threshold * (stepheight)
+        volume = (upper_median - self.data[mask_volume]).sum() * self.step_x * self.step_y
+        return volume
 
     # Characterization #################################################################################################
    
@@ -1194,9 +1329,10 @@ class Surface(CachedInstance):
     @no_nonmeasured_points
     def period(self):
         """
-        Calculates the spatial period based on the Fourier transform. This can yield unexcepted results if the surface
-        contains peaks at lower spatial frequencies than the frequency of the periodic structure to be evaluated.
-        It is advised to perform appropriate filtering to remove waviness before invoking this method.
+        Calculates the 1d spatial period based on the Fourier transform. This can yield unexcepted results if the
+        surface contains peaks at lower spatial frequencies than the frequency of the periodic structure to be
+        evaluated. It is advised to perform appropriate filtering and leveling to remove waviness before invoking this
+        method.
 
         Returns
         -------
@@ -1320,17 +1456,21 @@ class Surface(CachedInstance):
     
     @no_nonmeasured_points
     @cache
-    def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr')):
+    def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr'), period=None):
         """
         Calculates the homogeneity of a periodic surface through Gini coefficient analysis. It returns 1 - Gini, which
         is distributed on in the range between 0 and 1, where 0 represents minimum and 1 represents maximum homogeneity.
         The homogeneity factor is calculated for each roughness parameter specified in 'parameters' and the mean value
-        is returned.
+        is returned. The surface is divided into square unit cells with a side length equivalent to the period, for
+        which each parameter is evaluated.
 
         Parameters
         ----------
         parameters: tuple[str], optional
             Roughness parameters that are evaluated for their homogeneity distribution. Defaults to ['Sa', 'Sku', Sdr'].
+        period: None | float, optional
+            The period which is used to devide the surface into unit cells. If None, the period is automatically
+            computed from the fourier transform.
 
         Returns
         -------
@@ -1357,7 +1497,8 @@ class Surface(CachedInstance):
                 's' if len(params) > 1 else '', ", ".join(params), "are" if len(params) > 1 else "is")
                             )
 
-        period = self.period()
+        if period is None:
+            period = self.period()
         cell_length = int(period / self.height_um * self.size.y)
         ncells = int(self.size.y / cell_length) * int(self.size.x / cell_length)
         results = np.zeros((len(parameters), ncells))
@@ -1617,8 +1758,8 @@ class Surface(CachedInstance):
 
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         return ax
-    
-    def show(self, cmap='jet', maskcolor='black', ax=None):
+
+    def plot_2d(self, cmap='jet', maskcolor='black', ax=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1651,3 +1792,23 @@ class Surface(CachedInstance):
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         return ax
+    
+    def show(self, cmap='jet', maskcolor='black', ax=None):
+        """
+        Shows a 2D-plot of the surface using matplotlib.
+
+        Parameters
+        ----------
+        cmap: str | mpl.cmap, default 'jet'
+            Colormap to apply on the data.
+        maskcolor: str, default 'Black'
+            Color for masked values.
+        ax: matplotlib axis, default None
+            If specified, the plot will be drawn the specified axis.
+
+        Returns
+        -------
+        None.
+        """
+        self.plot_2d(cmap=cmap, maskcolor=maskcolor, ax=ax)
+        plt.show()

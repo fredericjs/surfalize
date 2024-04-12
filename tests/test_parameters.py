@@ -2,24 +2,6 @@ from surfalize import Surface
 import numpy as np
 import pytest
 
-@pytest.fixture
-def surface():
-    np.random.seed(0)
-    step = 0.1
-    period = 20 / step
-    period_lipss = 1 / step
-    nx = 1000
-    ny = 700
-    x = np.arange(nx)
-    y = np.arange(ny)
-    x, y = np.meshgrid(x, y)
-    z = np.sin(x / period * 2 * np.pi)
-    z += 0.5 * (np.sin((x - period / 2) / period * 2 * np.pi) + 1) * 0.3 * np.sin(
-        (np.sin(y / 10) + x) / period_lipss * 2 * np.pi)
-    z += np.random.normal(size=z.shape) / 5
-    surface = Surface(z, 0.1, 0.1)
-    return surface
-
 EPSILON = 1e-6
 
 def test_Sa(surface):
@@ -59,11 +41,11 @@ def test_Sdq(surface):
 
 
 def test_Sal(surface):
-    assert surface.Sal() == pytest.approx(4.35, abs=EPSILON)
+    assert surface.Sal() == pytest.approx(4.25, abs=EPSILON)
 
 
 def test_Str(surface):
-    assert surface.Str() == pytest.approx(0.123845, abs=EPSILON)
+    assert surface.Str() == pytest.approx(0.120735, abs=EPSILON)
 
 
 def test_Sk(surface):
@@ -91,11 +73,11 @@ def test_Sxp(surface):
 
 
 def test_Vmp(surface):
-    assert surface.Vmp() == pytest.approx(-0.014809, abs=EPSILON)
+    assert surface.Vmp() == pytest.approx(0.014809, abs=EPSILON)
 
 
 def test_Vmc(surface):
-    assert surface.Vmc() == pytest.approx(-0.797036, abs=EPSILON)
+    assert surface.Vmc() == pytest.approx(0.797036, abs=EPSILON)
 
 
 def test_Vvv(surface):

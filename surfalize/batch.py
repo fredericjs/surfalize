@@ -1,4 +1,4 @@
-import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
 from functools import partial
 from pathlib import Path
 import logging
@@ -8,6 +8,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 from .surface import Surface
 from .utils import is_list_like
+from .file import supported_formats
 
 class BatchError(Exception):
     pass
@@ -198,10 +199,58 @@ class Batch:
         self._operations = []
         self._parameters = []
 
+    @classmethod
+    def from_dir(cls, dir_path, file_extensions=None, additional_data=None):
+        """
+        Alternative constructor for Batch class that takes a directory path as well as a string or list of strings
+        of file extensions as positional arguments.
+
+        Parameters
+        ----------
+        dir_path: str | pathlib.Path
+            Path to the directory containing the files
+        file_extensions: str | list-like, optional
+            File extension or list of file extensions to be searched for, eg. '.vk4', '.plu'. The file extension must
+            be prefixed by a dot. If no file extensions are specified, all files are added to the batch that have a file
+            extension that corresponds to a supported file format.
+        additional_data: str, pathlib.Path, optional
+            Path to an Excel file containing additional parameters, such as
+            input parameters. Excel file must contain a column 'file' with
+            the filename including the file extension. Otherwise, an arbitrary
+            number of additional columns can be supplied.
+
+        Examples
+        --------
+        >>> directory = 'C:\\topography_files'
+        >>> batch = Batch.from_dir(directory)
+
+        Returns
+        -------
+        Batch
+        """
+        dir_path = Path(dir_path)
+        filepaths = []
+        if file_extensions is None:
+            file_extensions = supported_formats
+        elif isinstance(file_extensions, str):
+            file_extensions = [file_extensions]
+        for extension in file_extensions:
+            filepaths.extend(list(dir_path.glob(f'*{extension}')))
+        return cls(filepaths, additional_data=additional_data)
+
+
     def _disptach_tasks(self, multiprocessing=True):
         """
         Dispatches the individual tasks between CPU cores if multiprocessing is True, otherwise executes them
         sequentially.
+
+        Notes
+        -----
+        This implementation has switched from a true multiprocessing pool to a thread pool. The reason for the
+        change is that multiprocessing relies on pickling, which causes multiple issues when using Jupyter Notebooks.
+        Also, if the batch.execute method is not called in a main guard, an infinite spawning of child processes may
+        occur. These issues are avoided when using threads while maintaining most of the speedup, since most numpy-based
+        computations release the GIL anyway.
 
         Parameters
         ----------
@@ -216,14 +265,14 @@ class Batch:
         """
         results = []
         if multiprocessing:
-            total_tasks = len(self._filepaths)
-            description = f'Processing on {mp.cpu_count()} cores'
-            with mp.Pool() as pool:
+            with ThreadPool() as pool:
                 task = partial(_task, operations=self._operations, parameters=self._parameters)
-                with tqdm(total=len(self._filepaths), desc=description) as progress_bar:
+                with tqdm(total=len(self._filepaths), desc='Processing files') as progress_bar:
                     for result in pool.imap_unordered(task, self._filepaths):
                         results.append(result)
                         progress_bar.update()
+                pool.close()
+                pool.join()
             return results
 
         for filepath in tqdm(self._filepaths, desc='Processing'):
@@ -455,6 +504,18 @@ class Batch:
         self
         """
         operation = Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
+        self._operations.append(operation)
+        return self
+
+    def stepheight_level(self):
+        """
+        Registers Surface.stepheight_level for later execution. Inplace is True by default.
+
+        Returns
+        -------
+        self
+        """
+        operation = Operation('stepheight_level', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 

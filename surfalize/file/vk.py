@@ -107,14 +107,14 @@ LAYOUT_HEIGHT_DATA = (
     (None, 768, None)
 )
 
-def read_vk4(filepath):
+def read_vk4(filepath, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         filehandle.seek(HEADER_SIZE, 1)
-        offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE)
+        offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE, encoding=encoding)
         filehandle.seek(offset_table['meas_conds'], 0)
-        measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS)
+        measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS, encoding=encoding)
         filehandle.seek(offset_table['height'], 0)
-        height_data = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA)
+        height_data = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA, encoding=encoding)
         data_length = height_data['width'] * height_data['height']
         data = np.fromfile(filehandle, dtype=np.uint32, count=data_length) / 10_000  # to um
 
@@ -124,15 +124,15 @@ def read_vk4(filepath):
     step_y = measurement_conditions['y_length_per_pixel'] * get_unit_conversion('pm', 'um')
     return (data, step_x, step_y)
 
-def read_vk6_vk7(filepath):
+def read_vk6_vk7(filepath, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
         with archive.open('Vk4File') as filehandle:
             filehandle.seek(HEADER_SIZE, 1)
-            offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE)
+            offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE, encoding=encoding)
             filehandle.seek(offset_table['meas_conds'], 0)
-            measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS)
+            measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS, encoding=encoding)
             filehandle.seek(offset_table['height'], 0)
-            height_data = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA)
+            height_data = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA, encoding=encoding)
             data_length = height_data['width'] * height_data['height']
             data = np.frombuffer(filehandle.read(data_length * 4), dtype=np.uint32, count=data_length) / 10_000  # to um
 

@@ -22,22 +22,23 @@ def height_parameters(np.ndarray[np.float64_t, ndim=2] data, double mean):
 
     cdef double sa, sq, sz, ssk, sku
 
-    for i in range(rows):
-        for j in range(cols):
-            val = data[i, j] - mean
-            val2 = val * val
-            sum1 += fabs(val)
-            sum2 += val2
-            sum3 += val2 * val
-            sum4 += val2 * val2
-            sp = max(sp, val)
-            sv = min(sv, val)
+    with nogil:
+        for i in range(rows):
+            for j in range(cols):
+                val = data[i, j] - mean
+                val2 = val * val
+                sum1 += fabs(val)
+                sum2 += val2
+                sum3 += val2 * val
+                sum4 += val2 * val2
+                sp = max(sp, val)
+                sv = min(sv, val)
 
-    sa = sum1 / size
-    sq = sqrt(sum2 / size)
-    sv = fabs(sv)
-    sz = sp + sv
-    sq2 = sq * sq
-    ssk = sum3 / size / (sq2 * sq)
-    sku = sum4 / size / (sq2 * sq2)
+        sa = sum1 / size
+        sq = sqrt(sum2 / size)
+        sv = fabs(sv)
+        sz = sp + sv
+        sq2 = sq * sq
+        ssk = sum3 / size / (sq2 * sq)
+        sku = sum4 / size / (sq2 * sq2)
     return {'Sa': sa, 'Sq': sq, 'Sv': sv, 'Sp': sp, 'Sz': sz, 'Ssk': ssk, 'Sku': sku}

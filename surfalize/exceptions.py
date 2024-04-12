@@ -4,14 +4,22 @@ class FileFormatError(Exception):
     """
     pass
 
+
 class UnsupportedFileFormatError(FileFormatError):
     """
     Raised when a file format is not supported.
     """
     pass
 
+
 class CorruptedFileError(FileFormatError):
     """
     Raised when a file is corrupted.
     """
     pass
+
+
+class FittingError(Exception):
+    """
+    Raised when a fitting operation has failed.
+    """
