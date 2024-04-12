@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath('../../examples'))
 project = 'surfalize'
 copyright = '2023, Frederic Schell'
 author = 'Frederic Schell'
-release = '0.8.0'
+release = '0.8.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

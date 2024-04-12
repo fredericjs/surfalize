@@ -45,7 +45,7 @@ def compile_cython_extensions(root='.'):
 
 setup(
     name='surfalize',
-    version='0.8.0',
+    version='0.8.1',
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',

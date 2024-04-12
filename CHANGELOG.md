@@ -1,4 +1,4 @@
-## Unreleased changes
+## v0.8.1
 - Added kwarg to Gaussian filter to define endeffect management method
 - Sinusoid now raised FittingError when fitting fails
 - Batch.execute now uses threadpool instead of multiprocessing to avoid issues with jupyter and pickling, while
