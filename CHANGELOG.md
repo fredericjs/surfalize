@@ -1,8 +1,11 @@
-## Unreleased changes
+## unreleased changes
+- Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
+  thread pool based batch execution
+## v0.8.1
 - Added kwarg to Gaussian filter to define endeffect management method
 - Sinusoid now raised FittingError when fitting fails
 - Batch.execute now uses threadpool instead of multiprocessing to avoid issues with jupyter and pickling, while
-  maintaining almost the same speed gains due to frequent GIL release in numpy-based computations 
+  maintaining almost the same speed gains due to frequent GIL release in numpy-based computations
 ## v0.8.0
 - Added Alicona .al3d file format 
 - Fixed bug resulting in negative Vmc and Vmp
