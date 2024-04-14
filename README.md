@@ -8,7 +8,7 @@
 
 
 surfalize is a python package for analyzing microscope topography measurement data in terms of surface
-rouggness and other topographic parameters. It is intended primarily for microtextured surfaces and is supposed to 
+roughness and other topographic parameters. It is intended primarily for microtextured surfaces and is supposed to 
 replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion for the most common tasks.
 
 ## How to install
@@ -35,16 +35,18 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 
 ## Currently supported file formats
 
-| Manufacturer | Format                 |
-|--------------|------------------------|
-| Keyence      | *.vk4*, *.vk6*, *.vk7* |
-| Leica        | *.plu*                 |
-| Sensofar     | *.plu*, *.plux*        |
-| Digital Surf | *.sur*                 |
-| KLA Zeta     | *.zmg*                 |
-| Wyko         | *.opd*                 |
-| Nanofocus    | *.nms*                 |
-| General      | *.xyz*                 |
+| Manufacturer | Format                 | Reading | Writing |
+|--------------|------------------------|---------|---------|
+| Keyence      | *.vk4*, *.vk6*, *.vk7* | Yes     | No      | 
+| Leica        | *.plu*                 | Yes     | No      | 
+| Sensofar     | *.plu*, *.plux*        | Yes     | No      | 
+| Digital Surf | *.sur*                 | Yes     | Yes     | 
+| KLA Zeta     | *.zmg*                 | Yes     | No      | 
+| Wyko         | *.opd*                 | Yes     | No      | 
+| Nanofocus    | *.nms*                 | Yes     | No      | 
+| Alicona      | *.al3d*                | Yes     | Yes     | 
+| Digital Surf | *.sdf*                 | Yes     | No      | 
+| General      | *.xyz*                 | Yes     | No      |
 
 ## Supported roughness parameters
 
@@ -195,8 +197,27 @@ The Abbott-Firestone curve and Fourier Transform can be plotted using:
 ```Python
 surface.plot_abbott_curve()
 # Here we apply a Hanning window to mitigate spectral leakage (recommended) as crop the plotted range of 
-frequencies to fxmax and fymax.
+# frequencies to fxmax and fymax.
 surface.plot_fourier_transform(hanning=True, fxmax=2, fymax=1)
+```
+
+### Accessing the raw data
+The raw data of a `Surface` object can be accessed with the attribute `data` as a two-dimensional `numpy` array. 
+The pixel resolution in x (horizontal) and y (vertical) is accessed through the attributes `step_x` and `step_y`.
+The width and height in micrometers are accessed through the attributed `width_um` and `height_um`. The resolution in
+pixels is encoded in the named tuple `size`, holding the dimensions in the form `(y, x)`.
+
+
+```Python
+data_2d = surface.data
+step_x = surface.step_x
+step_y = surface.step_y
+ny, nx = surface.size
+# or:
+nx = surface.size.x
+ny = surface.size.y
+width = surface.width_um
+height = surface.height_um
 ```
 
 ### Batch processing
@@ -211,6 +232,12 @@ filepaths = Path('folder').glob('*.vk4')
 
 # Create a Batch object that holds the filepaths to the surface files
 batch = Batch(filepaths)
+```
+Alternatively, the `Batch` class provides an alternative constructor to initialize the a `Batch` directly from a folder 
+containing topography files. If the `extension` argument is not defined, all files corresponding to supported files 
+formats will be loaded. Alternatively, a list of specific formats can also be supplied. 
+```Python
+batch = Batch.from_dir('path/to/folder/', extension='.vk4')
 ```
 
 All operations of the surface can be applied to the Batch analogously to a Surface object.

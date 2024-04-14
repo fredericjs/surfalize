@@ -1,3 +1,21 @@
+## unreleased changes
+- Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
+  thread pool based batch execution
+## v0.8.1
+- Added kwarg to Gaussian filter to define endeffect management method
+- Sinusoid now raised FittingError when fitting fails
+- Batch.execute now uses threadpool instead of multiprocessing to avoid issues with jupyter and pickling, while
+  maintaining almost the same speed gains due to frequent GIL release in numpy-based computations
+## v0.8.0
+- Added Alicona .al3d file format 
+- Fixed bug resulting in negative Vmc and Vmp
+- Added Surface.save method to export a surface to different file formats. So far, .sur and .al3d are supported
+- Added .sdf file format
+- Added test files for all supported file formats and unittests for loading the testfiles
+- Switched from scipy-based calculation of autocorrelation function to fft-based implementation, which corresponds to
+  the approach that MountainsMap seems to be using
+- Autocorrelation now only centers the surface and does not level it anymore, to ensure correspondence with MountainsMap
+- Setup.py now autodetects and compiles all Cython modules 
 ## v0.7.0
 - Surface.zero and Surface.level fixed for surfaces with nonmeasured points
 - Added support for Nanofocus NMS file format

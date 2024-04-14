@@ -102,7 +102,26 @@ The Abbott-Firestone curve and Fourier Transform can be plotted using:
 
     surface.plot_abbott_curve()
     # Here we apply a Hanning window to mitigate spectral leakage (recommended) as crop the plotted range of
-    frequencies to fxmax and fymax.
+    # frequencies to fxmax and fymax.
     surface.plot_fourier_transform(hanning=True, fxmax=2, fymax=1)
 
+Accessing the raw data
+======================
 
+The raw data of a `Surface` object can be accessed with the attribute `data` as a two-dimensional `numpy` array.
+The pixel resolution in x (horizontal) and y (vertical) is accessed through the attributes `step_x` and `step_y`.
+The width and height in micrometers are accessed through the attributed `width_um` and `height_um`. The resolution in
+pixels is encoded in the named tuple `size`, holding the dimensions in the form `(y, x)`.
+
+
+.. code:: python
+
+    data_2d = surface.data
+    step_x = surface.step_x
+    step_y = surface.step_y
+    ny, nx = surface.size
+    # or:
+    nx = surface.size.x
+    ny = surface.size.y
+    width = surface.width_um
+    height = surface.height_um

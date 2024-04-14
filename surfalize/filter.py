@@ -11,17 +11,22 @@ class GaussianFilter:
         Cutoff wavelength.
     filter_type: {'lowpass', 'highpass'}
         Type of filter to apply. For highpass, simply subtracts the lowpass filtered data from the original data.
+    endeffect_mode: {reflect, constant, nearest, mirror, wrap}, default reflect
+            The parameter determines how the endeffects of the filter at the boundaries of the data are managed.
+            For details, see the documentation of scipy.ndimage.gaussian_filter.
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
 
     Examples
     --------
     >>> lowpass_filter = GaussianFilter(1, 'lowpass')
     >>> filtered_surface = lowpass_filter(original_surface)
     """
-    def __init__(self, cutoff, filter_type):
+    def __init__(self, cutoff, filter_type, endeffect_mode='reflect'):
         self._cutoff = cutoff
         if filter_type not in ['lowpass', 'highpass']:
             raise ValueError('f"{filter_type}" is not a valid filter type.')
         self._filter_type = filter_type
+        self._endeffect_mode = endeffect_mode
 
     @staticmethod
     def sigma(cutoff):
@@ -80,7 +85,7 @@ class GaussianFilter:
         cutoff_y_px = self._cutoff / surface.step_y
         sigma_x = self.sigma(cutoff_x_px)
         sigma_y = self.sigma(cutoff_y_px)
-        data = ndimage.gaussian_filter(surface.data, (sigma_y, sigma_y))
+        data = ndimage.gaussian_filter(surface.data, (sigma_y, sigma_y), mode=self._endeffect_mode)
         if self._filter_type == 'highpass':
             data = surface.data - data
         if inplace:
