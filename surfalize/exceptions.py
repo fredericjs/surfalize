@@ -23,3 +23,11 @@ class FittingError(Exception):
     """
     Raised when a fitting operation has failed.
     """
+    pass
+
+
+class BatchError(Exception):
+    """
+    Raised when an error occurs in batch processing.
+    """
+    pass
