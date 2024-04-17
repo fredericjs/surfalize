@@ -45,7 +45,8 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Wyko         | *.opd*                 | Yes     | No      | 
 | Nanofocus    | *.nms*                 | Yes     | No      | 
 | Alicona      | *.al3d*                | Yes     | Yes     | 
-| General      | *.xyz*                 | Yes     | No      | 
+| T.b.d        | *.sdf*                 | Yes     | No      | 
+| General      | *.xyz*                 | Yes     | No      |
 
 ## Supported roughness parameters
 

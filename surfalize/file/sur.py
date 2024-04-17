@@ -302,10 +302,12 @@ def read_sur_object(filehandle):
 def read_sur(filepath, encoding='utf-8'):
     filesize = filepath.stat().st_size
     with open(filepath, 'rb') as filehandle:
+        object_count = 0
         while True:
-        sur_obj = read_sur_object(filehandle)
-        if sur_obj.header['studiable_type'] == StudiableType.SURFACE:
-            pass
+            sur_obj = read_sur_object(filehandle)
+            if sur_obj.header['studiable_type'] == StudiableType.SURFACE:
+                if filehandle.tell() != filesize:
+                    raise CorruptedFileError
 
 
 

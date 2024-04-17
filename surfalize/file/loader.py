@@ -11,6 +11,7 @@ from .opd import read_opd
 from .xyz import read_xyz
 from .nms import read_nms
 from .al3d import read_al3d, write_al3d
+from .sdf import read_binary_sdf
 
 dispatcher = {
     '.sur':     {'read': read_sur, 'write': write_sur},
@@ -23,12 +24,13 @@ dispatcher = {
     '.opd':     {'read': read_opd},
     '.xyz':     {'read': read_xyz},
     '.nms':     {'read': read_nms},
-    '.al3d':    {'read': read_al3d, 'write': write_al3d}
+    '.al3d':    {'read': read_al3d, 'write': write_al3d},
+    '.sdf':     {'read': read_binary_sdf}
 }
 
 supported_formats = list(dispatcher.keys())
 
-def load_file(filepath, encoding='utf-8'):
+def load_file(filepath, encoding="utf-8"):
     filepath = Path(filepath)
     try:
         loader = dispatcher[filepath.suffix]['read']
@@ -48,4 +50,3 @@ def write_file(filepath, surface, encoding='utf-8'):
     except KeyError:
         raise UnsupportedFileFormatError(f"File format {filepath.suffix} is currently not supported for writing.")
     return writer(filepath, surface, encoding=encoding)
-
