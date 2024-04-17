@@ -5,7 +5,7 @@ from libc.math cimport fabs, sqrt
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)
-def height_parameters(np.ndarray[np.float64_t, ndim=2] data, double mean):
+def height_parameters(double[:, :] data, double mean):
     cdef Py_ssize_t i, j, rows, cols, size
     rows = data.shape[0]
     cols = data.shape[1]
