@@ -16,7 +16,7 @@ The authors make no guarantees for the correctness of any results obtained using
 and may introduce changes to both implementation details and public API at any point in time. Any results should be validated against established 
 software to verify their correctness, especially when they are intended to be used for scientific publications. 
 
-Some parts of the package are more mature and some or in early development stage. Currently, Gaussian filtering and Profile parameters might 
+Some parts of the package are more mature and some are in early development stage. Currently, Gaussian filtering and Profile parameters might 
 suffer from some implementation errors and might not be entirely compliant with ISO standards. Care should be taken when relying on these
 specific functionalities.
 
