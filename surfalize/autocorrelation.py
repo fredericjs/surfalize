@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.ndimage as ndimage
-from scipy.signal import correlate
-from .common import CachedInstance, cache
+from .cache import CachedInstance, cache
 
 
 class AutocorrelationFunction(CachedInstance):

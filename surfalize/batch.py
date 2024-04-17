@@ -1,4 +1,4 @@
-import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
 from functools import partial
 from pathlib import Path
 import logging
@@ -244,6 +244,14 @@ class Batch:
         Dispatches the individual tasks between CPU cores if multiprocessing is True, otherwise executes them
         sequentially.
 
+        Notes
+        -----
+        This implementation has switched from a true multiprocessing pool to a thread pool. The reason for the
+        change is that multiprocessing relies on pickling, which causes multiple issues when using Jupyter Notebooks.
+        Also, if the batch.execute method is not called in a main guard, an infinite spawning of child processes may
+        occur. These issues are avoided when using threads while maintaining most of the speedup, since most numpy-based
+        computations release the GIL anyway.
+
         Parameters
         ----------
         multiprocessing: bool, default True
@@ -257,16 +265,9 @@ class Batch:
         """
         results = []
         if multiprocessing:
-            # This guard clause prevents an infinite recursive spawning of processes, if this method is invoked
-            # in a script without a main guard (if __name__ == '__main__').
-            # See: https://stackoverflow.com/questions/77220442/
-            # multiprocessing-pool-in-a-python-class-without-name-main-guard
-            if not mp.current_process().name == 'MainProcess':
-                return
-            description = f'Processing on {mp.cpu_count()} cores'
-            with mp.Pool() as pool:
+            with ThreadPool() as pool:
                 task = partial(_task, operations=self._operations, parameters=self._parameters)
-                with tqdm(total=len(self._filepaths), desc=description) as progress_bar:
+                with tqdm(total=len(self._filepaths), desc='Processing files') as progress_bar:
                     for result in pool.imap_unordered(task, self._filepaths):
                         results.append(result)
                         progress_bar.update()

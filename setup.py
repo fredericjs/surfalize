@@ -6,8 +6,10 @@ import numpy
 NUMPY_INCLUDE_DIR = numpy.get_include()
 NUMPY_MACROS = ("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")
 
-with open('README.md', 'r', encoding='utf-8') as file:
-    long_description = file.read()
+def read_long_description():
+    with open('README.md', 'r', encoding='utf-8') as file:
+        long_description = file.read()
+    return long_description
 
 def is_package_dir(dirpath):
     """
@@ -33,6 +35,7 @@ def compile_cython_extensions(root='.'):
     root = Path(root)
     extensions = []
     for pyxpath in root.rglob('*.pyx'):
+        print('Extension found: ', pyxpath)
         extension = Extension(resolve_full_module_name(pyxpath), [str(pyxpath)],
                               include_dirs=[NUMPY_INCLUDE_DIR],
                               define_macros=[NUMPY_MACROS])
@@ -40,15 +43,13 @@ def compile_cython_extensions(root='.'):
     ext_modules = cythonize(extensions)
     return ext_modules
 
-ext_modules = compile_cython_extensions()
-
 setup(
     name='surfalize',
-    version='0.7.0',
+    version='0.8.1',
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',
-    long_description=long_description,
+    long_description=read_long_description(),
     long_description_content_type="text/markdown",
     packages=find_packages(),
     python_requires='>=3.6',
@@ -72,5 +73,5 @@ setup(
         'scikit-learn',
         'python-dateutil'
     ],
-    ext_modules=ext_modules
+    ext_modules=compile_cython_extensions()
 )

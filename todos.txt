@@ -1,8 +1,0 @@
-- Implement export of images in plotting functions as well as in the Batch class
-- Omit profiles from structure depth calculation that have a large deviation from the spatial period
-- Create better plots for profiles
-- Test profile roughness parameters
-- Add functional profile roughness parameters
-- Write tests for batch processing
-- Write documentation
-- Implement 3d plots

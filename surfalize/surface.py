@@ -18,8 +18,9 @@ from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import load_file, write_file
-from .utils import argclosest, interp1d, is_list_like
-from .common import Sinusoid, register_returnlabels, CachedInstance, cache
+from .utils import is_list_like, register_returnlabels
+from .cache import CachedInstance, cache
+from .mathutils import Sinusoid, argclosest, interp1d
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -660,7 +661,7 @@ class Surface(CachedInstance):
         return Surface(rotated_cropped, step_x, step_y)
     
     @no_nonmeasured_points
-    def filter(self, filter_type, cutoff, cutoff2=None, inplace=False):
+    def filter(self, filter_type, cutoff, cutoff2=None, inplace=False, endeffect_mode='reflect'):
         """
         Filters the surface by applying a Gaussian filter.
 
@@ -688,6 +689,10 @@ class Surface(CachedInstance):
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
             objects will be returned.
+        endeffect_mode: {reflect, constant, nearest, mirror, wrap}, default reflect
+            The parameter determines how the endeffects of the filter at the boundaries of the data are managed.
+            For details, see the documentation of scipy.ndimage.gaussian_filter.
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
 
         Returns
         -------
@@ -706,21 +711,21 @@ class Surface(CachedInstance):
             if cutoff2 <= cutoff:
                 raise ValueError("The value of cutoff2 must be greater than the value of cutoff.")
 
-            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
-            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff2)
+            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
+            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff2, endeffect_mode=endeffect_mode)
             return highpass_filter(lowpass_filter(self, inplace=inplace), inplace=inplace)
 
         if filter_type == 'lowpass':
-            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
+            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
             return lowpass_filter(self, inplace=inplace)
 
         if filter_type == 'highpass':
-            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff)
+            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
             return highpass_filter(self, inplace=inplace)
 
         # If filter_type == 'both' is only remaining option
-        highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff)
-        lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff)
+        highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
+        lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
         return highpass_filter(self, inplace=False), lowpass_filter(self, inplace=False)
 
     def zoom(self, factor, inplace=False):
