@@ -130,11 +130,14 @@ class Surface(CachedInstance):
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
                             'homogeneity', 'stepheight', 'cavity_volume')
     
-    def __init__(self, height_data, step_x, step_y):
+    def __init__(self, height_data, step_x, step_y, metadata=None, image_layers=None):
         super().__init__() # Initialize cached instance
         self.data = height_data
         self.step_x = step_x
         self.step_y = step_y
+        self.metadata = metadata
+        self.image_layers = image_layers
+
         self.width_um = (height_data.shape[1] - 1) * step_x
         self.height_um = (height_data.shape[0] - 1) * step_y
         # True if non-measured points exist on the surface
@@ -255,7 +258,7 @@ class Surface(CachedInstance):
         return hash((self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std()))
 
     @classmethod
-    def load(cls, filepath, encoding='utf-8'):
+    def load(cls, filepath, encoding='utf-8', read_image_layers=False):
         """
         Classmethod to load a topography from a file.
 
@@ -265,11 +268,14 @@ class Surface(CachedInstance):
             Filepath pointing to the topography file.
         encoding: str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
+        read_image_layers: bool, Default False
+            If true, reads all available image layers in the file and saves them in Surface.image_layers dict
+
         Returns
         -------
         surface: surfalize.Surface
         """
-        return cls(*load_file(filepath, encoding=encoding))
+        return cls(*load_file(filepath, encoding=encoding, read_image_layers=read_image_layers))
 
     def save(self, filepath, encoding='utf-8'):
         """
