@@ -9,9 +9,8 @@ from tqdm.auto import tqdm
 from .surface import Surface
 from .utils import is_list_like
 from .file import supported_formats
+from .exceptions import BatchError
 
-class BatchError(Exception):
-    pass
 
 class Operation:
     """
@@ -102,9 +101,9 @@ class Parameter:
             try:
                 labels = method.return_labels
             except AttributeError:
-                raise BatchError(f"No return labels registered for Surface.{self.identifier}.")
+                raise BatchError(f"No return labels registered for Surface.{self.identifier}.") from None
             if len(result) != len(labels):
-                raise BatchError("Number of registered return labels do not match number of returned values.")
+                raise BatchError("Number of registered return labels do not match number of returned values.") from None
             return {f'{self.identifier}_{label}': value for value, label in zip(result, labels)}
         return {self.identifier: result}
 

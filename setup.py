@@ -1,47 +1,11 @@
-from pathlib import Path
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, find_packages
 from Cython.Build import cythonize
-import numpy
+import glob
 
-NUMPY_INCLUDE_DIR = numpy.get_include()
-NUMPY_MACROS = ("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")
+with open('README.md', 'r', encoding='utf-8') as file:
+    long_description = file.read()
 
-def read_long_description():
-    with open('README.md', 'r', encoding='utf-8') as file:
-        long_description = file.read()
-    return long_description
-
-def is_package_dir(dirpath):
-    """
-    Returns True if directory contains an __init__.py file and is therefore a python package.
-    """
-    return '__init__.py' in [path.name for path in dirpath.iterdir()]
-
-def resolve_full_module_name(modulepath):
-    """
-    Returns the full package of a module file, e.g. 'surfalize.roughness.height'.
-    """
-    package = [modulepath.stem]
-    directory = modulepath.parent
-    while is_package_dir(directory):
-        package.append(directory.name)
-        directory = directory.parent
-    return '.'.join(reversed(package))
-
-def compile_cython_extensions(root='.'):
-    """
-    Finds and compiles all cython extensions.
-    """
-    root = Path(root)
-    extensions = []
-    for pyxpath in root.rglob('*.pyx'):
-        print('Extension found: ', pyxpath)
-        extension = Extension(resolve_full_module_name(pyxpath), [str(pyxpath)],
-                              include_dirs=[NUMPY_INCLUDE_DIR],
-                              define_macros=[NUMPY_MACROS])
-        extensions.append(extension)
-    ext_modules = cythonize(extensions)
-    return ext_modules
+cython_extensions = glob.glob('surfalize/**/*.pyx', recursive=True)
 
 setup(
     name='surfalize',
@@ -49,7 +13,7 @@ setup(
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',
-    long_description=read_long_description(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),
     python_requires='>=3.6',
@@ -73,5 +37,5 @@ setup(
         'scikit-learn',
         'python-dateutil'
     ],
-    ext_modules=compile_cython_extensions()
+    ext_modules=cythonize(cython_extensions)
 )
