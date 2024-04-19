@@ -275,7 +275,9 @@ class Surface(CachedInstance):
         -------
         surface: surfalize.Surface
         """
-        return cls(*load_file(filepath, encoding=encoding, read_image_layers=read_image_layers))
+        raw_surface = load_file(filepath, encoding=encoding, read_image_layers=read_image_layers)
+        return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
+                   image_layers=raw_surface.image_layers)
 
     def save(self, filepath, encoding='utf-8'):
         """

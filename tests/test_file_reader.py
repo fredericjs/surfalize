@@ -9,8 +9,7 @@ def get_testfiles(ext):
 def test_al3d():
     testfiles = get_testfiles('.al3d')
     for file in testfiles:
-
-    pass
+        pass
 
 def test_nms():
     pass

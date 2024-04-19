@@ -1,5 +1,5 @@
 import numpy as np
-from .common import read_binary_layout
+from .common import read_binary_layout, RawSurface
 
 NON_MEASURED_VALUE = 1000001
 
@@ -57,5 +57,5 @@ def read_plu(filepath, encoding='utf-8'):
     step_x = calibration['mppx']
     step_y = calibration['mppy']
 
-    return (data, step_x, step_y)
+    return RawSurface(data, step_x, step_y)
 

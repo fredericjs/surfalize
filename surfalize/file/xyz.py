@@ -1,6 +1,7 @@
 # This code assumes units of meters for xyz data
 import numpy as np
-from ..exceptions import UnsupportedFileFormatError
+from ..exceptions import UnsupportedFileFormatError, CorruptedFileError
+from .common import RawSurface
 
 def read_xyz(filepath):
     with open(filepath) as file:
@@ -20,4 +21,4 @@ def read_xyz(filepath):
     step_y = (y.max() - y.min()) / (ny) * 10**6
     data = raw_data[:,2].copy().reshape(ny, nx) * 10**6
 
-    return data, step_x, step_y
+    return RawSurface(data, step_x, step_y)

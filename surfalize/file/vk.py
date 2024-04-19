@@ -154,24 +154,6 @@ def read_string_data(filehandle, offset):
     str_data['lens_name'] = filehandle.read(size_lens_name).decode()[::2]
     return str_data
 
-
-def _read_vk4(filepath, encoding='utf-8'):
-    with open(filepath, 'rb') as filehandle:
-        filehandle.seek(HEADER_SIZE, 1)
-        offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE, encoding=encoding)
-        filehandle.seek(offset_table['meas_conds'], 0)
-        measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS, encoding=encoding)
-        filehandle.seek(offset_table['height'], 0)
-        height_data = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA, encoding=encoding)
-        data_length = height_data['width'] * height_data['height']
-        data = np.fromfile(filehandle, dtype=np.uint32, count=data_length) / 10_000  # to um
-
-    data = data.reshape(height_data['height'], height_data['width'])
-
-    step_x = measurement_conditions['x_length_per_pixel'] * get_unit_conversion('pm', 'um')
-    step_y = measurement_conditions['y_length_per_pixel'] * get_unit_conversion('pm', 'um')
-    return (data, step_x, step_y)
-
 def read_vk4(filepath, read_image_layers=False, encoding='utf-8'):
     metadata = dict()
     with open(filepath, 'rb') as filehandle:
@@ -222,4 +204,4 @@ def read_vk6_vk7(filepath, encoding='utf-8'):
 
     step_x = measurement_conditions['x_length_per_pixel'] * get_unit_conversion('pm', 'um')
     step_y = measurement_conditions['y_length_per_pixel'] * get_unit_conversion('pm', 'um')
-    return (data, step_x, step_y)
+    return RawSurface(data, step_x, step_y)

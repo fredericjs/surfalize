@@ -1,6 +1,7 @@
 import zipfile
 import xml.etree.ElementTree as ET
 import numpy as np
+from .common import RawSurface
 
 def read_plux(filepath, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
@@ -18,4 +19,4 @@ def read_plux(filepath, encoding='utf-8'):
     size = shape_x * shape_y
 
     data = np.frombuffer(data, dtype=np.float32, count=size).reshape((shape_y, shape_x))
-    return (data, step_x, step_y)
+    return RawSurface(data, step_x, step_y)

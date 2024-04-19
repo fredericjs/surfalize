@@ -1,9 +1,9 @@
 import struct
 import numpy as np
 import dateutil
+from .common import RawSurface
 from datetime import datetime
 
-from ..exceptions import CorruptedFileError
 
 HEADER_SIZE = 3468
 OFFSET_Z = 16
@@ -36,8 +36,8 @@ def read_nms(filepath):
         step_x = dx * 1e-3
         step_y = dy * 1e-3
 
-        image = np.fromfile(file, dtype=DTYPE_IMG, count=nx * ny).reshape(ny, ny)
+        image_layers =  {'Grayscale': np.fromfile(file, dtype=DTYPE_IMG, count=nx * ny).reshape(ny, ny)}
 
         metadata = dict(date=date)
 
-    return data, step_x, step_y, image, metadata
+    return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=image_layers)

@@ -1,5 +1,5 @@
 import numpy as np
-from .common import read_binary_layout
+from .common import read_binary_layout, RawSurface
 
 LAYOUT_HEADER = (
     (None, 85, None),
@@ -25,4 +25,4 @@ def read_zmg(filepath, encoding='utf-8'):
     step_x = header['step_x']
     step_y = header['step_y']
 
-    return (data, step_x, step_y)
+    return RawSurface(data, step_x, step_y)

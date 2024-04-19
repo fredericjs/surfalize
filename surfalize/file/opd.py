@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import struct
 import numpy as np
 from ..exceptions import CorruptedFileError, CorruptedFileError
+from .common import RawSurface
 
 BLOCK_SIZE = 24
 BLOCK_NAME_SIZE = 16
@@ -86,4 +87,4 @@ def read_opd(filepath, encoding='utf-8'):
         step_x = pixel_size * 1e-3
         step_y = pixel_size * aspect * 1e-3
 
-        return data, step_x, step_y
+        return RawSurface(data, step_x, step_y)
