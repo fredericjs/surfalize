@@ -1,4 +1,7 @@
 import struct
+from dataclasses import dataclass
+
+import numpy as np
 
 MU_ALIASES = {
     chr(181): 'u',
@@ -132,3 +135,10 @@ def read_binary_layout(filehandle, layout, fast=True, encoding='utf-8'):
         result[name] = unpacked_data
     return result
 
+@dataclass
+class RawSurface:
+    data: np.ndarray
+    step_x: float
+    step_y: float
+    metadata: dict = None
+    image_layers: dict[str: np.ndarray] = None

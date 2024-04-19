@@ -3,9 +3,11 @@ from pathlib import Path
 from surfalize import Surface
 from surfalize.file import supported_formats
 
+module_path = Path(__file__).parent
+
 @pytest.fixture
 def testfile_dir():
-    return Path('./tests/test_files')
+    return module_path / 'test_files'
 
 @pytest.mark.parametrize('fileformat', supported_formats)
 def test_fileformat_loading(testfile_dir, fileformat):

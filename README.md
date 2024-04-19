@@ -8,7 +8,7 @@
 
 
 surfalize is a python package for analyzing microscope topography measurement data in terms of surface
-rouggness and other topographic parameters. It is intended primarily for microtextured surfaces and is supposed to 
+roughness and other topographic parameters. It is intended primarily for microtextured surfaces and is supposed to 
 replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion for the most common tasks.
 
 ## How to install
@@ -45,7 +45,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Wyko         | *.opd*                 | Yes     | No      | 
 | Nanofocus    | *.nms*                 | Yes     | No      | 
 | Alicona      | *.al3d*                | Yes     | Yes     | 
-| T.b.d        | *.sdf*                 | Yes     | No      | 
+| Digital Surf | *.sdf*                 | Yes     | No      | 
 | General      | *.xyz*                 | Yes     | No      |
 
 ## Supported roughness parameters
@@ -199,6 +199,25 @@ surface.plot_abbott_curve()
 # Here we apply a Hanning window to mitigate spectral leakage (recommended) as crop the plotted range of 
 # frequencies to fxmax and fymax.
 surface.plot_fourier_transform(hanning=True, fxmax=2, fymax=1)
+```
+
+### Accessing the raw data
+The raw data of a `Surface` object can be accessed with the attribute `data` as a two-dimensional `numpy` array. 
+The pixel resolution in x (horizontal) and y (vertical) is accessed through the attributes `step_x` and `step_y`.
+The width and height in micrometers are accessed through the attributed `width_um` and `height_um`. The resolution in
+pixels is encoded in the named tuple `size`, holding the dimensions in the form `(y, x)`.
+
+
+```Python
+data_2d = surface.data
+step_x = surface.step_x
+step_y = surface.step_y
+ny, nx = surface.size
+# or:
+nx = surface.size.x
+ny = surface.size.y
+width = surface.width_um
+height = surface.height_um
 ```
 
 ### Batch processing
