@@ -15,6 +15,7 @@ MAGIC_CLASSIC = 'DIGITAL SURF'
 MAGIC_COMPRESSED = 'DSCOMPRESSED'
 HEADER_SIZE = 512
 
+
 @dataclass
 class Directory:
     """
@@ -23,6 +24,7 @@ class Directory:
     len_raw_data: int
     len_zipped_data: int
 
+
 @dataclass
 class SurObject:
     """
@@ -30,6 +32,7 @@ class SurObject:
     """
     header: dict
     data: np.ndarray
+
 
 class StudiableType(IntEnum):
     PROFILE = 1
@@ -52,6 +55,7 @@ class StudiableType(IntEnum):
     SERIES_OF_RGB_IMAGES = 18
     SPECTRUM_STUDIABLE = 19
 
+
 class AcquisitionType(IntEnum):
     UNKNOWN = 0
     CONTACT_STYLUS = 1
@@ -67,8 +71,8 @@ class AcquisitionType(IntEnum):
 
 
 LAYOUT_HEADER = (
-    ('code', '12s', False), # DIGITIAL SURF / DSCOMPRESSED
-    ('format', 'h', False), # 0 for PC format
+    ('code', '12s', False),  # DIGITIAL SURF / DSCOMPRESSED
+    ('format', 'h', False),  # 0 for PC format
     ('n_objects', 'h', False),
     ('version_number', 'h', False),
     ('studiable_type', 'h', True),
@@ -80,7 +84,7 @@ LAYOUT_HEADER = (
     ('non_measured_points', 'h', False),
     ('absolute_z_axis', 'h', False),
     ('gauge_resolution', 'f', True),
-    (None, 4, None), # Reserved
+    (None, 4, None),  # Reserved
     ('bits_per_point', 'h', False),
     ('min_point', 'i', False),
     ('max_point', 'i', False),
@@ -105,7 +109,7 @@ LAYOUT_HEADER = (
     ('replica', 'h', False),
     ('inverted', 'h', False),
     ('leveled', 'h', False),
-    (None, 12, None), # Reserved
+    (None, 12, None),  # Reserved
     ('seconds', 'h', True),
     ('minutes', 'h', True),
     ('hours', 'h', True),
@@ -115,7 +119,7 @@ LAYOUT_HEADER = (
     ('week_day', 'h', True),
     ('measurement_duration', 'f', True),
     ('compressed_data_size', 'I', False),
-    (None, 6, None), # Reserved
+    (None, 6, None),  # Reserved
     ('length_comment', 'h', False),
     ('length_private', 'h', False),
     ('client_zone', '128s', True),
@@ -129,6 +133,7 @@ LAYOUT_HEADER = (
 )
 
 DTYPE_MAP = {16: 'int16', 32: 'int32'}
+
 
 def read_sur_header(filehandle, encoding='utf-8'):
     fp_start = filehandle.tell()
@@ -150,6 +155,7 @@ def read_sur_header(filehandle, encoding='utf-8'):
     header['private'] = filehandle.read(header['length_private'])
 
     return header
+
 
 def read_directory(filehandle):
     """
@@ -174,8 +180,10 @@ def read_directory(filehandle):
     """
     return Directory(*struct.unpack('<2I', filehandle.read(8)))
 
+
 def read_uncompressed_data(filehandle, dtype, num_points):
     return np.fromfile(filehandle, count=num_points, dtype=dtype)
+
 
 def read_compressed_data(filehandle, dtype, expected_compressed_size):
     """
@@ -245,6 +253,26 @@ def read_compressed_data(filehandle, dtype, expected_compressed_size):
     data = np.frombuffer(decompressed_data, dtype)
     return data
 
+
+def is_gwyddion_export(sur_obj):
+    """
+    Checks whether .sur file was exported from Gwyddion. Unfortunately, Gwyddion currently seems to indicate the
+    studiable type as PROFILE for exports containing surfaces. If however, the object name and operator name parameters
+    are defined by Gwyddion as SCRATCH and csm, we can assume with reasonable certainty, that it should be infact a
+    surface, not a profile.
+
+    Parameters
+    ----------
+    sur_obj: SurObject
+
+    Returns
+    -------
+    True if the sur object meets the characteristics of a Gwyddion exported surface
+    """
+    return (sur_obj.header['studiable_type'] == StudiableType.PROFILE and sur_obj.header['name_object'] == 'SCRATCH'
+            and sur_obj.header['name_operator'] == 'csm')
+
+
 def read_sur_object(filehandle):
     """
     Reads a sur object from a file. The function assumes that the filepointer points to the beginning of a sur object.
@@ -276,8 +304,6 @@ def read_sur_object(filehandle):
 
     return SurObject(header, data)
 
-def get_rgb(sur_obj):
-    pass
 
 def get_surface(sur_obj):
     if sur_obj.header['non_measured_points'] == 1:
@@ -297,29 +323,28 @@ def get_surface(sur_obj):
     data += sur_obj.header['offset_z']
 
     # This can be implemented in the future when metadata support is needed
-    #timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
+    # timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
     return (data, step_x, step_y)
+
 
 def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
     filesize = filepath.stat().st_size
-    with open(filepath, 'rb') as filehandle:
+    with (open(filepath, 'rb') as filehandle):
         sur_obj = read_sur_object(filehandle)
         if sur_obj.header['n_objects'] > 1:
             raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
 
-        if sur_obj.header['studiable_type'] not in [StudiableType.SURFACE, StudiableType.RGB_INTENSITY_SURFACE]:
-            raise UnsupportedFileFormatError(
-                f'Studiables of type {sur_obj.header["studiable_type"].name} are not supported.'
-            )
-
-        if sur_obj.header['studiable_type'] == StudiableType.SURFACE:
+        if sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(sur_obj):
             data, step_x, step_y = get_surface(sur_obj)
         elif sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
             # after the surface, the r,g,b channels and the intensity image follow.
             # These should be read here if necessary in the future.
             data, step_x, step_y = get_surface(sur_obj)
+        else:
+            raise UnsupportedFileFormatError(
+                f'Studiables of type {sur_obj.header["studiable_type"].name} are not supported.'
+            )
         return RawSurface(data, step_x, step_y)
-
 
 
 def write_sur(filepath, surface, encoding='utf-8', compressed=False):
@@ -338,7 +363,7 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
         data[np.isnan(data)] = INT_DATA_MIN - 2
     data = data.astype('int32')
     spacing_z = (data_max - data_min) / (INT_DATA_MAX - INT_DATA_MIN)
-    offset_z = offset = data_min + (data_max - data_min)/2
+    offset_z = offset = data_min + (data_max - data_min) / 2
     timestamp = datetime.now()
 
     header = {
