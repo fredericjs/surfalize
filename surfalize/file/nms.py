@@ -15,7 +15,7 @@ DTYPE_HEIGHT = np.uint16
 DTYPE_IMG = np.uint8
 
 
-def read_nms(filepath):
+def read_nms(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as file:
         file.seek(OFFSET_Z, 0)
         zmin, zmax = struct.unpack('<2d', file.read(16))
@@ -35,8 +35,9 @@ def read_nms(filepath):
 
         step_x = dx * 1e-3
         step_y = dy * 1e-3
-
-        image_layers =  {'Grayscale': np.fromfile(file, dtype=DTYPE_IMG, count=nx * ny).reshape(ny, ny)}
+        image_layers = {}
+        if read_image_layers:
+            image_layers['Grayscale'] = np.fromfile(file, dtype=DTYPE_IMG, count=nx * ny).reshape(ny, ny)
 
         metadata = dict(date=date)
 

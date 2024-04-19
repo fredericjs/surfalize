@@ -26,7 +26,7 @@ def read_block(filehandle, encoding='utf-8'):
     type_, size, flags = struct.unpack('<hlH', filehandle.read(8))
     return name, Block(type_, size, flags)
 
-def read_opd(filepath, encoding='utf-8'):
+def read_opd(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as file:
         file.read(2)  # skipping header
         name, directory_block = read_block(file)

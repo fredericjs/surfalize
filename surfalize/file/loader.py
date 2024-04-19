@@ -30,7 +30,7 @@ dispatcher = {
 
 supported_formats = list(dispatcher.keys())
 
-def load_file(filepath, encoding="utf-8"):
+def load_file(filepath, read_image_layers=False, encoding="utf-8"):
     filepath = Path(filepath)
     try:
         loader = dispatcher[filepath.suffix]['read']

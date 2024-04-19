@@ -44,7 +44,7 @@ LAYOUT_MEASURE_CONFIG = (
    ('factorio_delmacio', 'I', True)
 )
 
-def read_plu(filepath, encoding='utf-8'):
+def read_plu(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         filehandle.seek(HEADER_SIZE, 1)
         calibration = read_binary_layout(filehandle, LAYOUT_CALIBRATION, encoding=encoding)

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .common import read_binary_layout, write_binary_layout, get_unit_conversion
+from .common import read_binary_layout, write_binary_layout, get_unit_conversion, RawSurface
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # This is not fully implemented! Won't work with all SUR files.
@@ -300,23 +300,27 @@ def get_surface(sur_obj):
     #timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
     return (data, step_x, step_y)
 
-def read_sur(filepath, encoding='utf-8'):
+def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
     filesize = filepath.stat().st_size
     with open(filepath, 'rb') as filehandle:
         sur_obj = read_sur_object(filehandle)
         if sur_obj.header['n_objects'] > 1:
             raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
 
+        if sur_obj.header['studiable_type'] not in [StudiableType.SURFACE, StudiableType.RGB_INTENSITY_SURFACE]:
+            raise UnsupportedFileFormatError(
+                f'Studiables of type {sur_obj.header["studiable_type"].name} are not supported.'
+            )
+
         if sur_obj.header['studiable_type'] == StudiableType.SURFACE:
-            return get_surface(sur_obj)
+            data, step_x, step_y = get_surface(sur_obj)
         elif sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
             # after the surface, the r,g,b channels and the intensity image follow.
             # These should be read here if necessary in the future.
-            return get_surface(sur_obj)
+            data, step_x, step_y = get_surface(sur_obj)
+        return RawSurface(data, step_x, step_y)
 
-        raise UnsupportedFileFormatError(
-            f'Studiables of type {sur_obj.header["studiable_type"].name} are not supported.'
-        )
+
 
 def write_sur(filepath, surface, encoding='utf-8', compressed=False):
     INT32_MAX = int(2 ** 32 / 2) - 1

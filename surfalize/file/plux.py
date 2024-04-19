@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 from .common import RawSurface
 
-def read_plux(filepath, encoding='utf-8'):
+def read_plux(filepath, read_image_layers=False, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
         data = archive.read('LAYER_0.raw')
         metadata = archive.read('index.xml')

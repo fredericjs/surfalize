@@ -14,7 +14,7 @@ LAYOUT_HEADER = (
     (None, 84, None)
 )
 
-def read_zmg(filepath, encoding='utf-8'):
+def read_zmg(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
         filehandle.seek(header['comment_size'], 1)

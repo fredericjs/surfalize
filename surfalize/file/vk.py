@@ -188,7 +188,7 @@ def read_vk4(filepath, read_image_layers=False, encoding='utf-8'):
 
     return RawSurface(height_layer, step_x, step_y, metadata, image_layers)
 
-def read_vk6_vk7(filepath, encoding='utf-8'):
+def read_vk6_vk7(filepath, read_image_layers=False, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
         with archive.open('Vk4File') as filehandle:
             filehandle.seek(HEADER_SIZE, 1)
