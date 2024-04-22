@@ -182,7 +182,10 @@ def read_sur(filepath, encoding='utf-8'):
             invalidValue = header['min_point'] - 2
             nan_mask = (data == invalidValue)
 
-        data = data * get_unit_conversion(header['unit_z'], 'um') * header['spacing_z']
+        # The conversion from int to float needs to happen before we multiply by the unit conversion factor!
+        # Otherwise, we might overflow the values in the array and end up with white noise
+        data = data * header['spacing_z']
+        data = data * get_unit_conversion(header['unit_z'], 'um')
         step_x = get_unit_conversion(header['unit_x'], 'um') * header['spacing_x']
         step_y = get_unit_conversion(header['unit_y'], 'um') * header['spacing_y']
 
