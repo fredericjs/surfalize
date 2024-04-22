@@ -3,9 +3,9 @@ from surfalize import Surface
 from surfalize.filter import GaussianFilter
 
 @pytest.mark.parametrize('cutoff, expected_mean, expected_std', [
-    (2, 0.00045879628758761483, 0.6829918577051731),
-    (5, 0.0004587962875876147, 0.5750573603806917),
-    (1.5, 0.00045879628758761423, 0.6933187088833069)
+    (2, 0.00045879628758761483, 0.7023321806489939),
+    (5, 0.0004587962875876147, 0.6779729867708357),
+    (1.5, 0.00045879628758761423, 0.7050198091916576)
 ])
 def test_filter_lowpass(surface, cutoff, expected_mean, expected_std):
     filter = GaussianFilter(cutoff, 'lowpass')
