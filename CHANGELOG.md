@@ -2,6 +2,7 @@
 - Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
   thread pool based batch execution
 - Fixed bug that causes overflow of the height values while reading SUR files with specific unit conversion factors
+- Fixed incorrect calculation of standard deviation for Gaussian filter (thanks to Dorothee Hüser for the correction)
 ## v0.8.1
 - Added kwarg to Gaussian filter to define endeffect management method
 - Sinusoid now raised FittingError when fitting fails
