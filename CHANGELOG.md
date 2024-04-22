@@ -1,4 +1,4 @@
-## unreleased changes
+## v0.8.2
 - Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
   thread pool based batch execution
 - Fixed bug that causes overflow of the height values while reading SUR files with specific unit conversion factors
