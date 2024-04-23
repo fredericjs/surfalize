@@ -351,7 +351,6 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
     INT32_MAX = int(2 ** 32 / 2) - 1
     INT32_MIN = -int(2 ** 32 / 2)
 
-    data = surface.data
     nm_points = int(surface._nonmeasured_points_exist)
 
     INT_DATA_MIN = INT32_MIN + 2
