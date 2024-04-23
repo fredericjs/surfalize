@@ -135,8 +135,8 @@ class Surface(CachedInstance):
         self.data = height_data
         self.step_x = step_x
         self.step_y = step_y
-        self.metadata = metadata
-        self.image_layers = image_layers
+        self.metadata = metadata if metadata is not None else {}
+        self.image_layers = image_layers if image_layers is not None else {}
 
         self.width_um = (height_data.shape[1] - 1) * step_x
         self.height_um = (height_data.shape[0] - 1) * step_y
@@ -294,6 +294,16 @@ class Surface(CachedInstance):
         None
         """
         write_file(filepath, self, encoding=encoding)
+
+    def get_image_layer_names(self):
+        """
+        Returns a list of the names of available image layers.
+
+        Returns
+        -------
+        List[str]
+        """
+        return list(self.image_layers.keys())
         
     def get_horizontal_profile(self, y, average=1, average_step=None):
         """
@@ -1727,10 +1737,11 @@ class Surface(CachedInstance):
         abbott_curve = self._get_abbott_firestone_curve()
         abbott_curve.plot(nbars=nbars)
         
-    def plot_fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None, cmap='inferno', adjust_colormap=True):
+    def plot_fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
+                               cmap='inferno', adjust_colormap=True):
         """
-        Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral leakage effects 
-        that occur when analyzing a signal of finite sample length.
+        Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral
+        leakage effects that occur when analyzing a signal of finite sample length.
 
         Parameters
         ----------
@@ -1803,16 +1814,19 @@ class Surface(CachedInstance):
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         return ax
 
-    def plot_2d(self, cmap='jet', maskcolor='black', ax=None):
+    def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
         Parameters
         ----------
         cmap: str | mpl.cmap, default 'jet'
-            Colormap to apply on the data.
+            Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
         maskcolor: str, default 'Black'
             Color for masked values.
+        layer: str, default Topography
+            Indicate the layer to plot, by default the topography layer is shown. Alternatively, the label of an image
+            layer can be indicated.
         ax: matplotlib axis, default None
             If specified, the plot will be drawn the specified axis.
 
@@ -1828,8 +1842,23 @@ class Surface(CachedInstance):
             fig = ax.figure
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        im = ax.imshow(self.data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um))
-        fig.colorbar(im, cax=cax, label='z [µm]')
+        if layer == 'Topography':
+            data = self.data
+            show_cbar = True
+        elif layer in self.image_layers.keys():
+            data = self.image_layers[layer]
+            show_cbar = False
+            if data.ndim == 3:
+                cmap = None
+            elif data.ndim == 2:
+                cmap = 'gray'
+        else:
+            raise ValueError(f'Layer {layer} does not exist.')
+        im = ax.imshow(data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um))
+        if show_cbar:
+            fig.colorbar(im, cax=cax, label='z [µm]')
+        else:
+            cax.axis('off')
         ax.set_xlabel('x [µm]')
         ax.set_ylabel('y [µm]')
         if self._nonmeasured_points_exist:
@@ -1837,16 +1866,19 @@ class Surface(CachedInstance):
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         return ax
     
-    def show(self, cmap='jet', maskcolor='black', ax=None):
+    def show(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
         """
         Shows a 2D-plot of the surface using matplotlib.
 
         Parameters
         ----------
         cmap: str | mpl.cmap, default 'jet'
-            Colormap to apply on the data.
+            Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
         maskcolor: str, default 'Black'
             Color for masked values.
+        layer: str, default Topography
+            Indicate the layer to plot, by default the topography layer is shown. Alternatively, the label of an image
+            layer can be indicated.
         ax: matplotlib axis, default None
             If specified, the plot will be drawn the specified axis.
 
@@ -1854,5 +1886,5 @@ class Surface(CachedInstance):
         -------
         None.
         """
-        self.plot_2d(cmap=cmap, maskcolor=maskcolor, ax=ax)
+        self.plot_2d(cmap=cmap, maskcolor=maskcolor, layer=layer, ax=ax)
         plt.show()
