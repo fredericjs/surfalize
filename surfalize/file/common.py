@@ -135,6 +135,38 @@ def read_binary_layout(filehandle, layout, fast=True, encoding='utf-8'):
         result[name] = unpacked_data
     return result
 
+def np_fromany(fileobject, dtype, count=-1, offset=0):
+    """
+    Function that invokes either np.frombuffer or np.fromfile depending on whether the object is a file-like object
+    or a buffer.
+
+    Parameters
+    ----------
+    fileobject: buffer_like or file-like or str or Path
+        An object that exposes the buffer interface or a file-like object or a str or Path representing a filepath.
+    dtype: data-type
+        Data-type of the returned array.
+    count: int, Default -1.
+        Number of items to read. -1 means all data in the buffer or file.
+    offset: int
+        Start reading the buffer from this offset (in bytes); default: 0.
+
+    Returns
+    -------
+    np.ndarray
+    """
+    try:
+        return np.frombuffer(fileobject, dtype, count=count, offset=offset)
+    except TypeError:
+        if offset > 0:
+            fileobject.seek(offset, 1)
+        if count == -1:
+            buffer = fileobject.read()
+        else:
+            buffer = fileobject.read(count * np.dtype(dtype).itemsize)
+        return np.frombuffer(buffer, dtype)
+
+
 @dataclass
 class RawSurface:
     data: np.ndarray
