@@ -34,11 +34,9 @@ def load_file(filepath, read_image_layers=False, encoding="utf-8"):
     filepath = Path(filepath)
     try:
         loader = dispatcher[filepath.suffix]['read']
-        if 'encoding' in loader.__code__.co_varnames:
-            loader = partial(loader, encoding=encoding)
     except KeyError:
         raise UnsupportedFileFormatError(f"File format {filepath.suffix} is currently not supported.") from None
-    return loader(filepath)
+    return loader(filepath, read_image_layers=read_image_layers, encoding=encoding)
 
 def write_file(filepath, surface, encoding='utf-8'):
     filepath = Path(filepath)
