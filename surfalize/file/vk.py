@@ -7,6 +7,7 @@ from .common import read_binary_layout, get_unit_conversion, RawSurface, np_from
 from ..exceptions import CorruptedFileError
 
 HEADER_SIZE = 12
+FIXED_UNIT = 'pm'
 
 DTYPE_MAP = {16: 'uint16', 32: 'uint32'}
 
@@ -173,7 +174,7 @@ def extract_vk4(filehandle, read_image_layers=False, encoding='utf-8'):
     height_layer = read_height_layer(filehandle, offset_table['height'])
     metadata.update(read_string_data(filehandle, offset_table['string_data']))
 
-    scale_factor = get_unit_conversion('pm', 'um')
+    scale_factor = get_unit_conversion(FIXED_UNIT, 'um')
     scale_factor_height = scale_factor * measurement_conditions['z_length_per_digit']
     height_layer = height_layer * scale_factor_height
     step_x = measurement_conditions['x_length_per_pixel'] * scale_factor
