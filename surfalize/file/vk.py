@@ -3,7 +3,7 @@ import struct
 from datetime import datetime
 
 import numpy as np
-from .common import read_binary_layout, get_unit_conversion, RawSurface
+from .common import read_binary_layout, get_unit_conversion, RawSurface, np_fromany
 from ..exceptions import CorruptedFileError
 
 HEADER_SIZE = 12
@@ -126,7 +126,7 @@ def read_rgb_layer(filehandle, offset):
     channel_length = channel_table['width'] * channel_table['height'] * 3
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / (8 * 3):
         raise CorruptedFileError(f'Size of channel () does not correspond to expected size.')
-    channel_data = np.fromfile(filehandle, dtype=np.uint8, count=channel_length)
+    channel_data = np_fromany(filehandle, dtype=np.uint8, count=channel_length)
     # It seems like vk4 encodes the color channels in the order GRB, therefore we flip the last axis to convert to RGB format
     channel_data = np.flip(channel_data.reshape(channel_table['height'], channel_table['width'], 3), axis=2)
     return channel_data
@@ -138,7 +138,7 @@ def read_height_layer(filehandle, offset):
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / 8:
         raise CorruptedFileError('Size of channel does not correspond to expected size.')
     dtype = DTYPE_MAP[channel_table['bit_depth']]
-    channel_data = np.fromfile(filehandle, dtype=dtype, count=channel_length)
+    channel_data = np_fromany(filehandle, dtype=dtype, count=channel_length)
     channel_data = channel_data.reshape(channel_table['height'], channel_table['width'])
     return channel_data
 
@@ -154,25 +154,24 @@ def read_string_data(filehandle, offset):
     str_data['lens_name'] = filehandle.read(size_lens_name).decode()[::2]
     return str_data
 
-def read_vk4(filepath, read_image_layers=False, encoding='utf-8'):
+def extract_vk4(filehandle, read_image_layers=False, encoding='utf-8'):
     metadata = dict()
-    with open(filepath, 'rb') as filehandle:
-        header = filehandle.read(HEADER_SIZE)
-        offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE, fast=False)
-        filehandle.seek(offset_table['meas_conds'], 0)
-        measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS, fast=False)
+    header = filehandle.read(HEADER_SIZE)
+    offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE, fast=False)
+    filehandle.seek(offset_table['meas_conds'], 0)
+    measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS, fast=False)
 
-        if read_image_layers:
-            image_layers = {}
-            if measurement_conditions['omit_color_img'] == 0:
-                image_layers['RGB'] = read_rgb_layer(filehandle, offset_table['color_peak'])
-                image_layers['Laser+RGB'] = read_rgb_layer(filehandle, offset_table['color_light'])
+    if read_image_layers:
+        image_layers = {}
+        #if measurement_conditions['omit_color_img'] > 0:
+        image_layers['RGB'] = read_rgb_layer(filehandle, offset_table['color_peak'])
+        image_layers['Laser+RGB'] = read_rgb_layer(filehandle, offset_table['color_light'])
 
-            image_layers['Laser'] = read_height_layer(filehandle, offset_table['light'])
-        else:
-            image_layers = None
-        height_layer = read_height_layer(filehandle, offset_table['height'])
-        metadata.update(read_string_data(filehandle, offset_table['string_data']))
+        image_layers['Laser'] = read_height_layer(filehandle, offset_table['light'])
+    else:
+        image_layers = None
+    height_layer = read_height_layer(filehandle, offset_table['height'])
+    metadata.update(read_string_data(filehandle, offset_table['string_data']))
 
     scale_factor = get_unit_conversion('pm', 'um')
     scale_factor_height = scale_factor * measurement_conditions['z_length_per_digit']
@@ -188,20 +187,11 @@ def read_vk4(filepath, read_image_layers=False, encoding='utf-8'):
 
     return RawSurface(height_layer, step_x, step_y, metadata, image_layers)
 
+def read_vk4(filepath, read_image_layers=False, encoding='utf-8'):
+    with open(filepath, 'rb') as filehandle:
+        return extract_vk4(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+
 def read_vk6_vk7(filepath, read_image_layers=False, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
         with archive.open('Vk4File') as filehandle:
-            filehandle.seek(HEADER_SIZE, 1)
-            offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE, encoding=encoding)
-            filehandle.seek(offset_table['meas_conds'], 0)
-            measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS, encoding=encoding)
-            filehandle.seek(offset_table['height'], 0)
-            height_data = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA, encoding=encoding)
-            data_length = height_data['width'] * height_data['height']
-            data = np.frombuffer(filehandle.read(data_length * 4), dtype=np.uint32, count=data_length) / 10_000  # to um
-
-    data = data.reshape(height_data['height'], height_data['width'])
-
-    step_x = measurement_conditions['x_length_per_pixel'] * get_unit_conversion('pm', 'um')
-    step_y = measurement_conditions['y_length_per_pixel'] * get_unit_conversion('pm', 'um')
-    return RawSurface(data, step_x, step_y)
+            return extract_vk4(filehandle, read_image_layers=read_image_layers, encoding=encoding)
