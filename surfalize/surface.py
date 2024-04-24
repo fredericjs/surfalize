@@ -1861,7 +1861,7 @@ class Surface(CachedInstance):
             cax.axis('off')
         ax.set_xlabel('x [µm]')
         ax.set_ylabel('y [µm]')
-        if self._nonmeasured_points_exist:
+        if layer == 'Topography' and self._nonmeasured_points_exist:
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         return ax
