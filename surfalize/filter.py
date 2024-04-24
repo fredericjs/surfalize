@@ -42,8 +42,14 @@ class GaussianFilter:
         Returns
         -------
         sigma: float
+
+        Notes
+        -----
+        This equation results from solving for the standard deviation when setting the generic Gaussian kernel to the
+        Gaussian kernel defined in the norm.
+
         """
-        return cutoff / (2 * np.sqrt(2 * np.log(2)))
+        return cutoff / np.pi * np.sqrt(np.log(2) / 2)
 
     def __call__(self, surface, inplace=False):
         """

@@ -438,3 +438,4 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
             file.write(struct.pack('<3I', 1, len(uncompressed_data), len(compressed_data)))
             file.write(compressed_data)
             return
+
