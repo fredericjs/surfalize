@@ -10,6 +10,9 @@ MU_ALIASES = {
 }
 
 UNIT_EXPONENT = {
+    'm':   0,
+    'dm': -1,
+    'cm': -2,
     'mm': -3,
     'um': -6,
     'nm': -9,
