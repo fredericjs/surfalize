@@ -25,6 +25,7 @@ from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
 from .filter import GaussianFilter
+from .image import Image
 try:
     from .calculations import surface_area
     CYTHON_DEFINED = True
@@ -276,8 +277,9 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
         """
         raw_surface = load_file(filepath, encoding=encoding, read_image_layers=read_image_layers)
+        image_layers = {k: Image(v) for k, v in raw_surface.image_layers.items()}
         return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
-                   image_layers=raw_surface.image_layers)
+                   image_layers=image_layers)
 
     def save(self, filepath, encoding='utf-8'):
         """
@@ -1846,7 +1848,7 @@ class Surface(CachedInstance):
             data = self.data
             show_cbar = True
         elif layer in self.image_layers.keys():
-            data = self.image_layers[layer]
+            data = self.image_layers[layer].data
             show_cbar = False
             if data.ndim == 3:
                 cmap = None
