@@ -1,7 +1,8 @@
+import re
 import struct
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface
+from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'GWYP'
@@ -34,6 +35,51 @@ def read_null_terminated_string(filehandle, maxsize=STR_MAX_SIZE):
         i += 1
     return string.decode('utf-8')
 
+def _filter_candidates_by_z_unit_presence(tree, candidates):
+    reduced_candidates = []
+    for layer_key in candidates:
+        if 'si_unit_z' in tree['GwyContainer'][f'/{layer_key}/data']['GwyDataField']:
+            unit = tree['GwyContainer'][f'/{layer_key}/data']['GwyDataField']['si_unit_z']['GwySIUnit']['unitstr']
+            if unit in UNIT_EXPONENT.keys():
+                reduced_candidates.append(layer_key)
+    return reduced_candidates
+
+def _filter_candidates_by_name(tree, candidates):
+    reduced_candidates = []
+    for layer_key in candidates:
+        title = tree['GwyContainer'][f'/{layer_key}/data/title'].lower()
+        guesses = ['topography', 'height', 'topo']
+        if any([guess in title for guess in guesses]):
+            reduced_candidates.append(layer_key)
+    return reduced_candidates
+
+def _filter_candidates_by_number(tree, candidates):
+    return [str(sorted([int(layer_key) for layer_key in candidates])[0])]
+
+_filters = [
+    _filter_candidates_by_z_unit_presence,
+    _filter_candidates_by_name,
+    _filter_candidates_by_number
+]
+
+
+def guess_height_channel(tree, layer_candidates):
+    for filter_ in _filters:
+        layer_candidates = filter_(tree, layer_candidates)
+        if len(layer_candidates) == 0:
+            raise UnsupportedFileFormatError('The file does not seem to contain height data.')
+        elif len(layer_candidates) == 1:
+            return layer_candidates[0]
+    raise UnsupportedFileFormatError('The height data channel could not be detected.')
+
+def get_image_related_layer_keys(tree):
+    image_related_layers = []
+    for key in tree['GwyContainer']:
+        mo = re.search('/(\d+)/', key)
+        if mo:
+            image_related_layers.append(mo.group(1))
+    return list(set(image_related_layers))
+
 
 class Container:
 
@@ -53,7 +99,7 @@ class Container:
         while self.filehandle.tell() < pos + self.size:
             component = Component(self.filehandle)
             components[component.name] = component.read_contents()
-        return components
+        return {self.name: components}
 
 
 class Component:
@@ -99,23 +145,41 @@ def parse_gwy_tree(filehandle):
     container = Container(filehandle)
     return container.read_contents()
 
+
+# We run into a problem here: Gwyddion has no concept of a pimary height data layer. Contrary to profilometer
+# file formats, the gwy format allows for an arbitrary number of channels, which could theoretically represent
+# any possible physical or nonphysical quantity. Moreover, the layer numbers are arbitrary according to the
+# documentation. To make this compatible with the concept applied in surfalize, where each Surface object is
+# only ever associated with one single height layer and possible additional image layers without physical
+# units, we need to guess the image layer in the gwy file that most likely corresponds to the height layer.
+# We do this by employing different heuristics until only one layer emerges:
+# 1. Select all layers that start with /n/, which indicate image related layers.
+# 2. Select only layers which have an associated z-unit. E.g. RGB or intensity images have no encoded z-unit.
+# 3. Select only layers which have a known length unit for the z-axis. Layers with units such as µm² are discarded.
+# 4. Select only layers which have a title that indicates topographic data. This is purly guesswork.
+# 5. Select the layer with the lowest number, which is oftentimes indeed the height data.
+
+# E.g. if a gwy file is saved from a Gwyddion session, where multiple panels have been generated, such as DFTs,
+# they will also be present as layers in the file, possibly even have a length unit for the z-axis. Such layers
+# can only be disqualified using heuristic 4 or 5.
 def read_gwy(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         if filehandle.read(4) != MAGIC:
             raise FileFormatError('Unknown file magic detected.')
 
         tree = parse_gwy_tree(filehandle)
+        image_related_layers = get_image_related_layer_keys(tree)
+        height_layer_key = guess_height_channel(tree, image_related_layers)
 
-        if '/0/data' not in tree:
-            raise UnsupportedFileFormatError('No height data section found.')
+        datafield = tree['GwyContainer'][f'/{height_layer_key}/data']['GwyDataField']
 
-        data = tree['/0/data']['data']
-        unit_xy = tree['/0/data']['si_unit_xy']['unitstr']
-        unit_z = tree['/0/data']['si_unit_z']['unitstr']
-        xreal = tree['/0/data']['xreal']
-        yreal = tree['/0/data']['yreal']
-        nx = tree['/0/data']['xres']
-        ny = tree['/0/data']['yres']
+        data = datafield['data']
+        unit_xy = datafield['si_unit_xy']['GwySIUnit']['unitstr']
+        unit_z = datafield['si_unit_z']['GwySIUnit']['unitstr']
+        xreal = datafield['xreal']
+        yreal = datafield['yreal']
+        nx = datafield['xres']
+        ny = datafield['yres']
 
         xy_conversion_factor = get_unit_conversion(unit_xy, 'um')
         step_x = xreal / nx * xy_conversion_factor
@@ -123,18 +187,16 @@ def read_gwy(filepath, read_image_layers=False, encoding='utf-8'):
 
         data = data * get_unit_conversion(unit_z, 'um')
 
-        if '/0/mask' in tree:
-            mask = tree['/0/mask']['data'].astype('bool')
+        if f'/{height_layer_key}/mask' in tree['GwyContainer']:
+            mask = tree['GwyContainer'][f'/{height_layer_key}/mask']['GwyDataField']['data'].astype('bool')
             data[mask] = np.nan
 
         data = data.reshape(ny, nx)
 
         metadata = {}
-        if '/0/meta' in tree:
-            metadata.update(tree['/0/meta'])
-
+        if f'/{height_layer_key}/meta' in tree['GwyContainer']:
+            metadata.update(tree['GwyContainer'][f'/{height_layer_key}/meta']['GwyContainer'])
         # Todo: Read image data
-        # Todo: Don't assume the height data is in /0/data, but could be anywhere else. Check for presence of z-unit
 
         return RawSurface(data, step_x, step_y, metadata=metadata)
 
