@@ -1,6 +1,4 @@
 import struct
-from dataclasses import dataclass
-
 import numpy as np
 
 MU_ALIASES = {
@@ -170,10 +168,12 @@ def np_fromany(fileobject, dtype, count=-1, offset=0):
         return np.frombuffer(buffer, dtype)
 
 
-@dataclass
 class RawSurface:
-    data: np.ndarray
-    step_x: float
-    step_y: float
-    metadata: dict = None
-    image_layers: dict[str: np.ndarray] = None
+
+    def __init__(self, data: np.ndarray, step_x: float, step_y: float, metadata: dict | None = None,
+                 image_layers: dict | None = None):
+        self.data = data
+        self.step_x = step_x
+        self.step_y = step_y
+        self.metadata = {} if metadata is None else metadata
+        self.image_layers = {} if image_layers is None else image_layers
