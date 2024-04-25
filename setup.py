@@ -35,7 +35,8 @@ setup(
         'tqdm>=4.64.1',
         'openpyxl>=3.1.2',
         'scikit-learn',
-        'python-dateutil'
+        'python-dateutil',
+        'pillow'
     ],
     ext_modules=cythonize(cython_extensions)
 )
