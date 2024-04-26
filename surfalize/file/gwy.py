@@ -45,18 +45,53 @@ def _filter_candidates_by_z_unit_presence(tree, candidates):
                 reduced_candidates.append(layer_key)
     return reduced_candidates
 
+def _filter_candidates_by_name(tree, candidates, guesses=('height', 'topo')):
+    """
+    Filter layers by whether their title contains one of the guesses. If no candidate title contains any of the guesses,
+    the original candidate list is returned.
 
-def _filter_candidates_by_name(tree, candidates):
+    Parameters
+    ----------
+    tree: dict
+        Dictionary representing the Gwyddion file tree.
+    candidates: list[str]
+        List of image layer candidates represented by their number string.
+    guesses: tuple[str]
+        Tuple of guesses.
+
+    Returns
+    -------
+    Filtered candidates: List[str]
+        List of candidates that contain any of the guesses in their title. If no candidate fulfills this requirement,
+        the original list is returned.
+    """
     reduced_candidates = []
     for layer_key in candidates:
         title = tree['GwyContainer'][f'/{layer_key}/data/title'].lower()
-        guesses = ['topography', 'height', 'topo']
         if any([guess in title for guess in guesses]):
             reduced_candidates.append(layer_key)
+    if not reduced_candidates:
+        return candidates
     return reduced_candidates
 
 
 def _filter_candidates_by_number(tree, candidates):
+    """
+    Returns the candidate with the lowest number. The candidate is returned inside a list of length 1 to conform to
+    the return value signature of the other filter functions.
+
+    Parameters
+    ----------
+    tree: dict
+        Dictionary representing the Gwyddion file tree.
+    candidates: list[str]
+        List of image layer candidates represented by their number string.
+
+    Returns
+    -------
+    Filtered candidates: List[str]
+        List of the candidate with the lowest number.
+    """
     return [str(sorted([int(layer_key) for layer_key in candidates])[0])]
 
 
@@ -75,6 +110,13 @@ def guess_height_channel(tree, layer_candidates):
         elif len(layer_candidates) == 1:
             return layer_candidates[0]
     raise UnsupportedFileFormatError('The height data channel could not be detected.')
+
+def guess_image_channels(tree, layer_candidates):
+    image_channels = []
+    for layer_key in layer_candidates:
+        if 'si_unit_z' not in tree['GwyContainer'][f'/{layer_key}/data']['GwyDataField']:
+            image_channels.append(layer_key)
+    return image_channels
 
 
 def get_image_related_layer_keys(tree):
@@ -173,6 +215,8 @@ def read_gwy(filepath, read_image_layers=False, encoding='utf-8'):
             raise FileFormatError('Unknown file magic detected.')
 
         tree = parse_gwy_tree(filehandle)
+        # Image related layers refers to all layers / channels that contain 2d data that can be represented as an image
+        # This also encompasses height data, or DFT, etc.
         image_related_layers = get_image_related_layer_keys(tree)
         height_layer_key = guess_height_channel(tree, image_related_layers)
 
@@ -201,6 +245,22 @@ def read_gwy(filepath, read_image_layers=False, encoding='utf-8'):
         metadata = {}
         if f'/{height_layer_key}/meta' in tree['GwyContainer']:
             metadata.update(tree['GwyContainer'][f'/{height_layer_key}/meta']['GwyContainer'])
-        # Todo: Read image data
 
-        return RawSurface(data, step_x, step_y, metadata=metadata)
+        image_layers = {}
+        if read_image_layers:
+            image_channel_keys = guess_image_channels(tree, image_related_layers)
+            for layer_key in image_channel_keys:
+                datafield = tree['GwyContainer'][f'/{layer_key}/data']['GwyDataField']
+                title = tree['GwyContainer'][f'/{layer_key}/data/title']
+                img_data = datafield['data']
+
+                img_unit_xy = datafield['si_unit_xy']['GwySIUnit']['unitstr']
+                img_nx = datafield['xres']
+                img_ny = datafield['yres']
+
+                if img_nx != nx or img_ny != ny or img_unit_xy != unit_xy:
+                    continue
+
+                image_layers[title] = img_data.reshape(ny, nx)
+
+    return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=image_layers)
