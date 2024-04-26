@@ -1,11 +1,12 @@
 ## [unreleased changes]
 - Major overhaul of the file readers
   - Support for reading of image layers (Grayscale, RGB, Intensity)
-  - The following fileformats now support image reading: vk4, vk6, vk7, plu, plux, sur, opd, nms
   - Support for plotting of image layers instead of the topography layer in the Surface class
   - Support for extraction of metadata from the files. Metadata is now availbale as a dictionary in the Surface class
   - Support for the newest version of the sur file standard, including compressed sur files
   - Support for Gwyddion file format
+  - The following fileformats now support image reading: vk4, vk6, vk7, plu, plux, sur, opd, nms, gwy
+- Fixed bug with incorrect unit conversion of OPD files
 ## v0.8.2
 - Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
   thread pool based batch execution
