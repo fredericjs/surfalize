@@ -35,6 +35,7 @@ def read_null_terminated_string(filehandle, maxsize=STR_MAX_SIZE):
         i += 1
     return string.decode('utf-8')
 
+
 def _filter_candidates_by_z_unit_presence(tree, candidates):
     reduced_candidates = []
     for layer_key in candidates:
@@ -43,6 +44,7 @@ def _filter_candidates_by_z_unit_presence(tree, candidates):
             if unit in UNIT_EXPONENT.keys():
                 reduced_candidates.append(layer_key)
     return reduced_candidates
+
 
 def _filter_candidates_by_name(tree, candidates):
     reduced_candidates = []
@@ -53,8 +55,10 @@ def _filter_candidates_by_name(tree, candidates):
             reduced_candidates.append(layer_key)
     return reduced_candidates
 
+
 def _filter_candidates_by_number(tree, candidates):
     return [str(sorted([int(layer_key) for layer_key in candidates])[0])]
+
 
 _filters = [
     _filter_candidates_by_z_unit_presence,
@@ -72,10 +76,11 @@ def guess_height_channel(tree, layer_candidates):
             return layer_candidates[0]
     raise UnsupportedFileFormatError('The height data channel could not be detected.')
 
+
 def get_image_related_layer_keys(tree):
     image_related_layers = []
     for key in tree['GwyContainer']:
-        mo = re.search('/(\d+)/', key)
+        mo = re.search(r'/(\d+)/', key)
         if mo:
             image_related_layers.append(mo.group(1))
     return list(set(image_related_layers))
@@ -199,6 +204,3 @@ def read_gwy(filepath, read_image_layers=False, encoding='utf-8'):
         # Todo: Read image data
 
         return RawSurface(data, step_x, step_y, metadata=metadata)
-
-
-
