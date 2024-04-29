@@ -100,24 +100,76 @@ class AbbottFirestoneCurve(CachedInstance):
 
     @cache
     def Sk(self):
+        """
+        Calculates Sk.
+
+        Returns
+        -------
+        float
+        """
         return self._yupper - self._ylower
 
     def Smr(self, c):
+        """
+        Calculates Smr(c).
+
+        Parameters
+        ----------
+        c: float
+            Material height.
+
+        Returns
+        -------
+        float
+        """
         return float(self._smr_fit(c))
 
     def Smc(self, mr):
+        """
+        Calculates Smc(mr).
+
+        Parameters
+        ----------
+        mr: float
+            Material ratio.
+
+        Returns
+        -------
+        float
+        """
         return float(self._smc_fit(mr))
 
     @cache
     def Smr1(self):
+        """
+        Calculates Smr1.
+
+        Returns
+        -------
+        float
+        """
         return self.Smr(self._yupper)
 
     @cache
     def Smr2(self):
+        """
+        Calculates Smr2.
+
+        Returns
+        -------
+        float
+        """
         return self.Smr(self._ylower)
 
     @cache
     def Spk(self):
+        """
+        Calculates Spk.
+
+        Returns
+        -------
+        float
+        """
         # For now we are using the closest value in the array to ylower
         # This way, we are losing or gaining a bit of area. In the future we might use some
         # additional interpolation. For now this is sufficient.
@@ -130,6 +182,13 @@ class AbbottFirestoneCurve(CachedInstance):
 
     @cache
     def Svk(self):
+        """
+        Calculates Svk.
+
+        Returns
+        -------
+        float
+        """
         # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
         idx = argclosest(self._ylower, self._height)
         A2 = np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:]))
