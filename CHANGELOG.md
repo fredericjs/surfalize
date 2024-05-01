@@ -1,14 +1,19 @@
 ## v0.9.0
-- Major overhaul of the file readers
+- Fixed bug with incorrect unit conversion of OPD files
+- Moved height parameter calculation to Cython, reducing processing time by a factor of 100
+- Refactored Sdr calculation and removed Gwyddion surface area algorithm
+- Moved package version to single file, all other occurences of the version number now read that file. The version
+  is now available with the __version__ attribute of the package
+- Major overhaul of the file readers:
   - Support for reading of image layers (Grayscale, RGB, Intensity)
   - Support for plotting of image layers instead of the topography layer in the Surface class
+  - Added Image class as a thin wrapper around image arrays to facilitate saving to disk
   - Support for extraction of metadata from the files. Metadata is now availbale as a dictionary in the Surface class
   - Support for the newest version of the sur file standard, including compressed sur files
   - Support for Gwyddion file format
   - The following fileformats now support image reading: vk4, vk6, vk7, plu, plux, sur, opd, nms, gwy
-- Fixed bug with incorrect unit conversion of OPD files
-- Moved height parameter calculation to Cython, reducing processing time by a factor of 100
-- Refactored Sdr calculation and removed Gwyddion surface area algorithm
+- Removed documentation from the readme file. Docs are now exlusively found on readthedocs
+- Added some documentation for interacting with image layers
 ## v0.8.2
 - Cython surface area calculation now releases the GIL, which is necessary to parallelize the computation with the new 
   thread pool based batch execution
