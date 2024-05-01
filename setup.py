@@ -7,10 +7,14 @@ with open('README.md', 'r', encoding='utf-8') as file:
 
 cython_extensions = glob.glob('surfalize/**/*.pyx', recursive=True)
 
+def get_version():
+    with open('surfalize/_version.py', 'r') as file:
+        content = file.read()
+    return content.split()[-1].strip("'")
 
 setup(
     name='surfalize',
-    version='0.9.0',
+    version=get_version(),
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',
