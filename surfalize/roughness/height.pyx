@@ -1,5 +1,4 @@
 import cython
-cimport numpy as np
 from libc.math cimport fabs, sqrt
 
 @cython.boundscheck(False)

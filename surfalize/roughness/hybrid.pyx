@@ -1,5 +1,4 @@
 import cython
-import numpy as np
 from libc.math cimport sqrt
 
 ctypedef fused sfloat:
