@@ -979,6 +979,7 @@ class Surface(CachedInstance):
    
     # Height parameters ################################################################################################
 
+    @cache
     def height_parameters(self):
         return height_parameters(self.data, self.data.mean())
 

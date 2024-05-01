@@ -6,7 +6,7 @@ ctypedef fused sfloat:
     float
     double
 
-cdef sfloat triangle_area(sfloat x0, sfloat y0, sfloat z0, sfloat x1, sfloat y1, sfloat z1) nogil:
+cdef sfloat triangle_area(sfloat x0, sfloat y0, sfloat z0, sfloat x1, sfloat y1, sfloat z1) noexcept nogil:
     """
     Calculates the area of a 3d triangle spanned by the points A, B, C based on the two spanning vectors
     AB and AC, where AB = (x0, y0, z0) and AC = (x1, y1, z1). The area is calculated by computing the
