@@ -10,7 +10,7 @@ cython_extensions = glob.glob('surfalize/**/*.pyx', recursive=True)
 
 setup(
     name='surfalize',
-    version='0.8.2',
+    version='0.9.0',
     description='A python module to analyze surface roughness',
     author='Frederic Schell',
     author_email='frederic.schell@iws.fraunhofer.de',

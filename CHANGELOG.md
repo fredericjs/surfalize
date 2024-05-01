@@ -1,4 +1,4 @@
-## [unreleased changes]
+## v0.9.0
 - Major overhaul of the file readers
   - Support for reading of image layers (Grayscale, RGB, Intensity)
   - Support for plotting of image layers instead of the topography layer in the Surface class
