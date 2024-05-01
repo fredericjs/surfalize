@@ -12,6 +12,7 @@ from .xyz import read_xyz
 from .nms import read_nms
 from .al3d import read_al3d, write_al3d
 from .sdf import read_binary_sdf
+from .gwy import read_gwy
 
 dispatcher = {
     '.sur':     {'read': read_sur, 'write': write_sur},
@@ -25,20 +26,19 @@ dispatcher = {
     '.xyz':     {'read': read_xyz},
     '.nms':     {'read': read_nms},
     '.al3d':    {'read': read_al3d, 'write': write_al3d},
-    '.sdf':     {'read': read_binary_sdf}
+    '.sdf':     {'read': read_binary_sdf},
+    '.gwy':     {'read': read_gwy}
 }
 
 supported_formats = list(dispatcher.keys())
 
-def load_file(filepath, encoding="utf-8"):
+def load_file(filepath, read_image_layers=False, encoding="utf-8"):
     filepath = Path(filepath)
     try:
         loader = dispatcher[filepath.suffix]['read']
-        if 'encoding' in loader.__code__.co_varnames:
-            loader = partial(loader, encoding=encoding)
     except KeyError:
         raise UnsupportedFileFormatError(f"File format {filepath.suffix} is currently not supported.") from None
-    return loader(filepath)
+    return loader(filepath, read_image_layers=read_image_layers, encoding=encoding)
 
 def write_file(filepath, surface, encoding='utf-8'):
     filepath = Path(filepath)

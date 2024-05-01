@@ -1,4 +1,5 @@
 import struct
+import numpy as np
 
 MU_ALIASES = {
     chr(181): 'u',
@@ -7,6 +8,9 @@ MU_ALIASES = {
 }
 
 UNIT_EXPONENT = {
+    'm':   0,
+    'dm': -1,
+    'cm': -2,
     'mm': -3,
     'um': -6,
     'nm': -9,
@@ -132,3 +136,44 @@ def read_binary_layout(filehandle, layout, fast=True, encoding='utf-8'):
         result[name] = unpacked_data
     return result
 
+def np_fromany(fileobject, dtype, count=-1, offset=0):
+    """
+    Function that invokes either np.frombuffer or np.fromfile depending on whether the object is a file-like object
+    or a buffer.
+
+    Parameters
+    ----------
+    fileobject: buffer_like or file-like or str or Path
+        An object that exposes the buffer interface or a file-like object or a str or Path representing a filepath.
+    dtype: data-type
+        Data-type of the returned array.
+    count: int, Default -1.
+        Number of items to read. -1 means all data in the buffer or file.
+    offset: int
+        Start reading the buffer from this offset (in bytes); default: 0.
+
+    Returns
+    -------
+    np.ndarray
+    """
+    try:
+        return np.frombuffer(fileobject, dtype, count=count, offset=offset)
+    except TypeError:
+        if offset > 0:
+            fileobject.seek(offset, 1)
+        if count == -1:
+            buffer = fileobject.read()
+        else:
+            buffer = fileobject.read(count * np.dtype(dtype).itemsize)
+        return np.frombuffer(buffer, dtype)
+
+
+class RawSurface:
+
+    def __init__(self, data: np.ndarray, step_x: float, step_y: float, metadata: dict | None = None,
+                 image_layers: dict | None = None):
+        self.data = data
+        self.step_x = step_x
+        self.step_y = step_y
+        self.metadata = {} if metadata is None else metadata
+        self.image_layers = {} if image_layers is None else image_layers

@@ -1,6 +1,6 @@
 import struct
-from .common import read_binary_layout
 import numpy as np
+from .common import read_binary_layout, RawSurface
 
 LAYOUT_HEADER = (
     ("Version", "8s", True),
@@ -56,9 +56,9 @@ def read_data_section(file, header):
 
 
 # Main function to read the SDF file
-def read_binary_sdf(file_path, encoding="utf-8"):
+def read_binary_sdf(file_path, read_image_layers=False, encoding="utf-8"):
     with open(file_path, "rb") as file:
         header = read_binary_layout(file, LAYOUT_HEADER, encoding=encoding)
         data, step_x, step_y = read_data_section(file, header)
 
-    return (data, step_x, step_y)
+    return RawSurface(data, step_x, step_y)

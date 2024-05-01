@@ -1,26 +1,90 @@
 import struct
+import zlib
 from datetime import datetime
-from .common import read_binary_layout, write_binary_layout, get_unit_conversion
-from ..exceptions import CorruptedFileError
+from enum import IntEnum
+from dataclasses import dataclass
+
 import numpy as np
+
+from .common import read_binary_layout, write_binary_layout, get_unit_conversion, RawSurface
+from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # This is not fully implemented! Won't work with all SUR files.
 
-MAGIC = 'DIGITAL SURF'
+MAGIC_CLASSIC = 'DIGITAL SURF'
+MAGIC_COMPRESSED = 'DSCOMPRESSED'
 HEADER_SIZE = 512
 
+
+@dataclass
+class Directory:
+    """
+    Dataclass that represents a directory block in a compressed surf file data section
+    """
+    len_raw_data: int
+    len_zipped_data: int
+
+
+@dataclass
+class SurObject:
+    """
+    Dataclass that represents a sur object, which contains a full header and a data block.
+    """
+    header: dict
+    data: np.ndarray
+
+
+class StudiableType(IntEnum):
+    PROFILE = 1
+    SURFACE = 2
+    BINARY_IMAGE = 3
+    SERIES_OF_PROFILES = 4
+    SERIES_OF_SURFACES = 5
+    MERIDIAN_DISC = 6
+    MULTILAYER_PROFILE = 7
+    MULTILAYER_SURFACE = 8
+    PARALLEL_DISC = 9
+    INTENSITY_IMAGE = 10
+    INTENSITY_SURFACE = 11
+    RGB_IMAGE = 12
+    RGB_SURFACE = 13
+    FORCE_CURVE = 14
+    SERIES_OF_FORCE_CURVES = 15
+    RGB_INTENSITY_SURFACE = 16
+    PARAMETERIC_PROFILE = 17
+    SERIES_OF_RGB_IMAGES = 18
+    SPECTRUM_STUDIABLE = 19
+
+
+class AcquisitionType(IntEnum):
+    UNKNOWN = 0
+    CONTACT_STYLUS = 1
+    SCANNING_OPTICAL_GAUGE = 2
+    THERMOCOUPLE = 3
+    UNKNOWN_2 = 4
+    CONTACT_STYLUS_WITH_SKID = 5
+    AFM = 6
+    STM = 7
+    VIDEO = 8
+    INTERFEROMETER = 9
+    STRUCTURED_LIGHT_PROJECTION = 10
+
+
 LAYOUT_HEADER = (
-    ('code', '12s', False),
-    ('format', 'h', False),
+    ('code', '12s', False),  # DIGITIAL SURF / DSCOMPRESSED
+    ('format', 'h', False),  # 0 for PC format
     ('n_objects', 'h', False),
     ('version_number', 'h', False),
     ('studiable_type', 'h', True),
     ('name_object', '30s', True),
     ('name_operator', '30s', True),
-    (None, 6, None), # Reserved
+    ('p_size', 'h', True),
+    ('acquisition_type', 'h', True),
+    ('range_type', 'h', True),
     ('non_measured_points', 'h', False),
     ('absolute_z_axis', 'h', False),
-    (None, 8, None), # Reserved
+    ('gauge_resolution', 'f', True),
+    (None, 4, None),  # Reserved
     ('bits_per_point', 'h', False),
     ('min_point', 'i', False),
     ('max_point', 'i', False),
@@ -45,7 +109,7 @@ LAYOUT_HEADER = (
     ('replica', 'h', False),
     ('inverted', 'h', False),
     ('leveled', 'h', False),
-    (None, 12, None), # Reserved
+    (None, 12, None),  # Reserved
     ('seconds', 'h', True),
     ('minutes', 'h', True),
     ('hours', 'h', True),
@@ -54,7 +118,8 @@ LAYOUT_HEADER = (
     ('year', 'h', True),
     ('week_day', 'h', True),
     ('measurement_duration', 'f', True),
-    (None, 10, None), # Reserved
+    ('compressed_data_size', 'I', False),
+    (None, 6, None),  # Reserved
     ('length_comment', 'h', False),
     ('length_private', 'h', False),
     ('client_zone', '128s', True),
@@ -67,13 +132,225 @@ LAYOUT_HEADER = (
     ('unit_step_t', '13s', True)
 )
 
-POINTSIZE = {16: 'h', 32: 'i'}
+DTYPE_MAP = {16: 'int16', 32: 'int32'}
 
-def write_sur(filepath, surface, encoding='utf-8'):
+
+def read_sur_header(filehandle, encoding='utf-8'):
+    fp_start = filehandle.tell()
+    header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding, fast=False)
+
+    if header['code'] not in (MAGIC_CLASSIC, MAGIC_COMPRESSED) or header['version_number'] != 1:
+        raise CorruptedFileError('Unknown header format')
+
+    if header['unit_ratio_x'] != 1 or header['unit_ratio_y'] != 1 or header['unit_ratio_z'] != 1:
+        raise NotImplementedError("This file type cannot be correctly read currently.")
+
+    header['studiable_type'] = StudiableType(header['studiable_type'])
+    header['acquisition_type'] = AcquisitionType(header['acquisition_type'])
+
+    if filehandle.tell() - fp_start != HEADER_SIZE:
+        raise CorruptedFileError("Unknown header size.")
+
+    header['comment'] = filehandle.read(header['length_comment'])
+    header['private'] = filehandle.read(header['length_private'])
+
+    return header
+
+
+def read_directory(filehandle):
+    """
+    Reads a directory block from a compressed surf file's data section. This function expects the file pointer to
+    point to the beginning of a directory block.
+
+    Parameters
+    ----------
+    filehandle
+        Handle to the file object.
+
+    Notes
+    -----
+    The layout of a directory is as follows:
+
+    raw data length - uint32
+    zipped data length - uint32
+
+    Returns
+    -------
+    Directory
+    """
+    return Directory(*struct.unpack('<2I', filehandle.read(8)))
+
+
+def read_uncompressed_data(filehandle, dtype, num_points):
+    return np.fromfile(filehandle, count=num_points, dtype=dtype)
+
+
+def read_compressed_data(filehandle, dtype, expected_compressed_size):
+    """
+    Reads a datablock from a compressed sur file. This function assumes that the filepointer points to the beginning
+    of a datablock.
+
+    Parameters
+    ----------
+    filehandle
+        Handle to the file object.
+    dtype
+        Datatype of the binary data.
+
+    Notes
+    -----
+    The datablock of a compressed sur file is organized as follows:
+
+    directory count - uint32
+    directory item 0
+        raw data length - uint32
+        zipped data length - uint32
+    ...
+    directory item n
+        ...
+    zipped data stream 0
+    ...
+    zipped data stream 1
+
+    The compressed data is organized into an arbitrary amount of binary streams that must be concatenated before
+    decompression. The data block of the file begins a number of directory blocks. The following bytes encode the
+    directory blocks, which holds the raw and zipped data length of the streams. After the nth directory block, the
+    raw streams are encoded. Currently, according to the file format specification, compressed files use only one
+    datastream. However, in the future, this could change.
+
+    Returns
+    -------
+    data: np.ndarray
+        Decompressed 1d array of the data-
+    """
+    # The compressed datablock begins with a uint32 that encodes the number of directories
+    dir_count = struct.unpack('I', filehandle.read(4))[0]
+    # Afterwards, that number of directories is stored consecutively, containing 2 uint32 encoding the length of the
+    # raw data and the length of the zipped data in the stream associated with that directory
+    directories = []
+    total_compressed_size = 4
+    for _ in range(dir_count):
+        directory = read_directory(filehandle)
+        total_compressed_size += 8 + directory.len_zipped_data
+        directories.append(directory)
+    if total_compressed_size != expected_compressed_size:
+        raise CorruptedFileError(
+            f'Compressed data size {total_compressed_size} does not match expected size of {expected_compressed_size}.'
+        )
+    # For each directory, we read data equivalent to the compressed size attribute in the directory and descompress it
+    # using zlib. Then we concatenate the uncompressed data streams and read them with numpy
+    # each datastream into a single
+    decompressed_data = b''
+    for directory in directories:
+        compressed_data_stream = filehandle.read(directory.len_zipped_data)
+        decompressed_data_stream = zlib.decompress(compressed_data_stream)
+        if len(decompressed_data_stream) != directory.len_raw_data:
+            raise CorruptedFileError(
+                f'Decrompressed data size {len(decompressed_data_stream)} does not match expected size \
+                of {directory.len_raw_data}.'
+            )
+        decompressed_data += decompressed_data_stream
+    data = np.frombuffer(decompressed_data, dtype)
+    return data
+
+
+def is_gwyddion_export(sur_obj):
+    """
+    Checks whether .sur file was exported from Gwyddion. Unfortunately, Gwyddion currently seems to indicate the
+    studiable type as PROFILE for exports containing surfaces. If however, the object name and operator name parameters
+    are defined by Gwyddion as SCRATCH and csm, we can assume with reasonable certainty, that it should be infact a
+    surface, not a profile.
+
+    Parameters
+    ----------
+    sur_obj: SurObject
+
+    Returns
+    -------
+    True if the sur object meets the characteristics of a Gwyddion exported surface
+    """
+    return (sur_obj.header['studiable_type'] == StudiableType.PROFILE and sur_obj.header['name_object'] == 'SCRATCH'
+            and sur_obj.header['name_operator'] == 'csm')
+
+
+def read_sur_object(filehandle):
+    """
+    Reads a sur object from a file. The function assumes that the filepointer points to the beginning of a sur object.
+    A sur object consists of a 512-byte long header, followed by a variable length comment zone, private zone and
+    data section. The data section is either compressed or uncompressed, which is determined by the file magic (first
+    few bytes of the header).
+
+    Parameters
+    ----------
+    filehandle
+        Handle to the file object.
+    Returns
+    -------
+    SurObject
+    """
+    header = read_sur_header(filehandle)
+    dtype = DTYPE_MAP[header['bits_per_point']]
+    ny = header['n_lines']
+    nx = header['n_points_per_line']
+
+    # Since 2010 version, there are two formats: compressed and uncompressed.
+    # Which of the versions is used for a sur object is indicated by the file magic
+    if header['code'] == MAGIC_CLASSIC:
+        data = read_uncompressed_data(filehandle, dtype, header['n_total_points']).reshape(ny, nx)
+    elif header['code'] == MAGIC_COMPRESSED:
+        data = read_compressed_data(filehandle, dtype, header['compressed_data_size']).reshape(ny, nx)
+    else:
+        raise CorruptedFileError(f'Unknown file magic found: {header["code"]}.')
+
+    return SurObject(header, data)
+
+
+def get_surface(sur_obj):
+    if sur_obj.header['non_measured_points'] == 1:
+        invalidValue = sur_obj.header['min_point'] - 2
+        nan_mask = (sur_obj.data == invalidValue)
+
+    # The conversion from int to float needs to happen before multiply by the unit conversion factor!
+    # Otherwise, we might overflow the values in the array and end up with white noise
+    data = sur_obj.data * sur_obj.header['spacing_z']
+    data = data * get_unit_conversion(sur_obj.header['unit_step_z'], 'um')
+    step_x = get_unit_conversion(sur_obj.header['unit_step_x'], 'um') * sur_obj.header['spacing_x']
+    step_y = get_unit_conversion(sur_obj.header['unit_step_y'], 'um') * sur_obj.header['spacing_y']
+
+    if sur_obj.header['non_measured_points'] == 1:
+        data[nan_mask] = np.nan
+
+    data += sur_obj.header['offset_z']
+
+    # This can be implemented in the future when metadata support is needed
+    # timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
+    return (data, step_x, step_y)
+
+
+def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
+    filesize = filepath.stat().st_size
+    with (open(filepath, 'rb') as filehandle):
+        sur_obj = read_sur_object(filehandle)
+        if sur_obj.header['n_objects'] > 1:
+            raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
+
+        if sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(sur_obj):
+            data, step_x, step_y = get_surface(sur_obj)
+        elif sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
+            # after the surface, the r,g,b channels and the intensity image follow.
+            # These should be read here if necessary in the future.
+            data, step_x, step_y = get_surface(sur_obj)
+        else:
+            raise UnsupportedFileFormatError(
+                f'Studiables of type {sur_obj.header["studiable_type"].name} are not supported.'
+            )
+        return RawSurface(data, step_x, step_y)
+
+
+def write_sur(filepath, surface, encoding='utf-8', compressed=False):
     INT32_MAX = int(2 ** 32 / 2) - 1
     INT32_MIN = -int(2 ** 32 / 2)
 
-    data = surface.data
     nm_points = int(surface._nonmeasured_points_exist)
 
     INT_DATA_MIN = INT32_MIN + 2
@@ -85,15 +362,15 @@ def write_sur(filepath, surface, encoding='utf-8'):
         data[np.isnan(data)] = INT_DATA_MIN - 2
     data = data.astype('int32')
     spacing_z = (data_max - data_min) / (INT_DATA_MAX - INT_DATA_MIN)
-    offset_z = offset = data_min + (data_max - data_min)/2
+    offset_z = offset = data_min + (data_max - data_min) / 2
     timestamp = datetime.now()
 
     header = {
-        'code': MAGIC,
+        'code': MAGIC_CLASSIC if not compressed else MAGIC_COMPRESSED,
         'format': 0,  # PC Format
         'n_objects': 1,
         'version_number': 1,
-        'studiable_type': 2,
+        'studiable_type': StudiableType.SURFACE,
         'name_object': '',
         'name_operator': '',
         'non_measured_points': nm_points,
@@ -151,44 +428,14 @@ def write_sur(filepath, surface, encoding='utf-8'):
 
     with open(filepath, 'wb') as file:
         write_binary_layout(file, LAYOUT_HEADER, header)
-        data.tofile(file)
+        if not compressed:
+            data.tofile(file)
+            return
+        else:
+            uncompressed_data = data.tobytes()
+            compressed_data = zlib.compress(uncompressed_data)
+            # Write directory count = 1 and the length of a single data stream containing all the compressed data
+            file.write(struct.pack('<3I', 1, len(uncompressed_data), len(compressed_data)))
+            file.write(compressed_data)
+            return
 
-def read_sur(filepath, encoding='utf-8'):
-    filesize = filepath.stat().st_size
-    with open(filepath, 'rb') as filehandle:
-        header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding, fast=False)
-
-        if header['code'] != MAGIC or header['version_number'] != 1:
-            raise CorruptedFileError
-
-        if header['unit_ratio_x'] != 1 or header['unit_ratio_y'] != 1 or header['unit_ratio_z'] != 1:
-            raise NotImplementedError("This file type cannot be correctly read currently.")
-
-        filehandle.seek(header['length_comment'], 1)
-        filehandle.seek(header['length_private'], 1)
-        dtype = POINTSIZE[header['bits_per_point']]
-        dsize = struct.calcsize(dtype)
-        data_size = header['n_total_points'] * dsize
-
-        data_size = header['n_total_points'] * dsize
-        total_header_size = HEADER_SIZE + header['length_comment'] + header['length_private']
-        expected_data_size = header['n_total_points'] * dsize
-        if filesize - total_header_size > expected_data_size:
-            filehandle.seek(filesize - data_size, 0)
-        shape = (header['n_lines'], header['n_points_per_line'])
-        data = np.fromfile(filehandle, dtype=np.dtype(dtype)).reshape(shape)
-
-        if header['non_measured_points'] == 1:
-            invalidValue = header['min_point'] - 2
-            nan_mask = (data == invalidValue)
-
-        data = data * get_unit_conversion(header['unit_z'], 'um') * header['spacing_z']
-        step_x = get_unit_conversion(header['unit_x'], 'um') * header['spacing_x']
-        step_y = get_unit_conversion(header['unit_y'], 'um') * header['spacing_y']
-
-        data += header['offset_z']
-
-        if header['non_measured_points'] == 1:
-            data[nan_mask] = np.nan
-
-        return (data, step_x, step_y)

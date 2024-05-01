@@ -1,7 +1,7 @@
 import struct
 import numpy as np
 from ..exceptions import CorruptedFileError
-
+from .common import RawSurface
 
 MAGIC = b'AliconaImaging\x00\r\n'
 TAG_LAYOUT = '20s30s2s'
@@ -44,7 +44,7 @@ def write_al3d(filepath, surface, encoding='utf-8'):
         data = surface.data.astype(DTYPE) * 1e-6
         data.tofile(file)
 
-def read_al3d(filepath):
+def read_al3d(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as file:
         magic = file.read(17)
         if magic != MAGIC:
@@ -77,4 +77,4 @@ def read_al3d(filepath):
 
     data *= 1e6 # Conversion from m to um
 
-    return (data, step_x, step_y)
+    return RawSurface(data, step_x, step_y)

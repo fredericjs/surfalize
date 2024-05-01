@@ -125,3 +125,43 @@ pixels is encoded in the named tuple `size`, holding the dimensions in the form 
     ny = surface.size.y
     width = surface.width_um
     height = surface.height_um
+
+Working with image and metadata
+===============================
+
+Surfalize can read image data and metadata from several file formats. The metadata can be accessed through
+
+.. code:: python
+
+    surface = Surface.load('path.ext')
+    metadata = surface.metadata
+    print(metadata)
+
+    >>> {'Time': 'DD/MM/YYYY', 'Objective': '50X', ...}
+
+Optionally, image layers, such as RGB, intensity or Grayscale image present in the file can be read by specifying
+`read_image_layers=True`, in `Surface.load`. The image layers can then be accessed in the dictionary
+`Surface.image_layers`. Grayscale and RGB images generally have the keys 'Grayscale' and 'RGB', respectively, if no
+other title is specified in the file or file format specification. The images are represented by an `Image` class,
+which is a thin wrapper around a numpy array, that provides additional functionality for saving the image to disk.
+
+.. code:: python
+
+    surface = Surface.load('path.ext', read_image_layers=True)
+    print(surface.image_layers)
+
+    >>> {'RGB': Image(736 x 480, Bitdepth: 8, Mode: RGB), 'Intensity': Image(736 x 480, Bitdepth: 16, Mode: Grayscale)}
+
+Image layers can be saved to disk by calling their `.save` method. The raw image data can be accessed in the Image's
+`data` attribute.
+
+.. code:: python
+
+    surface.image_layers['RGB'].save('C:/image.png') # save the image
+    raw_data = surface.image_layers['RGB'].data # returns numpy array
+
+The `Surface.show` method can be used to plot image layers instead of the topography layer.
+
+.. code::python
+
+    surface.show(layer='RGB')
