@@ -15,4 +15,5 @@ def test_fileformat_loading(testfile_dir, fileformat):
     if not files:
         pytest.skip('No testfiles found.')
     for file in files:
-        Surface.load(file)
+        Surface.load(file, read_image_layers=False)
+        Surface.load(file, read_image_layers=True)
