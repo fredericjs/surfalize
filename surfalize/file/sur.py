@@ -330,21 +330,35 @@ def get_surface(sur_obj):
 def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
     filesize = filepath.stat().st_size
     with (open(filepath, 'rb') as filehandle):
-        sur_obj = read_sur_object(filehandle)
-        if sur_obj.header['n_objects'] > 1:
+        top_level_sur_obj = read_sur_object(filehandle)
+        if top_level_sur_obj.header['n_objects'] > 1:
             raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
 
-        if sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(sur_obj):
-            data, step_x, step_y = get_surface(sur_obj)
-        elif sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
+        if top_level_sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(top_level_sur_obj):
+            data, step_x, step_y = get_surface(top_level_sur_obj)
+        elif top_level_sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
             # after the surface, the r,g,b channels and the intensity image follow.
-            # These should be read here if necessary in the future.
-            data, step_x, step_y = get_surface(sur_obj)
+            data, step_x, step_y = get_surface(top_level_sur_obj)
+            image_layers = {}
+            if read_image_layers:
+                # read rgb layers
+                rgb_layers = []
+                for i in range(3):
+                    rgb_layers.append(read_sur_object(filehandle).data)
+                # image is grayscale
+                if np.all(rgb_layers[0] == rgb_layers[1]) and np.all(rgb_layers[0] == rgb_layers[2]):
+                    image_layers['Grayscale'] = rgb_layers[0]
+                # image is rgb
+                else:
+                    image_layers['RGB'] = np.stack(rgb_layers, axis=-1)
+
+                # read intensity layer
+                image_layers['Intensity'] = read_sur_object(filehandle).data
         else:
             raise UnsupportedFileFormatError(
-                f'Studiables of type {sur_obj.header["studiable_type"].name} are not supported.'
+                f'Studiables of type {top_level_sur_obj.header["studiable_type"].name} are not supported.'
             )
-        return RawSurface(data, step_x, step_y)
+        return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=top_level_sur_obj.header)
 
 
 def write_sur(filepath, surface, encoding='utf-8', compressed=False):
