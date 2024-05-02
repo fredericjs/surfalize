@@ -1,3 +1,6 @@
+## v0.9.1
+- Fixed missing reading of image layers with SUR files
+- Added tests for reading of image layers
 ## v0.9.0
 - Fixed bug with incorrect unit conversion of OPD files
 - Moved height parameter calculation to Cython, reducing processing time by a factor of 100
