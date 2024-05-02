@@ -333,13 +333,13 @@ def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
         top_level_sur_obj = read_sur_object(filehandle)
         if top_level_sur_obj.header['n_objects'] > 1:
             raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
-
+        image_layers = {}
         if top_level_sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(top_level_sur_obj):
             data, step_x, step_y = get_surface(top_level_sur_obj)
         elif top_level_sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
             # after the surface, the r,g,b channels and the intensity image follow.
             data, step_x, step_y = get_surface(top_level_sur_obj)
-            image_layers = {}
+
             if read_image_layers:
                 # read rgb layers
                 rgb_layers = []
