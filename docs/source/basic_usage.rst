@@ -162,6 +162,6 @@ Image layers can be saved to disk by calling their `.save` method. The raw image
 
 The `Surface.show` method can be used to plot image layers instead of the topography layer.
 
-.. code::python
+.. code:: python
 
     surface.show(layer='RGB')
