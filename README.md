@@ -55,6 +55,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Nanofocus    | *.nms*                 | Yes     | No      | 
 | Alicona      | *.al3d*                | Yes     | Yes     | 
 | Digital Surf | *.sdf*                 | Yes     | No      | 
+| Gwyddion     | *.gwy*                 | Yes     | No      | 
 | General      | *.xyz*                 | Yes     | No      |
 
 ## Supported roughness parameters
