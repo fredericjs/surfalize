@@ -1,3 +1,5 @@
+## v0.9.2
+- Fixed bug with type hinting
 ## v0.9.1
 - Fixed missing reading of image layers with SUR files
 - Added tests for reading of image layers
