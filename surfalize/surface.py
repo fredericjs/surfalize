@@ -1548,7 +1548,7 @@ class Surface(CachedInstance):
     @register_returnlabels(('mean', 'std'))
     @cache
     @no_nonmeasured_points
-    def depth(self, nprofiles=30, sampling_width=0.2, retstd=True, plot=None):
+    def depth(self, nprofiles=30, sampling_width=0.2, plot=None):
         """
         Calculates the peak-to-valley depth of a periodically grooved surface texture. It samples a specified number
         of equally spaced apart profiles from the surface and fits them with a sinusoid. It then evaluates the actual
@@ -1563,14 +1563,12 @@ class Surface(CachedInstance):
             Number of profiles to sample from the surface.
         sampling_width: float, default 0.2
             Sampling width around the extrema of the sinusoid as a fraction of the spatial period.
-        retstd: bool, default True
-            Return the standard deviation.
         plot: None | list-like[int], default None
             List of number of profiles to plot.
 
         Returns
         -------
-        Mean depth and standard deviation: tuple[float, float] or only mean depth if retstd is False.
+        Mean depth and standard deviation: tuple[float, float].
         """
         # Check if alignment is more vertical or horizontal
         aligned_vertically = True if -45 < self.orientation() < 45 else False
@@ -1644,9 +1642,7 @@ class Surface(CachedInstance):
             # Subtract peaks and valleys from eachother by slicing with 2 step
             depths[i*nintervals:(i+1)*nintervals] = np.abs(depths_line[0::2] - depths_line[1::2])
 
-        if retstd:
-            return np.nanmean(depths), np.nanstd(depths)
-        return np.nanmean(depths)
+        return np.nanmean(depths), np.nanstd(depths)
 
     @cache
     def aspect_ratio(self):

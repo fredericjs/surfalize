@@ -9,7 +9,7 @@ from tqdm.auto import tqdm
 from .surface import Surface
 from .utils import is_list_like
 from .file import supported_formats
-from .exceptions import BatchError
+from .exceptions import BatchError, CalculationError
 
 
 class Operation:
@@ -78,7 +78,7 @@ class Parameter:
         self.args = tuple() if args is None else args
         self.kwargs = dict() if kwargs is None else kwargs
 
-    def calculate_from(self, surface):
+    def calculate_from(self, surface, ignore_errors=True):
         """
         Executes the registered method from the surface file the positional and keyword arguments. Returns a dictionary
         containing the identifier as a key and the value returned from the method as value. If a method returns multiple
@@ -96,7 +96,12 @@ class Parameter:
         None
         """
         method = getattr(surface, self.identifier)
-        result = method(*self.args, **self.kwargs)
+        try:
+            result = method(*self.args, **self.kwargs)
+        except CalculationError as error:
+            if not ignore_errors:
+                raise error
+            result = [np.nan] * len(method.return_labels)
         if is_list_like(result):
             try:
                 labels = method.return_labels
@@ -107,7 +112,7 @@ class Parameter:
             return {f'{self.identifier}_{label}': value for value, label in zip(result, labels)}
         return {self.identifier: result}
 
-def _task(filepath, operations, parameters):
+def _task(filepath, operations, parameters, ignore_errors):
     """
     Task that loads a surface from file, executes a list of operations and calculates a list of parameters.
     This function is used to split the processing load of a Batch between CPU cores.
@@ -132,7 +137,7 @@ def _task(filepath, operations, parameters):
         operation.execute_on(surface)
     results = dict(file=filepath.name)
     for parameter in parameters:
-        result = parameter.calculate_from(surface)
+        result = parameter.calculate_from(surface, ignore_errors=ignore_errors)
         results.update(result)
     return results
 
@@ -238,7 +243,7 @@ class Batch:
         return cls(filepaths, additional_data=additional_data)
 
 
-    def _disptach_tasks(self, multiprocessing=True):
+    def _disptach_tasks(self, multiprocessing=True, ignore_errors=True):
         """
         Dispatches the individual tasks between CPU cores if multiprocessing is True, otherwise executes them
         sequentially.
@@ -265,7 +270,7 @@ class Batch:
         results = []
         if multiprocessing:
             with ThreadPool() as pool:
-                task = partial(_task, operations=self._operations, parameters=self._parameters)
+                task = partial(_task, operations=self._operations, parameters=self._parameters, ignore_errors=ignore_errors)
                 with tqdm(total=len(self._filepaths), desc='Processing files') as progress_bar:
                     for result in pool.imap_unordered(task, self._filepaths):
                         results.append(result)
@@ -296,7 +301,7 @@ class Batch:
             df = pd.merge(self._additional_data, df, on='file')
         return df
 
-    def execute(self, multiprocessing=True, saveto=None):
+    def execute(self, multiprocessing=True, ignore_errors=True, saveto=None):
         """
         Executes the Batch processing and returns the obtained data as a pandas DataFrame.
 
@@ -318,7 +323,7 @@ class Batch:
         """
         if not self._parameters and not self._operations:
             raise BatchError('No operations of parameters defined.')
-        results = self._disptach_tasks(multiprocessing=multiprocessing)
+        results = self._disptach_tasks(multiprocessing=multiprocessing, ignore_errors=ignore_errors)
         df = self._construct_dataframe(results)
         if saveto is not None:
             df.to_excel(saveto)

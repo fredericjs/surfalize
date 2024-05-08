@@ -18,8 +18,12 @@ class CorruptedFileError(FileFormatError):
     """
     pass
 
+class CalculationError(Exception):
+    """
+    Base class for all calculation related errors.
+    """
 
-class FittingError(Exception):
+class FittingError(CalculationError):
     """
     Raised when a fitting operation has failed.
     """
