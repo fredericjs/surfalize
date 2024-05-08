@@ -102,10 +102,9 @@ class Parameter:
             if not ignore_errors:
                 raise error
             if hasattr(method, 'return_labels'):
-                length = len(method.return_labels)
+                result = [np.nan] * len(method.return_labels)
             else:
-                length = 1
-            result = [np.nan] * length
+                result = np.nan
         if is_list_like(result):
             try:
                 labels = method.return_labels
