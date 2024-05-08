@@ -1653,7 +1653,7 @@ class Surface(CachedInstance):
         -------
         aspect_ratio: float
         """
-        return self.depth() / self.period()
+        return self.depth()[0] / self.period()
 
     def roughness_parameters(self, parameters=None):
         """
