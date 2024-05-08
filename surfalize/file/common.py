@@ -170,8 +170,8 @@ def np_fromany(fileobject, dtype, count=-1, offset=0):
 
 class RawSurface:
 
-    def __init__(self, data: np.ndarray, step_x: float, step_y: float, metadata: dict | None = None,
-                 image_layers: dict | None = None):
+    def __init__(self, data: np.ndarray, step_x: float, step_y: float, metadata: dict=None,
+                 image_layers: dict=None):
         self.data = data
         self.step_x = step_x
         self.step_y = step_y
