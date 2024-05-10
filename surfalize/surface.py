@@ -254,6 +254,16 @@ class Surface(CachedInstance):
     def __hash__(self):
         return hash((self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std()))
 
+    def has_missing_points(self):
+        """
+        Returns true if surface contains non-measured points.
+
+        Returns
+        -------
+        bool
+        """
+        return self._nonmeasured_points_exist
+
     @classmethod
     def load(cls, filepath, encoding='utf-8', read_image_layers=False):
         """
