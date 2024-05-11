@@ -11,7 +11,7 @@ from .opd import read_opd
 from .xyz import read_xyz
 from .nms import read_nms
 from .al3d import read_al3d, write_al3d
-from .sdf import read_binary_sdf
+from .sdf import read_sdf
 from .gwy import read_gwy
 
 dispatcher = {
@@ -26,7 +26,7 @@ dispatcher = {
     '.xyz':     {'read': read_xyz},
     '.nms':     {'read': read_nms},
     '.al3d':    {'read': read_al3d, 'write': write_al3d},
-    '.sdf':     {'read': read_binary_sdf},
+    '.sdf':     {'read': read_sdf},
     '.gwy':     {'read': read_gwy}
 }
 
