@@ -2,8 +2,10 @@ import struct
 import re
 from datetime import datetime
 import numpy as np
-from .common import read_binary_layout, RawSurface, get_unit_conversion
+from .common import read_binary_layout, RawSurface, get_unit_conversion, write_binary_layout
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
+
+# TODO: Account for non-measured points
 
 # File format specifications taken from ISO 25178-71
 MAGIC_ASCII = b'aISO-1.0'
@@ -14,9 +16,9 @@ CONVERSION_FACTOR = get_unit_conversion(FIXED_UNIT, 'um')
 ASCII_DATE_FORMAT = "%d%m%Y%H%M"
 
 LAYOUT_HEADER = (
-    ("ManufacID", "10s", True),
-    ("CreateDate", "12s", True),
-    ("ModDate", "12s", True),
+    ("ManufacID", "10s", False),
+    ("CreateDate", "12s", False),
+    ("ModDate", "12s", False),
     ("NumPoints", "H", False),
     ("NumProfiles", "H", False),
     ("Xscale", "d", False),
@@ -52,7 +54,7 @@ DTYPE_MAP = {
 def read_ascii_sdf(filehandle, encoding="utf-8"):
     contents = filehandle.read().decode('ascii').lstrip()
     header_section, data_section, trailer_section, end = contents.split('*')
-    if end != '':
+    if end.strip() != '':
         raise ValueError
 
     header = dict()
@@ -74,7 +76,7 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
         header['ModDate'] = datetime.strptime(header['ModDate'], ASCII_DATE_FORMAT)
 
     data = np.fromstring(data_section, sep=' ', dtype=data_format).reshape(header['NumProfiles'], header['NumPoints'])
-    data *= CONVERSION_FACTOR * header['Xscale']
+    data *= CONVERSION_FACTOR * header['Zscale']
     step_x = header['Xscale'] * CONVERSION_FACTOR
     step_y = header['Yscale'] * CONVERSION_FACTOR
     metadata = header
@@ -121,3 +123,53 @@ def read_sdf(file_path, read_image_layers=False, encoding="utf-8"):
             return read_binary_sdf(filehandle, encoding=encoding)
         else:
             raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
+def write_sdf(filepath, surface, encoding='utf-8', binary=True):
+    now = datetime.now()
+    mod_date = now.strftime(ASCII_DATE_FORMAT)
+    # if the surface contains a timestamp in the metadata, we use this one, otherwise we set the create date to the same
+    # value as the modified date
+    if 'timestamp' in surface.metadata:
+        create_date = surface.metadata['timestamp'].strftime(ASCII_DATE_FORMAT)
+    else:
+        create_date = mod_date
+
+    # Here, we divide the data by a power of 10 so that there is only one significant digit before
+    # the decimal point. This way, we can make use of the maximum resolution of the ascii encoded
+    # decimal places.
+    scale_factor = 10 ** (int(np.log10(surface.data.max())))
+    data = surface.data.astype('float64') / scale_factor
+
+    conversion_factor = get_unit_conversion('um', FIXED_UNIT)
+    header = {
+        "ManufacID": 'surfalize'.ljust(10),
+        "CreateDate": create_date,
+        "ModDate": mod_date,
+        "NumPoints": surface.size.x,
+        "NumProfiles": surface.size.y,
+        "Xscale": surface.step_x * conversion_factor,
+        "Yscale": surface.step_y * conversion_factor,
+        "Zscale": scale_factor * get_unit_conversion('um', FIXED_UNIT),
+        # Zresolution = original base resolution of the measurement instrument
+        # The standard says to fill this with a negative number when the value is unknown
+        "Zresolution": -1,
+        "Compression": 0, # no compression
+        "DataType": 7, # data type double should be default
+        "CheckType": 0, # should be zero according to standard
+    }
+
+    if binary:
+        with open(filepath, 'wb') as filehandle:
+            filehandle.write(MAGIC_BINARY) # write magic identifier
+            write_binary_layout(filehandle, LAYOUT_HEADER, header)
+            data.tofile(filehandle)
+    else:
+        CRLF = '\n'
+        with open(filepath, 'w') as filehandle:
+            filehandle.write(MAGIC_ASCII.decode() + CRLF)
+            for k, v in header.items():
+                filehandle.write(f'{k} = {v}{CRLF}')
+            filehandle.write('*' + CRLF)
+            data.tofile(filehandle, sep=' ', format='%.8f')
+            filehandle.write(CRLF + '*' + CRLF)
+            filehandle.write('<ExportedBy>Surfalize</ExportedBy>' + CRLF)
+            filehandle.write('*' + CRLF)

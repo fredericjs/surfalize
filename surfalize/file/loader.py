@@ -11,7 +11,7 @@ from .opd import read_opd
 from .xyz import read_xyz
 from .nms import read_nms
 from .al3d import read_al3d, write_al3d
-from .sdf import read_sdf
+from .sdf import read_sdf, write_sdf
 from .gwy import read_gwy
 
 dispatcher = {
@@ -26,7 +26,7 @@ dispatcher = {
     '.xyz':     {'read': read_xyz},
     '.nms':     {'read': read_nms},
     '.al3d':    {'read': read_al3d, 'write': write_al3d},
-    '.sdf':     {'read': read_sdf},
+    '.sdf':     {'read': read_sdf, 'write': write_sdf},
     '.gwy':     {'read': read_gwy}
 }
 
@@ -40,7 +40,7 @@ def load_file(filepath, read_image_layers=False, encoding="utf-8"):
         raise UnsupportedFileFormatError(f"File format {filepath.suffix} is currently not supported.") from None
     return loader(filepath, read_image_layers=read_image_layers, encoding=encoding)
 
-def write_file(filepath, surface, encoding='utf-8'):
+def write_file(filepath, surface, encoding='utf-8', **kwargs):
     filepath = Path(filepath)
     ext = filepath.suffix
     if not ext:
@@ -50,4 +50,4 @@ def write_file(filepath, surface, encoding='utf-8'):
     except KeyError:
         raise UnsupportedFileFormatError(
             f"File format {filepath.suffix} is currently not supported for writing.") from None
-    return writer(filepath, surface, encoding=encoding)
+    return writer(filepath, surface, encoding=encoding, **kwargs)

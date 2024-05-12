@@ -287,9 +287,9 @@ class Surface(CachedInstance):
         return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
                    image_layers=image_layers)
 
-    def save(self, filepath, encoding='utf-8'):
+    def save(self, filepath, encoding='utf-8', **kwargs):
         """
-        Saves the surface to a supported file format.
+        Saves the surface to a supported file format. The kwargs are specific to individual file formats.
 
         Parameters
         ----------
@@ -297,11 +297,17 @@ class Surface(CachedInstance):
             Filepath pointing to the topography file.
         encoding: str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
+
+        Optional Parameters
+        -------------------
+        binary: bool
+            Specifies whether to save in the binary version of the format of the ascii version.
+
         Returns
         -------
         None
         """
-        write_file(filepath, self, encoding=encoding)
+        write_file(filepath, self, encoding=encoding, **kwargs)
 
     def get_image_layer_names(self):
         """

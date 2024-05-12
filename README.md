@@ -54,7 +54,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Wyko         | *.opd*                 | Yes     | No      | 
 | Nanofocus    | *.nms*                 | Yes     | No      | 
 | Alicona      | *.al3d*                | Yes     | Yes     | 
-| Digital Surf | *.sdf*                 | Yes     | No      | 
+| Digital Surf | *.sdf*                 | Yes     | Yes     | 
 | Gwyddion     | *.gwy*                 | Yes     | No      | 
 | General      | *.xyz*                 | Yes     | No      |
 
