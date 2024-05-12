@@ -5,8 +5,6 @@ import numpy as np
 from .common import read_binary_layout, RawSurface, get_unit_conversion, write_binary_layout
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
-# TODO: Account for non-measured points
-
 # File format specifications taken from ISO 25178-71
 MAGIC_ASCII = b'aISO-1.0'
 MAGIC_BINARY = b'bISO-1.0'
@@ -14,6 +12,7 @@ MAGIC_BINARY = b'bISO-1.0'
 FIXED_UNIT = 'm'
 CONVERSION_FACTOR = get_unit_conversion(FIXED_UNIT, 'um')
 ASCII_DATE_FORMAT = "%d%m%Y%H%M"
+ASCII_FLOAT_PRECISION = 10
 
 LAYOUT_HEADER = (
     ("ManufacID", "10s", False),
@@ -51,8 +50,12 @@ DTYPE_MAP = {
     7: "d",  # DOUBLE
 }
 
-MISSING_DATA_MAP = {
-    5:
+ASCII_INVALID_VALUE = 'BAD'
+
+BINARY_INVALID_VALUE_MAP = {
+    5: -2**15,
+    6: -2**31,
+    7: np.nan
 }
 
 def read_ascii_sdf(filehandle, encoding="utf-8"):
@@ -72,14 +75,13 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
     if header['DataType'] not in DTYPE_MAP:
         raise CorruptedFileError(f"Unsupported DataType in SDF file: {header['DataType']}")
 
-    data_format = DTYPE_MAP[header['DataType']]
-
     if 'CreateDate' in header:
         header['CreateDate'] = datetime.strptime(header['CreateDate'], ASCII_DATE_FORMAT)
     if 'ModDate' in header:
         header['ModDate'] = datetime.strptime(header['ModDate'], ASCII_DATE_FORMAT)
 
-    data = np.fromstring(data_section, sep=' ', dtype=data_format).reshape(header['NumProfiles'], header['NumPoints'])
+    data_section = data_section.replace(ASCII_INVALID_VALUE, 'NAN')
+    data = np.fromstring(data_section, sep=' ', dtype='d').reshape(header['NumProfiles'], header['NumPoints'])
     data *= CONVERSION_FACTOR * header['Zscale']
     step_x = header['Xscale'] * CONVERSION_FACTOR
     step_y = header['Yscale'] * CONVERSION_FACTOR
@@ -112,8 +114,13 @@ def read_binary_sdf(filehandle, encoding="utf-8"):
 
     data = np.frombuffer(data_bytes, dtype=np.dtype(data_format))
 
-    data = data * header["Zscale"] * CONVERSION_FACTOR
+    missing_value = BINARY_INVALID_VALUE_MAP[data_type]
+    invalid_mask = (data == missing_value)
+
+    data = data.astype('float64') * header["Zscale"] * CONVERSION_FACTOR
+    data[invalid_mask] = np.nan
     data = data.reshape((num_profiles, num_points))
+
     step_x = header["Xscale"] * CONVERSION_FACTOR
     step_y = header["Yscale"] * CONVERSION_FACTOR
     return RawSurface(data, step_x, step_y, metadata=header)
@@ -127,6 +134,7 @@ def read_sdf(file_path, read_image_layers=False, encoding="utf-8"):
             return read_binary_sdf(filehandle, encoding=encoding)
         else:
             raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
+
 def write_sdf(filepath, surface, encoding='utf-8', binary=True):
     now = datetime.now()
     mod_date = now.strftime(ASCII_DATE_FORMAT)
@@ -140,8 +148,14 @@ def write_sdf(filepath, surface, encoding='utf-8', binary=True):
     # Here, we divide the data by a power of 10 so that there is only one significant digit before
     # the decimal point. This way, we can make use of the maximum resolution of the ascii encoded
     # decimal places.
-    scale_factor = 10 ** (int(np.log10(surface.data.max())))
-    data = surface.data.astype('float64') / scale_factor
+    data = surface.data.astype('float64')
+    max_abs = np.nanmax(np.abs(data))
+    if max_abs == 0:
+        scale_factor = 1
+    else:
+        exponent = np.floor(np.log10(max_abs))
+        scale_factor = 10 ** (-exponent)
+    data = data * scale_factor
 
     conversion_factor = get_unit_conversion('um', FIXED_UNIT)
     header = {
@@ -152,7 +166,7 @@ def write_sdf(filepath, surface, encoding='utf-8', binary=True):
         "NumProfiles": surface.size.y,
         "Xscale": surface.step_x * conversion_factor,
         "Yscale": surface.step_y * conversion_factor,
-        "Zscale": scale_factor * get_unit_conversion('um', FIXED_UNIT),
+        "Zscale": get_unit_conversion('um', FIXED_UNIT) / scale_factor,
         # Zresolution = original base resolution of the measurement instrument
         # The standard says to fill this with a negative number when the value is unknown
         "Zresolution": -1,
@@ -161,11 +175,13 @@ def write_sdf(filepath, surface, encoding='utf-8', binary=True):
         "CheckType": 0, # should be zero according to standard
     }
 
+    # Write in binary mode
     if binary:
         with open(filepath, 'wb') as filehandle:
             filehandle.write(MAGIC_BINARY) # write magic identifier
             write_binary_layout(filehandle, LAYOUT_HEADER, header)
             data.tofile(filehandle)
+    # Write in ascii mode
     else:
         CRLF = '\n'
         with open(filepath, 'w') as filehandle:
@@ -173,7 +189,16 @@ def write_sdf(filepath, surface, encoding='utf-8', binary=True):
             for k, v in header.items():
                 filehandle.write(f'{k} = {v}{CRLF}')
             filehandle.write('*' + CRLF)
-            data.tofile(filehandle, sep=' ', format='%.8f')
-            filehandle.write(CRLF + '*' + CRLF)
+            line_values = []
+            for i, value in enumerate(data.flatten()):
+                if np.isnan(value):
+                    line_values.append('BAD'.ljust(ASCII_FLOAT_PRECISION + 2))
+                else:
+                    line_values.append(f'{value:.{ASCII_FLOAT_PRECISION}f}')
+                if i % 10 == 0 or i == data.size - 1:
+                    filehandle.write(' '.join(line_values) + CRLF)
+                    line_values = []
+
+            filehandle.write('*' + CRLF)
             filehandle.write('<ExportedBy>Surfalize</ExportedBy>' + CRLF)
             filehandle.write('*' + CRLF)
