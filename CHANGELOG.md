@@ -3,6 +3,7 @@
 - Added ignore_errors kwarg to Batch.execute to ignore errors during parameter calculation and fill the respective 
   values with nan instead
 - Added writing of ascii and binary sdf file format
+- Removed skipping of values in binary layouts
 ## v0.9.2
 - Fixed bug with type hinting
 ## v0.9.1

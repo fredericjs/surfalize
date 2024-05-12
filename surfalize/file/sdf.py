@@ -15,18 +15,18 @@ ASCII_DATE_FORMAT = "%d%m%Y%H%M"
 ASCII_FLOAT_PRECISION = 10
 
 LAYOUT_HEADER = (
-    ("ManufacID", "10s", False),
-    ("CreateDate", "12s", False),
-    ("ModDate", "12s", False),
-    ("NumPoints", "H", False),
-    ("NumProfiles", "H", False),
-    ("Xscale", "d", False),
-    ("Yscale", "d", False),
-    ("Zscale", "d", False),
-    ("Zresolution", "d", False),
-    ("Compression", "B", False),
-    ("DataType", "B", False),
-    ("CheckType", "B", False),
+    ("ManufacID", "10s"),
+    ("CreateDate", "12s"),
+    ("ModDate", "12s"),
+    ("NumPoints", "H"),
+    ("NumProfiles", "H"),
+    ("Xscale", "d"),
+    ("Yscale", "d"),
+    ("Zscale", "d"),
+    ("Zresolution", "d"),
+    ("Compression", "B"),
+    ("DataType", "B"),
+    ("CheckType", "B"),
 )
 
 ASCII_HEADER_TYPES = {
