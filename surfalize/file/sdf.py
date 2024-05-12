@@ -47,8 +47,12 @@ ASCII_HEADER_TYPES = {
 
 DTYPE_MAP = {
     5: "h",  # INT16
-    6: "I",  # UINT16
+    6: "i",  # INT32
     7: "d",  # DOUBLE
+}
+
+MISSING_DATA_MAP = {
+    5:
 }
 
 def read_ascii_sdf(filehandle, encoding="utf-8"):
