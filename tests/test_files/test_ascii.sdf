@@ -1,0 +1,22 @@
+aISO-1.0
+ManufacID = ISOTC213
+CreateDate = 040120100853
+ModDate = 050320101353
+NumPoints = 7
+NumProfiles = 4
+Xscale = 1.0E-6
+Yscale = 1.0E-6
+Zscale = 1.0E-6
+Zresolution = 1.0E-9
+Compression = 0
+DataType = 7
+CheckType = 0
+*
+1.00000 0.99874 0.99495 0.98865 0.97986 0.96858 1.00000
+0.99874 0.99748 0.99369 0.98740 0.97862 0.96736 0.99874
+0.99495 0.99369 0.98993 0.98366 0.97491 0.96369 0.99495
+0.97986 0.97862 0.97491 0.96874 0.96012 0.94907 0.97986
+*
+< OperatorName > Tom Jones < / OperatorName >
+< PartName > S2 Softgauges Example < /PartName >
+*
