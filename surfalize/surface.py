@@ -283,6 +283,10 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
         """
         raw_surface = load_file(filepath, encoding=encoding, read_image_layers=read_image_layers)
+        return cls.from_raw_surface(raw_surface)
+
+    @classmethod
+    def from_raw_surface(cls, raw_surface):
         image_layers = {k: Image(v) for k, v in raw_surface.image_layers.items()}
         return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
                    image_layers=image_layers)
@@ -1125,7 +1129,7 @@ class Surface(CachedInstance):
     # Spatial parameters ###############################################################################################
 
     @cache
-    def _get_autocorrelation_function(self):
+    def get_autocorrelation_function(self):
         """
         Instantiates and returns an AutocorrelationFunction object. LRU cache is used to return the same object with
         every function call.
@@ -1156,7 +1160,7 @@ class Surface(CachedInstance):
         Sal: float
             autocorrelation length.
         """
-        return self._get_autocorrelation_function().Sal(s=s)
+        return self.get_autocorrelation_function().Sal(s=s)
 
     @cache
     def Str(self, s=0.2):
@@ -1179,12 +1183,12 @@ class Surface(CachedInstance):
         Str: float
             texture aspect ratio.
         """
-        return self._get_autocorrelation_function().Str(s=s)
+        return self.get_autocorrelation_function().Str(s=s)
     
     # Functional parameters ############################################################################################
     
     @cache
-    def _get_abbott_firestone_curve(self):
+    def get_abbott_firestone_curve(self):
         """
         Instantiates and returns an AbbottFirestoneCurve object. LRU cache is used to return the same object with
         every function call.
@@ -1203,7 +1207,7 @@ class Surface(CachedInstance):
         -------
         Sk: float
         """
-        return self._get_abbott_firestone_curve().Sk()
+        return self.get_abbott_firestone_curve().Sk()
 
     def Spk(self):
         """
@@ -1213,7 +1217,7 @@ class Surface(CachedInstance):
         -------
         Spk: float
         """
-        return self._get_abbott_firestone_curve().Spk()
+        return self.get_abbott_firestone_curve().Spk()
 
     def Svk(self):
         """
@@ -1223,7 +1227,7 @@ class Surface(CachedInstance):
         -------
         Svk: float
         """
-        return self._get_abbott_firestone_curve().Svk()
+        return self.get_abbott_firestone_curve().Svk()
 
     def Smr1(self):
         """
@@ -1233,7 +1237,7 @@ class Surface(CachedInstance):
         -------
         Smr1: float
         """
-        return self._get_abbott_firestone_curve().Smr1()
+        return self.get_abbott_firestone_curve().Smr1()
 
     def Smr2(self):
         """
@@ -1243,7 +1247,7 @@ class Surface(CachedInstance):
         -------
         Smr2: float
         """
-        return self._get_abbott_firestone_curve().Smr2()
+        return self.get_abbott_firestone_curve().Smr2()
 
     def Smr(self, c):
         """
@@ -1258,7 +1262,7 @@ class Surface(CachedInstance):
         -------
         areal material ratio: float
         """
-        return self._get_abbott_firestone_curve().Smr(c)
+        return self.get_abbott_firestone_curve().Smr(c)
 
     def Smc(self, mr):
         """
@@ -1273,7 +1277,7 @@ class Surface(CachedInstance):
         -------
         height: float
         """
-        return self._get_abbott_firestone_curve().Smc(mr)
+        return self.get_abbott_firestone_curve().Smc(mr)
 
     def Sxp(self, p=2.5, q=50):
         """
@@ -1308,7 +1312,7 @@ class Surface(CachedInstance):
         -------
         Vmp: float
         """
-        return self._get_abbott_firestone_curve().Vmp(p=p)
+        return self.get_abbott_firestone_curve().Vmp(p=p)
 
     def Vmc(self, p=10, q=80):
         """
@@ -1326,7 +1330,7 @@ class Surface(CachedInstance):
         -------
         Vmc: float
         """
-        return self._get_abbott_firestone_curve().Vmc(p=p, q=q)
+        return self.get_abbott_firestone_curve().Vmc(p=p, q=q)
 
     def Vvv(self, q=80):
         """
@@ -1341,7 +1345,7 @@ class Surface(CachedInstance):
         -------
         Vvv: float
         """
-        return self._get_abbott_firestone_curve().Vvv(q=q)
+        return self.get_abbott_firestone_curve().Vvv(q=q)
 
     def Vvc(self, p=10, q=80):
         """
@@ -1359,7 +1363,7 @@ class Surface(CachedInstance):
         -------
         Vvc: float
         """
-        return self._get_abbott_firestone_curve().Vvc(p=p, q=q)
+        return self.get_abbott_firestone_curve().Vvc(p=p, q=q)
 
     # Non-standard parameters ##########################################################################################
     
@@ -1714,8 +1718,28 @@ class Surface(CachedInstance):
         -------
         None
         """
-        abbott_curve = self._get_abbott_firestone_curve()
-        abbott_curve.plot(nbars=nbars)
+        abbott_curve = self.get_abbott_firestone_curve()
+        return abbott_curve.plot(nbars=nbars)
+
+    def plot_functional_parameter_study(self):
+        """
+        Plots the Abbott-Firestone curve.
+
+        Parameters
+        ----------
+        nbars: int
+            Number of bars to display for the material density
+
+        Returns
+        -------
+        None
+        """
+        abbott_curve = self.get_abbott_firestone_curve()
+        return abbott_curve.visual_parameter_study()
+
+    def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True):
+        acf = self.get_autocorrelation_function()
+        return acf.plot_autocorrelation(ax=ax, cmap=cmap, show_cbar=show_cbar)
         
     def plot_fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
                                cmap='inferno', adjust_colormap=True):
