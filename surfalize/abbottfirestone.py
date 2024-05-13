@@ -215,14 +215,17 @@ class AbbottFirestoneCurve(CachedInstance):
         idx = argclosest(self.Smc(10), self._height)
         return np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.Vvv(q)
 
-    def plot(self, nbars=20):
+    def plot(self, nbars=20, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.figure
         dist_bars, bins_bars = np.histogram(self._surface.data, bins=nbars)
         dist_bars = np.flip(dist_bars)
         bins_bars = np.flip(bins_bars)
 
         height, material_ratio = self._get_material_ratio_curve()
 
-        fig, ax = plt.subplots()
         ax.set_xlabel('Material distribution (%)')
         ax.set_ylabel('z (µm)')
         ax2 = ax.twiny()
@@ -235,10 +238,13 @@ class AbbottFirestoneCurve(CachedInstance):
                 height=(self._surface.data.max() - self._surface.data.min()) / nbars, edgecolor='k', color='lightblue')
         ax2.plot(material_ratio, height, c='r', clip_on=True)
 
-        plt.show()
+        return fig, (ax, ax2)
 
-    def visual_parameter_study(self):
-        fig, ax = plt.subplots()
+    def visual_parameter_study(self, ax=None):
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.figure
         ax.set_box_aspect(1)
         ax.set_xlim(0, 100)
         ax.set_ylim(self._height.min(), self._height.max())
@@ -258,3 +264,5 @@ class AbbottFirestoneCurve(CachedInstance):
 
         ax.set_xlabel('Material ratio (%)')
         ax.set_ylabel('Height (µm)')
+
+        return fig, ax
