@@ -6,6 +6,7 @@
 - Removed skipping of values in binary layouts
 - Refactored ACF class, which now supports plotting
 - Surface objects now have public methods to get the ACF and Abbott-Firestone curve
+- Equal comparison now returns true if data is approximately equal in the range of a precision value 
 ## v0.9.2
 - Fixed bug with type hinting
 ## v0.9.1

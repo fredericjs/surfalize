@@ -247,7 +247,7 @@ class Surface(CachedInstance):
             return False
         if self.step_x != other.step_x or self.step_y != other.step_y or self.size != other.size:
             return False
-        if np.any(self.data != other.data):
+        if np.any(self.data - other.data > 1e-10):
             return False
         return True
 
