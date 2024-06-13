@@ -135,8 +135,8 @@ class Surface(CachedInstance):
         self.metadata = metadata if metadata is not None else {}
         self.image_layers = image_layers if image_layers is not None else {}
 
-        self.width_um = (height_data.shape[1] - 1) * step_x
-        self.height_um = (height_data.shape[0] - 1) * step_y
+        self.width_um = height_data.shape[1] * step_x
+        self.height_um = height_data.shape[0] * step_y
         # True if non-measured points exist on the surface
         self._nonmeasured_points_exist = np.any(np.isnan(self.data))
 
