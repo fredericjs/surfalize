@@ -7,6 +7,11 @@
 - Refactored ACF class, which now supports plotting
 - Surface objects now have public methods to get the ACF and Abbott-Firestone curve
 - Equal comparison now returns true if data is approximately equal in the range of a precision value 
+- Fixed bug in homogeneity calculation that resulted in wrong values when the sampling interval is not equal in both
+  axes.
+- Breaking change: Width and height of the textures in micrometers are now calculated as `surface.step_x * surface.size.x`
+  instead of  `surface.step_x * (surface.size.x -1)` after discussions with metrology experts. This introduces a slight
+  change in the parameter values.
 ## v0.9.2
 - Fixed bug with type hinting
 ## v0.9.1

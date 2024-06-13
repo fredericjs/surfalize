@@ -188,8 +188,8 @@ class Surface(CachedInstance):
             self.step_x = step_x
         if step_y is not None:
             self.step_y = step_y
-        self.width_um = (self.size.x - 1) * self.step_x
-        self.height_um = (self.size.y - 1) * self.step_y
+        self.width_um = self.size.x * self.step_x
+        self.height_um = self.size.y * self.step_y
         self.clear_cache() # Calls method from parent class
         
     def __repr__(self):
@@ -1369,7 +1369,7 @@ class Surface(CachedInstance):
     
     @cache
     @no_nonmeasured_points
-    def period(self):
+    def period(self) -> float:
         """
         Calculates the 1d spatial period based on the Fourier transform. This can yield unexcepted results if the
         surface contains peaks at lower spatial frequencies than the frequency of the periodic structure to be
@@ -1385,7 +1385,7 @@ class Surface(CachedInstance):
 
     @cache
     @no_nonmeasured_points
-    def period_x_y(self):
+    def period_x_y(self) -> tuple[float, float]:
         """
         Calculates the spatial period along the x and y axes based on the Fourier transform.
 
@@ -1398,7 +1398,7 @@ class Surface(CachedInstance):
         periody = np.inf if dy == 0 else np.abs(2/dy)
         return periodx, periody
 
-    def _orientation_fft(self):
+    def _orientation_fft(self) -> float:
         """
         Computes the orientation angle of the dominant texture towards the vertical axis from the peaks of the Fourier
         transform.
@@ -1416,7 +1416,7 @@ class Surface(CachedInstance):
             return 0
         return np.rad2deg(np.arctan(dy / dx))
 
-    def _orientation_refined(self):
+    def _orientation_refined(self) -> float:
         """
         Computes the orientation angle of the dominant texture towards the vertical axis using a refined algorithm.
         This method is more costly than the FFT-based method, but offers significantly better angular resolution.
@@ -1471,7 +1471,7 @@ class Surface(CachedInstance):
     
     @cache
     @no_nonmeasured_points
-    def orientation(self, method='fft_refined'):
+    def orientation(self, method: str = 'fft_refined') -> float:
         """
         Computes the orientation angle of the dominant texture to the vertical axis in degree. The fft method
         estimates the angle from the peak positions in the 2d Fourier transform. However, the angular resolution for
@@ -1498,7 +1498,7 @@ class Surface(CachedInstance):
     
     @no_nonmeasured_points
     @cache
-    def homogeneity(self, parameters=('Sa', 'Sku', 'Sdr'), period=None):
+    def homogeneity(self, parameters: tuple[str] = ('Sa', 'Sku', 'Sdr'), period: float | None = None) -> float:
         """
         Calculates the homogeneity of a periodic surface through Gini coefficient analysis. It returns 1 - Gini, which
         is distributed on in the range between 0 and 1, where 0 represents minimum and 1 represents maximum homogeneity.
@@ -1537,17 +1537,21 @@ class Surface(CachedInstance):
         if params := set(parameters) & DISALLOWED_PARAMETERS:
             raise ValueError('Parameter{} {} {} not allowed for homogeneity calculation.'.format(
                 's' if len(params) > 1 else '', ", ".join(params), "are" if len(params) > 1 else "is")
-                            )
+            )
 
         if period is None:
             period = self.period()
-        cell_length = int(period / self.height_um * self.size.y)
-        ncells = int(self.size.y / cell_length) * int(self.size.x / cell_length)
+
+        cell_length_x = int(period / self.step_x)
+        cell_length_y = int(period / self.step_y)
+        ncells_x = int(self.size.x / cell_length_x)
+        ncells_y = int(self.size.y / cell_length_y)
+        ncells = ncells_x * ncells_y
         results = np.zeros((len(parameters), ncells))
-        for i in range(int(self.size.y / cell_length)):
-            for j in range(int(self.size.x / cell_length)):
-                idx = i * int(self.size.x / cell_length) + j
-                data = self.data[cell_length * i:cell_length * (i + 1), cell_length * j:cell_length * (j + 1)]
+        for i in range(ncells_y):
+            for j in range(ncells_x):
+                idx = i * int(ncells_x) + j
+                data = self.data[cell_length_y * i:cell_length_y * (i + 1), cell_length_x * j:cell_length_x * (j + 1)]
                 cell_surface = Surface(data, self.step_x, self.step_y)
                 for k, parameter in enumerate(parameters):
                     results[k, idx] = getattr(cell_surface, parameter)()
@@ -1568,7 +1572,7 @@ class Surface(CachedInstance):
     @register_returnlabels(('mean', 'std'))
     @cache
     @no_nonmeasured_points
-    def depth(self, nprofiles=30, sampling_width=0.2, plot=None):
+    def depth(self, nprofiles: int = 30, sampling_width: float = 0.2, plot: int | None = None) -> tuple[float, float]:
         """
         Calculates the peak-to-valley depth of a periodically grooved surface texture. It samples a specified number
         of equally spaced apart profiles from the surface and fits them with a sinusoid. It then evaluates the actual
@@ -1665,7 +1669,7 @@ class Surface(CachedInstance):
         return np.nanmean(depths), np.nanstd(depths)
 
     @cache
-    def aspect_ratio(self):
+    def aspect_ratio(self) -> float:
         """
         Calculates the aspect ratio of a periodic texture as the ratio of the structure depth and the structure period.
 
@@ -1675,7 +1679,7 @@ class Surface(CachedInstance):
         """
         return self.depth()[0] / self.period()
 
-    def roughness_parameters(self, parameters=None):
+    def roughness_parameters(self, parameters: list[str] | None = None) -> dict[str: float]:
         """
         Computes multiple roughness parameters at once and returns them in a dictionary.
 
@@ -1705,7 +1709,7 @@ class Surface(CachedInstance):
         return results
 
     # Plotting #########################################################################################################
-    def plot_abbott_curve(self, nbars=20):
+    def plot_abbott_curve(self, nbars: int = 20):
         """
         Plots the Abbott-Firestone curve.
 
