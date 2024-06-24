@@ -1,4 +1,4 @@
-## [unreleased changes]
+## v0.10.0
 - Added ascii sdf file format
 - Added ignore_errors kwarg to Batch.execute to ignore errors during parameter calculation and fill the respective 
   values with nan instead
