@@ -1,5 +1,8 @@
 import numpy as np
 import scipy.ndimage as ndimage
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 from .cache import CachedInstance, cache
 
 
@@ -17,12 +20,20 @@ class AutocorrelationFunction(CachedInstance):
         super().__init__()
         # For now we level and center. In the future, we should replace that with lookups of booleans
         # to avoid double computation
-        self._surface = surface.center()
+        self._surface = surface
         self._current_threshold = None
+        self.acf_data = self.calculate_autocorrelation()
 
-    def _calculate_autocorrelation(self, s):
+    def calculate_autocorrelation(self):
+        data = self._surface.center().data
+        data_fft = np.fft.fft2(data)
+        # Compute ACF from FFT and normalize
+        acf_data = np.fft.fftshift(np.fft.ifft2(data_fft * np.conj(data_fft)).real / data.size)
+        return acf_data
+
+    def _calculate_distances(self, s=0.2):
         """
-        Calculates the 2d autocorrelation function of the surface height data and
+        Calculates the distances of the 2d autocorrelation function of the surface height data and
         extracts the indices of the points of minimum and maximum decay.
 
         Parameters
@@ -39,14 +50,12 @@ class AutocorrelationFunction(CachedInstance):
         """
         self.clear_cache()
         self._current_threshold = s
-        data = self._surface.data
-        self._autocorr = np.abs(np.fft.fftshift(np.fft.ifft2(np.fft.fft2(data) * np.conj(np.fft.fft2(data))))) / data.size
-        #threshold = self._autocorr.min() + (self._autocorr.max() - self._autocorr.min()) * s
-        threshold = s * self._autocorr.max()
-        mask = (self._autocorr < threshold)
+
+        threshold = s * self.acf_data.max()
+        mask = (self.acf_data < threshold)
 
         # Find the center point of the array
-        self.center = np.array(self._autocorr.shape) // 2
+        self.center = np.array(self.acf_data.shape) // 2
 
         # Invert mask because the function considers all 0 values to be background
         labels, _ = ndimage.label(~mask)
@@ -87,7 +96,7 @@ class AutocorrelationFunction(CachedInstance):
             autocorrelation length.
         """
         if self._current_threshold != s:
-            self._calculate_autocorrelation(s)
+            self._calculate_distances(s)
         dy, dx = np.abs(self._idx_min[0] - self.center[0]), np.abs(self._idx_min[1] - self.center[1])
         Sal = np.hypot(dx * self._surface.step_x, dy * self._surface.step_y) - self._surface.step_x/2
         return Sal
@@ -114,7 +123,24 @@ class AutocorrelationFunction(CachedInstance):
             texture aspect ratio.
         """
         if self._current_threshold != s:
-            self._calculate_autocorrelation(s)
+            self._calculate_distances(s)
         dy, dx = np.abs(self._idx_max[0] - self.center[0]), np.abs(self._idx_max[1] - self.center[1])
         Str = self.Sal() / (np.hypot(dx * self._surface.step_x, dy * self._surface.step_y) - self._surface.step_x/2)
         return Str
+
+    def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True):
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.figure
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        im = ax.imshow(self.acf_data, cmap=cmap, extent=(0, self._surface.width_um, 0, self._surface.height_um))
+        if show_cbar:
+            fig.colorbar(im, cax=cax, label='z [µm²]')
+        else:
+            cax.axis('off')
+        ax.set_xlabel('x [µm]')
+        ax.set_ylabel('y [µm]')
+
+        return fig, ax

@@ -12,118 +12,118 @@ FIXED_UNIT = 'pm'
 DTYPE_MAP = {16: 'uint16', 32: 'uint32'}
 
 LAYOUT_OFFSET_TABLE = (
-    ('meas_conds', 'I', False),
-    ('color_peak', 'I', True),
-    ('color_light', 'I', True),
-    ('light', 'I', True),
-    (None, 8, None),
-    ('height', 'I', False),
-    (None, 8, None),
-    ('clr_peak_thumb', 'I', True),
-    ('clr_thumb', 'I', True),
-    ('light_thumb', 'I', True),
-    ('height_thumb', 'I', True),
-    ('assembly_info', 'I', True),
-    ('line_measure', 'I', True),
-    ('line_thickness', 'I', True),
-    ('string_data', 'I', True),
+    ('meas_conds', 'I'),
+    ('color_peak', 'I'),
+    ('color_light', 'I'),
+    ('light', 'I'),
+    (None, 8),
+    ('height', 'I'),
+    (None, 8),
+    ('clr_peak_thumb', 'I'),
+    ('clr_thumb', 'I'),
+    ('light_thumb', 'I'),
+    ('height_thumb', 'I'),
+    ('assembly_info', 'I'),
+    ('line_measure', 'I'),
+    ('line_thickness', 'I'),
+    ('string_data', 'I'),
 )
 
 LAYOUT_MEASUREMENT_CONDITIONS = (
-    ('size', 'I', True),
-    ('year', 'I', True),
-    ('month', 'I', True),
-    ('day', 'I', True),
-    ('hour', 'I', True),
-    ('minute', 'I', True),
-    ('second', 'I', True),
-    ('diff_from_UTC', 'i', True),
-    ('img_attributes', 'I', True),
-    ('user_interface_mode', 'I', True),
-    ('color_composite_mode', 'I', True),
-    ('img_layer_number', 'I', True),
-    ('run_mode', 'I', True),
-    ('peak_mode', 'I', True),
-    ('sharpening_level', 'I', True),
-    ('speed', 'I', True),
-    ('distance', 'I', True),
-    ('pitch', 'I', True),
-    ('optical_zoom', 'I', True),
-    ('number_of_lines', 'I', True),
-    ('line0_position', 'I', True),
-    (None, 12, None),
-    ('lens_magnification', 'I', True),
-    ('PMT_gain_mode', 'I', True),
-    ('PMT_gain', 'I', True),
-    ('PMT_offset', 'I', True),
-    ('ND_filter', 'I', True),
-    (None, 4, None),
-    ('persist_count', 'I', True),
-    ('shutter_speed_mode', 'I', True),
-    ('shutter_speed', 'I', True),
-    ('white_balance_mode', 'I', True),
-    ('white_balance_red', 'I', True),
-    ('white_balance_blue', 'I', True),
-    ('camera_gain', 'I', True),
-    ('plane_compensation', 'I', True),
-    ('xy_length_unit', 'I', False),
-    ('z_length_unit', 'I', False),
-    ('xy_decimal_place', 'I', False),
-    ('z_decimal_place', 'I', False),
-    ('x_length_per_pixel', 'I', False),
-    ('y_length_per_pixel', 'I', False),
-    ('z_length_per_digit', 'I', False),
-    (None, 20, None),
-    ('light_filter_type', 'I', True),
-    (None, 4, None),
-    ('gamma_reverse', 'I', True),
-    ('gamma', 'I', True),
-    ('gamma_correction_offset', 'I', True),
-    ('CCD_BW_offset', 'I', True),
-    ('num_aperture', 'I', True),
-    ('head_type', 'I', True),
-    ('PMT_gain_2', 'I', True),
-    ('omit_color_img', 'I', True),
-    ('lens_ID', 'I', True),
-    ('light_lut_mode', 'I', True),
-    ('light_lut_in0', 'I', True),
-    ('light_lut_out0', 'I', True),
-    ('light_lut_in1', 'I', True),
-    ('light_lut_out1', 'I', True),
-    ('light_lut_in2', 'I', True),
-    ('light_lut_out2', 'I', True),
-    ('light_lut_in3', 'I', True),
-    ('light_lut_out3', 'I', True),
-    ('light_lut_in4', 'I', True),
-    ('light_lut_out4', 'I', True),
-    ('upper_position', 'I', True),
-    ('lower_position', 'I', True),
-    ('light_effective_bit_depth', 'I', True),
-    ('height_effective_bit_depth', 'I', True)
+    ('size', 'I'),
+    ('year', 'I'),
+    ('month', 'I'),
+    ('day', 'I'),
+    ('hour', 'I'),
+    ('minute', 'I'),
+    ('second', 'I'),
+    ('diff_from_UTC', 'i'),
+    ('img_attributes', 'I'),
+    ('user_interface_mode', 'I'),
+    ('color_composite_mode', 'I'),
+    ('img_layer_number', 'I'),
+    ('run_mode', 'I'),
+    ('peak_mode', 'I'),
+    ('sharpening_level', 'I'),
+    ('speed', 'I'),
+    ('distance', 'I'),
+    ('pitch', 'I'),
+    ('optical_zoom', 'I'),
+    ('number_of_lines', 'I'),
+    ('line0_position', 'I'),
+    (None, 12),
+    ('lens_magnification', 'I'),
+    ('PMT_gain_mode', 'I'),
+    ('PMT_gain', 'I'),
+    ('PMT_offset', 'I'),
+    ('ND_filter', 'I'),
+    (None, 4),
+    ('persist_count', 'I'),
+    ('shutter_speed_mode', 'I'),
+    ('shutter_speed', 'I'),
+    ('white_balance_mode', 'I'),
+    ('white_balance_red', 'I'),
+    ('white_balance_blue', 'I'),
+    ('camera_gain', 'I'),
+    ('plane_compensation', 'I'),
+    ('xy_length_unit', 'I'),
+    ('z_length_unit', 'I'),
+    ('xy_decimal_place', 'I'),
+    ('z_decimal_place', 'I'),
+    ('x_length_per_pixel', 'I'),
+    ('y_length_per_pixel', 'I'),
+    ('z_length_per_digit', 'I'),
+    (None, 20),
+    ('light_filter_type', 'I'),
+    (None, 4),
+    ('gamma_reverse', 'I'),
+    ('gamma', 'I'),
+    ('gamma_correction_offset', 'I'),
+    ('CCD_BW_offset', 'I'),
+    ('num_aperture', 'I'),
+    ('head_type', 'I'),
+    ('PMT_gain_2', 'I'),
+    ('omit_color_img', 'I'),
+    ('lens_ID', 'I'),
+    ('light_lut_mode', 'I'),
+    ('light_lut_in0', 'I'),
+    ('light_lut_out0', 'I'),
+    ('light_lut_in1', 'I'),
+    ('light_lut_out1', 'I'),
+    ('light_lut_in2', 'I'),
+    ('light_lut_out2', 'I'),
+    ('light_lut_in3', 'I'),
+    ('light_lut_out3', 'I'),
+    ('light_lut_in4', 'I'),
+    ('light_lut_out4', 'I'),
+    ('upper_position', 'I'),
+    ('lower_position', 'I'),
+    ('light_effective_bit_depth', 'I'),
+    ('height_effective_bit_depth', 'I')
 )
 
 LAYOUT_HEIGHT_DATA = (
-    ('width', 'I', False),
-    ('height', 'I', False),
-    ('bit_depth', 'I', False),
-    ('compression', 'I', True),
-    ('data_byte_size', 'I', True),
-    ('palette_range_min', 'I', True),
-    ('palette_range_max', 'I', True),
-    (None, 768, None)
+    ('width', 'I'),
+    ('height', 'I'),
+    ('bit_depth', 'I'),
+    ('compression', 'I'),
+    ('data_byte_size', 'I'),
+    ('palette_range_min', 'I'),
+    ('palette_range_max', 'I'),
+    (None, 768)
 )
 
 LAYOUT_IMAGE_DATA = (
-    ('width', 'I', False),
-    ('height', 'I', False),
-    ('bit_depth', 'I', False),
-    ('compression', 'I', True),
-    ('data_byte_size', 'I', True)
+    ('width', 'I'),
+    ('height', 'I'),
+    ('bit_depth', 'I'),
+    ('compression', 'I'),
+    ('data_byte_size', 'I')
 )
 
 def read_rgb_layer(filehandle, offset):
     filehandle.seek(offset, 0)
-    channel_table = read_binary_layout(filehandle, LAYOUT_IMAGE_DATA, fast=False)
+    channel_table = read_binary_layout(filehandle, LAYOUT_IMAGE_DATA)
     channel_length = channel_table['width'] * channel_table['height'] * 3
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / (8 * 3):
         raise CorruptedFileError(f'Size of channel () does not correspond to expected size.')
@@ -134,7 +134,7 @@ def read_rgb_layer(filehandle, offset):
 
 def read_height_layer(filehandle, offset):
     filehandle.seek(offset, 0)
-    channel_table = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA, fast=False)
+    channel_table = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA)
     channel_length = channel_table['width'] * channel_table['height']
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / 8:
         raise CorruptedFileError('Size of channel does not correspond to expected size.')
@@ -158,9 +158,9 @@ def read_string_data(filehandle, offset):
 def extract_vk4(filehandle, read_image_layers=False, encoding='utf-8'):
     metadata = dict()
     header = filehandle.read(HEADER_SIZE)
-    offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE, fast=False)
+    offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE)
     filehandle.seek(offset_table['meas_conds'], 0)
-    measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS, fast=False)
+    measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS)
 
     if read_image_layers:
         image_layers = {}

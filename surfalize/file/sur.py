@@ -71,65 +71,65 @@ class AcquisitionType(IntEnum):
 
 
 LAYOUT_HEADER = (
-    ('code', '12s', False),  # DIGITIAL SURF / DSCOMPRESSED
-    ('format', 'h', False),  # 0 for PC format
-    ('n_objects', 'h', False),
-    ('version_number', 'h', False),
-    ('studiable_type', 'h', True),
-    ('name_object', '30s', True),
-    ('name_operator', '30s', True),
-    ('p_size', 'h', True),
-    ('acquisition_type', 'h', True),
-    ('range_type', 'h', True),
-    ('non_measured_points', 'h', False),
-    ('absolute_z_axis', 'h', False),
-    ('gauge_resolution', 'f', True),
-    (None, 4, None),  # Reserved
-    ('bits_per_point', 'h', False),
-    ('min_point', 'i', False),
-    ('max_point', 'i', False),
-    ('n_points_per_line', 'i', False),
-    ('n_lines', 'i', False),
-    ('n_total_points', 'i', False),
-    ('spacing_x', 'f', False),
-    ('spacing_y', 'f', False),
-    ('spacing_z', 'f', False),
-    ('name_x', '16s', True),
-    ('name_y', '16s', True),
-    ('name_z', '16s', True),
-    ('unit_step_x', '16s', False),
-    ('unit_step_y', '16s', False),
-    ('unit_step_z', '16s', False),
-    ('unit_x', '16s', False),
-    ('unit_y', '16s', False),
-    ('unit_z', '16s', False),
-    ('unit_ratio_x', 'f', False),
-    ('unit_ratio_y', 'f', False),
-    ('unit_ratio_z', 'f', False),
-    ('replica', 'h', False),
-    ('inverted', 'h', False),
-    ('leveled', 'h', False),
-    (None, 12, None),  # Reserved
-    ('seconds', 'h', True),
-    ('minutes', 'h', True),
-    ('hours', 'h', True),
-    ('day', 'h', True),
-    ('month', 'h', True),
-    ('year', 'h', True),
-    ('week_day', 'h', True),
-    ('measurement_duration', 'f', True),
-    ('compressed_data_size', 'I', False),
-    (None, 6, None),  # Reserved
-    ('length_comment', 'h', False),
-    ('length_private', 'h', False),
-    ('client_zone', '128s', True),
-    ('offset_x', 'f', True),
-    ('offset_y', 'f', True),
-    ('offset_z', 'f', True),
-    ('spacing_t', 'f', True),
-    ('offset_t', 'f', True),
-    ('name_t', '13s', True),
-    ('unit_step_t', '13s', True)
+    ('code', '12s'),  # DIGITIAL SURF / DSCOMPRESSED
+    ('format', 'h'),  # 0 for PC format
+    ('n_objects', 'h'),
+    ('version_number', 'h'),
+    ('studiable_type', 'h'),
+    ('name_object', '30s'),
+    ('name_operator', '30s'),
+    ('p_size', 'h'),
+    ('acquisition_type', 'h'),
+    ('range_type', 'h'),
+    ('non_measured_points', 'h'),
+    ('absolute_z_axis', 'h'),
+    ('gauge_resolution', 'f'),
+    (None, 4),  # Reserved
+    ('bits_per_point', 'h'),
+    ('min_point', 'i'),
+    ('max_point', 'i'),
+    ('n_points_per_line', 'i'),
+    ('n_lines', 'i'),
+    ('n_total_points', 'i'),
+    ('spacing_x', 'f'),
+    ('spacing_y', 'f'),
+    ('spacing_z', 'f'),
+    ('name_x', '16s'),
+    ('name_y', '16s'),
+    ('name_z', '16s'),
+    ('unit_step_x', '16s'),
+    ('unit_step_y', '16s'),
+    ('unit_step_z', '16s'),
+    ('unit_x', '16s'),
+    ('unit_y', '16s'),
+    ('unit_z', '16s'),
+    ('unit_ratio_x', 'f'),
+    ('unit_ratio_y', 'f'),
+    ('unit_ratio_z', 'f'),
+    ('replica', 'h'),
+    ('inverted', 'h'),
+    ('leveled', 'h'),
+    (None, 12),  # Reserved
+    ('seconds', 'h'),
+    ('minutes', 'h'),
+    ('hours', 'h'),
+    ('day', 'h'),
+    ('month', 'h'),
+    ('year', 'h'),
+    ('week_day', 'h'),
+    ('measurement_duration', 'f'),
+    ('compressed_data_size', 'I'),
+    (None, 6),  # Reserved
+    ('length_comment', 'h'),
+    ('length_private', 'h'),
+    ('client_zone', '128s'),
+    ('offset_x', 'f'),
+    ('offset_y', 'f'),
+    ('offset_z', 'f'),
+    ('spacing_t', 'f'),
+    ('offset_t', 'f'),
+    ('name_t', '13s'),
+    ('unit_step_t', '13s')
 )
 
 DTYPE_MAP = {16: 'int16', 32: 'int32'}
@@ -137,7 +137,7 @@ DTYPE_MAP = {16: 'int16', 32: 'int32'}
 
 def read_sur_header(filehandle, encoding='utf-8'):
     fp_start = filehandle.tell()
-    header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding, fast=False)
+    header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
 
     if header['code'] not in (MAGIC_CLASSIC, MAGIC_COMPRESSED) or header['version_number'] != 1:
         raise CorruptedFileError('Unknown header format')

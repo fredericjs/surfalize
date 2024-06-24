@@ -33,5 +33,7 @@ You can also install directly from git via pip:
     pip install git+https://github.com/fredericjs/surfalize.git
 
 Optionally, you can specify the branch to install the latest updates from the develop branch:
+
 .. code::
+
     pip install git+https://github.com/fredericjs/surfalize.git@develops

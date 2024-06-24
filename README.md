@@ -3,8 +3,10 @@
 </h1><br>
 
 [![PyPI version](https://badge.fury.io/py/surfalize.svg)](https://badge.fury.io/py/surfalize)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10451663.svg)](https://doi.org/10.5281/zenodo.10451663)
 [![Documentation Status](https://readthedocs.org/projects/surfalize/badge/?version=latest)](https://surfalize.readthedocs.io/en/latest/?badge=latest)
+[![Publication](https://img.shields.io/badge/Publication%20-%2010.3390%2Fnano14131076%20-%20%20%2385c1e9%20
+)](https://doi.org/10.3390/nano14131076)
+
 
 
 surfalize is a python package for analyzing microscope topography measurement data in terms of surface
@@ -19,6 +21,13 @@ software to verify their correctness, especially when they are intended to be us
 Some parts of the package are more mature and some are in early development stage. Currently, Gaussian filtering and Profile parameters might 
 suffer from some implementation errors and might not be entirely compliant with ISO standards. Care should be taken when relying on these
 specific functionalities.
+
+## Cite this library
+
+If you publish data generated with this library, please consider citing this publication:
+
+[F. Schell, C. Zwahr, A. F. Lasagni. Surfalize: A Python Library for Surface Topography and Roughness Analysis Designed 
+for Periodic Surface Structures. _Nanomaterials_. **2024**, 13, 1076.](https://doi.org/10.3390/nano14131076)
 
 ## How to install
 
@@ -54,7 +63,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Wyko         | *.opd*                 | Yes     | No      | 
 | Nanofocus    | *.nms*                 | Yes     | No      | 
 | Alicona      | *.al3d*                | Yes     | Yes     | 
-| Digital Surf | *.sdf*                 | Yes     | No      | 
+| Digital Surf | *.sdf*                 | Yes     | Yes     | 
 | Gwyddion     | *.gwy*                 | Yes     | No      | 
 | General      | *.xyz*                 | Yes     | No      |
 

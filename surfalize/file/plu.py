@@ -8,40 +8,40 @@ DATE_SIZE = 128
 COMMENT_SIZE = 256
 
 LAYOUT_CALIBRATION = (
-    ('yres', 'I', False),
-    ('xres', 'I', False),
-    ('N_tall', 'I', True),
-    ('dy_multip', 'f', True),
-    ('mppx', 'f', False),
-    ('mppy', 'f', False),
-    ('x_0', 'f', True),
-    ('y_0', 'f', True),
-    ('mpp_tall', 'f', True),
-    ('z0', 'f', True)
+    ('yres', 'I'),
+    ('xres', 'I'),
+    ('N_tall', 'I'),
+    ('dy_multip', 'f'),
+    ('mppx', 'f'),
+    ('mppy', 'f'),
+    ('x_0', 'f'),
+    ('y_0', 'f'),
+    ('mpp_tall', 'f'),
+    ('z0', 'f')
 )
 
 LAYOUT_MEASURE_CONFIG = (
-   ('type', 'I', True),
-   ('algorithm', 'I', True),
-   ('method', 'I', True),
-   ('objective', 'I', True),
-   ('area', 'I', True),
-   ('xres_area', 'I', True),
-   ('yres_area', 'I', True),
-   ('xres', 'I', False),
-   ('yres', 'I', False),
-   ('na', 'I', True),
-   ('incr_z', 'd', True),
-   ('range', 'f', True),
-   ('n_planes', 'I', True),
-   ('tpc_umbral_F', 'I', True),
-   ('restore', 'b', True),
-   ('num_layers', 'b', True),
-   ('version', 'b', True),
-   ('config_hardware', 'b', True),
-   ('stack_in_num', 'b', True),
-   (None, 3, None),
-   ('factorio_delmacio', 'I', True)
+   ('type', 'I'),
+   ('algorithm', 'I'),
+   ('method', 'I'),
+   ('objective', 'I'),
+   ('area', 'I'),
+   ('xres_area', 'I'),
+   ('yres_area', 'I'),
+   ('xres', 'I'),
+   ('yres', 'I'),
+   ('na', 'I'),
+   ('incr_z', 'd'),
+   ('range', 'f'),
+   ('n_planes', 'I'),
+   ('tpc_umbral_F', 'I'),
+   ('restore', 'b'),
+   ('num_layers', 'b'),
+   ('version', 'b'),
+   ('config_hardware', 'b'),
+   ('stack_in_num', 'b'),
+   (None, 3),
+   ('factorio_delmacio', 'I')
 )
 
 def read_plu(filepath, read_image_layers=False, encoding='utf-8'):

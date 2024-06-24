@@ -2,16 +2,16 @@ import numpy as np
 from .common import read_binary_layout, RawSurface
 
 LAYOUT_HEADER = (
-    (None, 85, None),
-    ('res_x', 'I', False),
-    ('res_y', 'I', False),
-    (None, 4, None),
-    ('step_x', 'f', False),
-    ('step_y', 'f', False),
-    ('step_z', 'f', False),
-    (None, 8, None),
-    ('comment_size', 'I', False),
-    (None, 84, None)
+    (None, 85),
+    ('res_x', 'I'),
+    ('res_y', 'I'),
+    (None, 4),
+    ('step_x', 'f'),
+    ('step_y', 'f'),
+    ('step_z', 'f'),
+    (None, 8),
+    ('comment_size', 'I'),
+    (None, 84)
 )
 
 def read_zmg(filepath, read_image_layers=False, encoding='utf-8'):
