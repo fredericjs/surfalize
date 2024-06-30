@@ -44,7 +44,8 @@ autodoc_mock_imports = [
     'scipy',
     'tqdm',
     'sklearn',
-    'surfalize.roughness.height'
+    'surfalize.roughness.height',
+    'surfalize.roughness.hybrid'
 ]
 
 # -- Options for HTML output -------------------------------------------------
