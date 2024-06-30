@@ -43,7 +43,8 @@ autodoc_mock_imports = [
     'pandas',
     'scipy',
     'tqdm',
-    'sklearn'
+    'sklearn',
+    'surfalize.roughness.height'
 ]
 
 # -- Options for HTML output -------------------------------------------------

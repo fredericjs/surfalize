@@ -11,7 +11,6 @@ from .utils import is_list_like
 from .file import supported_formats
 from .exceptions import BatchError, CalculationError
 
-
 class Operation:
     """
     Class that holds the identifier and arguments to register a call to a surface method that operates on its data.
