@@ -26,10 +26,12 @@ formats will be loaded. Alternatively, a list of specific formats can also be su
 
     batch = Batch.from_dir('path/to/folder/', extension='.vk4')
 
+Applying operations
+===================
 
-
-All operations of the surface can be applied to the Batch analogously to a Surface object.
-However, they are not applied immediately but registered for later execution.
+All operations of the surface can be applied to the Batch analogously to a Surface object. The batch object essentially
+acts as an almost drop-in replacement for the surface object. However, operations and calculations are not applied
+immediately but registered for later execution.
 
 .. code:: python
 
@@ -37,11 +39,14 @@ However, they are not applied immediately but registered for later execution.
     batch.filter('highpass', 20)
 
 
-Each operation on the batch returns the Batch object, allowing for method chaining.
+Each operation on the batch returns the Batch object itself, allowing for method chaining.
 
 .. code:: python
 
     batch = Batch(filepaths).level().filter('highpass', 20).align().center()
+
+Calculating parameters
+======================
 
 The calculation of roughness parameters can be done indiviually and chained.
 
@@ -72,6 +77,8 @@ If arguments need to be supplied, the parameter must be constructed as a `Parame
     Vmc = Parameter('Vmc', kwargs=dict(p=10, q=80))
     batch.roughness_parameters(['Sa', 'Sq', 'Sz', Vmc])
 
+Executing the batch process
+===========================
 
 Finally, the batch processing is executed by calling `Batch.execute`, returning a `pd.DataFrame`. Optionally,
 `multiprocessing=True` can be specified to split the load among all available CPU cores. Moreover, the results
@@ -80,6 +87,16 @@ can be saved to an Excel Spread sheet by specifiying a path for `saveto=r'path\t
 .. code:: python
 
     df = batch.execute(multiprocessing=True)
+
+If the calculation of one parameter fails for even one surface, which could be the case for instance when a
+`FittingError` occurs during the calculation of the structure depth, the entire batch processing stops and the error
+is raised. This is often unwanted behavior, when a large dataset is batch processed. To avoid this, surfalize ignores
+errors that occur during batch processing and fills the parameters that raised an error during calculation with `NaN`
+values. If you specifically want any errors to be raised nonetheless, specify `ignore_errors=False`.
+
+.. code:: python
+
+    df = batch.execute(multiprocessing=True, ignore_errors=False)
 
 Optionally, a Batch object can be initialized with a filepath pointing to an Excel File which contains additional
 parameters, such as laser parameters. The file must contain a column `file`, which specifies the filename including file
@@ -91,6 +108,17 @@ Dataframe that is returned by `Batch.execute`.
     batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\laserparameters.xlsx')
     batch.level().filter('highpass', 20).align().roughness_parameters()
     df = batch.execute()
+
+Parsing filenames for additional parameters
+===========================================
+Oftentimes, the filenames of the topography files encode parameters that are in some way associated with the measured
+topography. For instance, one might encode the fabrication parameters in the filename, following a specific layout.
+In order to extract these parameters from the filenames into individual columns in the dataframe, the use must spend
+some time, for instance to construct a working regex, parse the filenames, convert the resulting columns to the
+respective types and so on.
+
+To streamline this process, surfalize offers a convenient way to define a filename format, from which the parameters
+can be extracted.
 
 Full example
 ============
