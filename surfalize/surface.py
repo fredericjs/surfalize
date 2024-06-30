@@ -123,6 +123,8 @@ class Surface(CachedInstance):
     >>> filepath = r'path\\to\\surface.plu'
     >>> surface = Surface.load(filepath)
     """
+    ISO_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
+                            'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc')
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
                             'homogeneity', 'stepheight', 'cavity_volume')
@@ -1699,7 +1701,7 @@ class Surface(CachedInstance):
         parameters: dict[str: float]
         """
         if parameters is None:
-            parameters = self.AVAILABLE_PARAMETERS
+            parameters = self.ISO_PARAMETERS
         results = dict()
         for parameter in parameters:
             if parameter in self.AVAILABLE_PARAMETERS:

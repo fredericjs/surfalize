@@ -584,7 +584,7 @@ class Batch:
         self
         """
         if parameters is None:
-            parameters = list(Surface.AVAILABLE_PARAMETERS)
+            parameters = list(Surface.ISO_PARAMETERS)
         for parameter in parameters:
             if isinstance(parameter, str):
                 parameter = Parameter(parameter)
