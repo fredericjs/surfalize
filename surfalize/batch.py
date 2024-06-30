@@ -315,6 +315,9 @@ class Batch:
         ----------
         multiprocessing: bool, default True
             If True, dispatches the task among CPU cores, otherwise sequentially computes the tasks.
+        ignore_errors: bool, default True
+            Errors that are raised during the calculation of parameters are ignored if True. Missing parameter values
+            are filled with nan values. If False, the batch processing is interrupted when an error is raised.
         saveto: str | pathlib.Path, default None
             Path to an excel file where the data is saved to. If the Excel file does already exist, it will be
             overwritten.
