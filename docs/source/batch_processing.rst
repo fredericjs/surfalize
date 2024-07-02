@@ -118,7 +118,29 @@ some time, for instance to construct a working regex, parse the filenames, conve
 respective types and so on.
 
 To streamline this process, surfalize offers a convenient way to define a filename format, from which the parameters
-can be extracted.
+can be extracted. For instance, a surface might be fabricated by a laser process using the following parameters:
+
+Fluence: 1.21 J/cm²
+Frequency: 100 kHz
+Scanspeed: 1 m/s
+Hatch distance: 100 µm
+Overscans: 5
+
+The filename might encode these values in the following way:
+
+`F1.21_FREP100kHz_V1_HD100_OS5.vk6`
+
+To parse this filename, you can define a tempalte string, where each parameter is specified in angular brackets by
+specifying their name, datatype, prefix (optional) and suffix (optional). The name is used to label the resulting
+column in the dataframe. The patterns have the general syntax:
+
+`<name|datatype|prefix|suffix>`
+
+Both prefix and suffix can be omitted. If only a suffix is defined, the prefix must be indicated as an empty string.
+The exemplary filename could be parsed in using the following template string:
+`<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float>_<hatch_distance|float|HD>_<overscans|int|OS>`
+
+The possible datatypes that can be matched are str, int, float.
 
 Full example
 ============
