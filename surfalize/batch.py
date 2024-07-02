@@ -12,10 +12,16 @@ from .file import supported_formats
 from .exceptions import BatchError, CalculationError
 
 class ParsingError(Exception):
+    """
+    Is raised when an error occurs during filename parsing.
+    """
     pass
 
 
-class Token:
+class _Token:
+    """
+    Class representing a token in a filename string.
+    """
 
     def __init__(self, token_str):
         self.token_str = token_str
@@ -30,6 +36,20 @@ class Token:
 
 
 class FilenameParser:
+    """
+    Parser class that parses filenames according to a template string.
+
+    The template can specify parameters by specifying their name, datatype, prefix (optional) and suffix (optional).
+    The name is used to label the resulting column in the dataframe. The patterns have the general syntax:
+
+    <name|datatype|prefix|suffix>
+
+    Both prefix and suffix can be omitted. If only a suffix is defined, the prefix must be indicated as an empty
+    string. A pattern to match a filename could look like this:
+
+    filename: 'P90_N10_F1.21_FREP10kHz.vk4'
+    pattern: '<power|float|P>_<pulses|int|N>_<fluence|float|F>_<frequency|float|FREP|kHz>'
+    """
     TYPES = {
         'float': r'\d+(?:(?:\.|,)\d+)?',
         'int': r'\d+',
@@ -40,6 +60,14 @@ class FilenameParser:
         self.template_str = template_str
 
     def parse_template(self):
+        """
+        Parses the template string into separate tokens and constructs a regex to match the filename from these tokens.
+
+        Returns
+        -------
+        tokens, separators:  list[_Token], list[str]
+            List of tokens and list of string separators
+        """
         tokens = []
         separators = []
         token_started = False
@@ -56,7 +84,7 @@ class FilenameParser:
                 continue
             elif char == '>':
                 token_started = False
-                tokens.append(Token(token))
+                tokens.append(_Token(token))
                 continue
             if token_started:
                 token += char
@@ -69,6 +97,20 @@ class FilenameParser:
         return tokens, separators
 
     def construct_regex(self, tokens, separators):
+        """
+        Construct a regex from the tokens and separators to match a filename.
+
+        Parameters
+        ----------
+        tokens: list[_Token]
+            List of tokens obtained from parsing the template string.
+        separators: list[str]
+            List of string obtained from parsing the template string.
+
+        Returns
+        -------
+        regex: str
+        """
         patterns = []
         for token in tokens:
             s = token.prefix
@@ -84,6 +126,20 @@ class FilenameParser:
         return regex
 
     def extract_from(self, df, column):
+        """
+        Extracts the parameters from a column of a dataframe into a new dataframe, where each column represents one
+        parameter.
+
+        Parameters
+        ----------
+        df: pd.DataFrame
+            DataFrame object that contains a column with filenames
+        column: str
+            Name of the column which contains the filenames
+        Returns
+        -------
+        pd.DataFrame
+        """
         tokens, separators = self.parse_template()
         regex = self.construct_regex(tokens, separators)
         extracted = df[column].str.extract(regex)
@@ -91,6 +147,26 @@ class FilenameParser:
         return extracted
 
     def apply_on(self, df, column, insert_after_column=True):
+        """
+        Extracts the parameters from a column of a dataframe and adds them to the dataframe. Each parameter in the
+        filename will be represented by a new column.
+
+        Parameters
+        ----------
+        df: pd.DataFrame
+            DataFrame object that contains a column with filenames
+        column: str
+            Name of the column which contains the filenames
+        insert_after_column: bool, default True
+            If True, inserts the new columns directly after the filename column, if False, appends them at the end of
+            the dataframe
+
+        Returns
+        -------
+        pd.Dataframe
+            Original dataframe with added columns
+        """
+
         extracted = self.extract_from(df, column)
         if insert_after_column:
             cols = extracted.columns
