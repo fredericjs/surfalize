@@ -12,6 +12,96 @@ from .file import supported_formats
 from .exceptions import BatchError, CalculationError
 
 
+class ParsingError(Exception):
+    pass
+
+
+class Token:
+
+    def __init__(self, token_str):
+        self.token_str = token_str
+        self.extract()
+
+    def extract(self):
+        split_token = self.token_str.split('|')
+        if len(split_token) < 2:
+            raise ParsingError('Template expression must be of the form  "<name|type>" or <name|type|prefix|suffix>"')
+        split_token += [''] * (4 - len(split_token))
+        self.name, self.dtype, self.prefix, self.suffix = split_token
+
+
+class FilenameParser:
+    TYPES = {
+        'float': r'\d+(?:(?:\.|,)\d+)?',
+        'int': r'\d+',
+        'str': r'[A-Za-z]+'
+    }
+
+    def __init__(self, template_str):
+        self.template_str = template_str
+
+    def parse_template(self):
+        tokens = []
+        separators = []
+        token_started = False
+        separator = ''
+        token = ''
+        for char in self.template_str:
+            if char == '<':
+                if token_started:
+                    raise ParsingError(f'Unclosed expression found: "<{token}"')
+                token = ''
+                token_started = True
+                separators.append(separator)
+                separator = ''
+                continue
+            elif char == '>':
+                token_started = False
+                tokens.append(Token(token))
+                continue
+            if token_started:
+                token += char
+            else:
+                separator += char
+
+        if token_started:
+            raise ParsingError(f'Unclosed expression found: "<{token}"')
+        separators.append(separator)
+        return tokens, separators
+
+    def construct_regex(self, tokens, separators):
+        patterns = []
+        for token in tokens:
+            s = token.prefix
+            s += f'(?P<{token.name}>'
+            s += self.TYPES[token.dtype]
+            s += ')'
+            s += token.suffix
+            patterns.append(s)
+        regex = ''
+        for pattern, separator in zip(patterns, separators):
+            regex += separator + pattern
+        regex += separators[-1]
+        return regex
+
+    def extract_from(self, df, column):
+        tokens, separators = self.parse_template()
+        regex = self.construct_regex(tokens, separators)
+        extracted = df[column].str.extract(regex)
+        extracted = extracted.astype({token.name: token.dtype for token in tokens})
+        return extracted
+
+    def apply_on(self, df, column, insert_after_column=True):
+        extracted = self.extract_from(df, column)
+        if insert_after_column:
+            cols = extracted.columns
+            df = df.copy()
+            idx = df.columns.get_loc(column) + 1
+            for col in cols[::-1]:
+                df.insert(idx, col, '')
+        return df.assign(**extracted)
+
+
 class Operation:
     """
     Class that holds the identifier and arguments to register a call to a surface method that operates on its data.
@@ -205,6 +295,7 @@ class Batch:
                 raise ValueError("File specified by 'additional_data' does not contain column named 'file'.")
         self._operations = []
         self._parameters = []
+        self._filename_pattern = None
 
     @classmethod
     def from_dir(cls, dir_path, file_extensions=None, additional_data=None):
@@ -286,7 +377,7 @@ class Batch:
             results.append(_task(filepath, self._operations, self._parameters))
         return results
 
-    def _construct_dataframe(self, results):
+    def _construct_dataframe(self, results, filename_pattern=None):
         """
         Constructs a pandas DataFrame from the result dictionary of the _dispatch_tasks method. This method is also
         responsible for merging the additional data if specified.
@@ -302,22 +393,30 @@ class Batch:
         df = pd.DataFrame(results)
         if self._additional_data is not None:
             df = pd.merge(self._additional_data, df, on='file')
+        if self._filename_pattern is not None:
+            parser = FilenameParser(self._filename_pattern)
+            df = parser.apply_on(df, 'file')
         return df
 
     def execute(self, multiprocessing=True, ignore_errors=True, saveto=None):
         """
-        Executes the Batch processing and returns the obtained data as a pandas DataFrame.
+        Executes the Batch processing and returns the obtained data as a pandas DataFrame. The dataframe can be saved
+        as an Excel file.
 
         Example
         -------
+        >>> pattern = ''
         >>> batch.execute(saveto='C:/users/example/documents/data.xlsx')
 
         Parameters
         ----------
         multiprocessing: bool, default True
             If True, dispatches the task among CPU cores, otherwise sequentially computes the tasks.
+        ignore_errors: bool, default True
+            If True, ignores errors that are raised during computation of individual parameters and fills the data with
+            nan values. If False, an error interrupts the batch processing.
         saveto: str | pathlib.Path, default None
-            Path to an excel file where the data is saved to. If the Excel file does already exist, it will be
+            Path to an Excel file where the data is saved to. If the Excel file does already exist, it will be
             overwritten.
 
         Returns
@@ -331,6 +430,39 @@ class Batch:
         if saveto is not None:
             df.to_excel(saveto)
         return df
+
+    def extract_from_filename(self, pattern):
+        """
+        Extracts parameters that are encoded in filenames into their own columns. For instance a filename might encode
+        different fabrication parameters of the measured surface:
+
+        filename: 'Sample1_P50_N12_F1.23_FREP10kHz.vk4'
+
+        The pattern can encode parameters by specifying their name, datatype, prefix (optional) and suffix (optional).
+        The name is used to label the resulting column in the dataframe. The patterns have the general syntax:
+
+        <name|datatype|prefix|suffix>
+
+        Both prefix and suffix can be omitted. If only a suffix is defined, the prefix must be indicated as an empty
+        string. A pattern to match the above filename could look like this:
+
+        pattern: '<power|float|P>_<pulses|int|N>_<fluence|float|F>_<frequency|float|FREP|kHz>'
+
+        This pattern is parsed and constructs a regex that searches the filename for the defined parameters.
+        The parameters are  extracted and converted to their respective datatype. The values are added as new columns
+        to the dataframe.
+
+        Parameters
+        ----------
+        filename_pattern: str | None
+            Pattern with which to extract parameters from filename.
+
+        Returns
+        -------
+        self
+        """
+        self._filename_pattern = pattern
+        return self
 
     def zero(self):
         """
