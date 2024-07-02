@@ -128,20 +128,32 @@ can be extracted. For instance, a surface might be fabricated by a laser process
 
 The filename might encode these values in the following way:
 
-:code: `F1.21_FREP100kHz_V1_HD100_OS5.vk6`
+:Filename: `F1.21_FREP100kHz_V1_HD100_OS5.vk6`
 
-To parse this filename, you can define a tempalte string, where each parameter is specified in angular brackets by
+To parse this filename, you can define a template string, where each parameter is specified in angular brackets by
 specifying their name, datatype, prefix (optional) and suffix (optional). The name is used to label the resulting
 column in the dataframe. The patterns have the general syntax:
 
-:code: `<name|datatype|prefix|suffix>`
+:Template syntax: `<name|datatype|prefix|suffix>`
 
 Both prefix and suffix can be omitted. If only a suffix is defined, the prefix must be indicated as an empty string.
 The exemplary filename could be parsed in using the following template string:
 
-:code: `<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float>_<hatch_distance|float|HD>_<overscans|int|OS>`
+:Template string: `<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float>_<hatch_distance|float|HD>_<overscans|int|OS>`
 
 The possible datatypes that can be matched are str, int, float.
+
+To apply the filename extraction based on the defined template string, you can call the respective method on the batch
+object:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.level()
+    pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float>_<hatch_distance|float|HD>_<overscans|int|OS>'
+    batch.extract_from_filename(pattern)
+    batch.roughness_parameters()
+    df = batch.execute()
 
 Full example
 ============
