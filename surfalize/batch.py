@@ -143,7 +143,10 @@ class FilenameParser:
         tokens, separators = self.parse_template()
         regex = self.construct_regex(tokens, separators)
         extracted = df[column].str.extract(regex)
-        extracted = extracted.astype({token.name: token.dtype for token in tokens})
+        for token in tokens:
+            if token.dtype == 'float':
+                extracted[token.name] = extracted[token.name].str.replace(',', '.')
+            extracted[token.name] = extracted[token.name].astype(token.dtype)
         return extracted
 
     def apply_on(self, df, column, insert_after_column=True):
