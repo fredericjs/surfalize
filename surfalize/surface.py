@@ -789,7 +789,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
-    def crop(self, box, inplace=False):
+    def crop(self, box, in_units=True, inplace=False):
         """
         Crop the surface to the area specified by the box parameter.
 
@@ -797,16 +797,21 @@ class Surface(CachedInstance):
         ----------
         box: tuple[float, float, float, float]
             The crop rectangle, as a (x0, x1, y0, y1) tuple.
+        in_units: bool, default True
+            If true, the box is interpreted as physical units (µm). If false, the box is interpreted in pixel values.
 
         Returns
         -------
         surface: surfalize.Surface
             Surface object.
         """
-        x0 = round(box[0] / self.step_x)
-        x1 = round(box[1] / self.step_x)
-        y1 = self.size.y - round(box[2] / self.step_y) - 1
-        y0 = self.size.y - round(box[3] / self.step_y) - 1
+        if in_units:
+            x0 = round(box[0] / self.step_x)
+            x1 = round(box[1] / self.step_x)
+            y1 = self.size.y - round(box[2] / self.step_y) - 1
+            y0 = self.size.y - round(box[3] / self.step_y) - 1
+        else:
+            x0, x1, y0, y1 = box
 
         if x0 < 0 or y0 < 0 or x1 > self.size.x - 1 or y1 > self.size.y - 1:
             raise ValueError('Box is out of bounds!')
@@ -1595,7 +1600,7 @@ class Surface(CachedInstance):
         Mean depth and standard deviation: tuple[float, float].
         """
         # Check if alignment is more vertical or horizontal
-        aligned_vertically = True if -45 < self.orientation() < 45 else False
+        aligned_vertically = True if -45 < self.orientation(method='fft') < 45 else False
         size = self.size
         if aligned_vertically and nprofiles > size.y:
             raise ValueError(f'nprofiles cannot exceed the maximum available number of profiles of {size.y}')
