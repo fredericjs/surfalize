@@ -139,7 +139,7 @@ column in the dataframe. The patterns have the general syntax:
 Both prefix and suffix can be omitted. If only a suffix is defined, the prefix must be indicated as an empty string.
 The exemplary filename could be parsed in using the following template string:
 
-:Template string: `<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float>_<hatch_distance|float|HD>_<overscans|int|OS>`
+:Template string: `<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float|V>_<hatch_distance|float|HD>_<overscans|int|OS>`
 
 The possible datatypes that can be matched are str, int, float.
 
@@ -150,7 +150,7 @@ object:
 
     batch = Batch.from_dir('.')
     batch.level()
-    pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float>_<hatch_distance|float|HD>_<overscans|int|OS>'
+    pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float|V>_<hatch_distance|float|HD>_<overscans|int|OS>'
     batch.extract_from_filename(pattern)
     batch.roughness_parameters()
     df = batch.execute()
