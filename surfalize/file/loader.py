@@ -13,6 +13,7 @@ from .nms import read_nms
 from .al3d import read_al3d, write_al3d
 from .sdf import read_sdf, write_sdf
 from .gwy import read_gwy
+from .os3d import read_os3d
 
 dispatcher = {
     '.sur':     {'read': read_sur, 'write': write_sur},
@@ -27,7 +28,8 @@ dispatcher = {
     '.nms':     {'read': read_nms},
     '.al3d':    {'read': read_al3d, 'write': write_al3d},
     '.sdf':     {'read': read_sdf, 'write': write_sdf},
-    '.gwy':     {'read': read_gwy}
+    '.gwy':     {'read': read_gwy},
+    '.os3d':    {'read': read_os3d}
 }
 
 supported_formats = list(dispatcher.keys())

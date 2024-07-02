@@ -11,7 +11,6 @@ from .utils import is_list_like
 from .file import supported_formats
 from .exceptions import BatchError, CalculationError
 
-
 class ParsingError(Exception):
     pass
 
@@ -100,7 +99,6 @@ class FilenameParser:
             for col in cols[::-1]:
                 df.insert(idx, col, '')
         return df.assign(**extracted)
-
 
 class Operation:
     """
@@ -413,8 +411,8 @@ class Batch:
         multiprocessing: bool, default True
             If True, dispatches the task among CPU cores, otherwise sequentially computes the tasks.
         ignore_errors: bool, default True
-            If True, ignores errors that are raised during computation of individual parameters and fills the data with
-            nan values. If False, an error interrupts the batch processing.
+            Errors that are raised during the calculation of parameters are ignored if True. Missing parameter values
+            are filled with nan values. If False, the batch processing is interrupted when an error is raised.
         saveto: str | pathlib.Path, default None
             Path to an Excel file where the data is saved to. If the Excel file does already exist, it will be
             overwritten.
@@ -717,7 +715,7 @@ class Batch:
         self
         """
         if parameters is None:
-            parameters = list(Surface.AVAILABLE_PARAMETERS)
+            parameters = list(Surface.ISO_PARAMETERS)
         for parameter in parameters:
             if isinstance(parameter, str):
                 parameter = Parameter(parameter)

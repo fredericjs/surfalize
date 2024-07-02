@@ -123,6 +123,8 @@ class Surface(CachedInstance):
     >>> filepath = r'path\\to\\surface.plu'
     >>> surface = Surface.load(filepath)
     """
+    ISO_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
+                            'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc')
     AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
                             'homogeneity', 'stepheight', 'cavity_volume')
@@ -1503,7 +1505,7 @@ class Surface(CachedInstance):
     
     @no_nonmeasured_points
     @cache
-    def homogeneity(self, parameters: tuple[str] = ('Sa', 'Sku', 'Sdr'), period: float | None = None) -> float:
+    def homogeneity(self, parameters: tuple[str] = ('Sa', 'Sku', 'Sdr'), period: float = None) -> float:
         """
         Calculates the homogeneity of a periodic surface through Gini coefficient analysis. It returns 1 - Gini, which
         is distributed on in the range between 0 and 1, where 0 represents minimum and 1 represents maximum homogeneity.
@@ -1577,7 +1579,7 @@ class Surface(CachedInstance):
     @register_returnlabels(('mean', 'std'))
     @cache
     @no_nonmeasured_points
-    def depth(self, nprofiles: int = 30, sampling_width: float = 0.2, plot: int | None = None) -> tuple[float, float]:
+    def depth(self, nprofiles: int = 30, sampling_width: float = 0.2, plot: int = None) -> tuple[float, float]:
         """
         Calculates the peak-to-valley depth of a periodically grooved surface texture. It samples a specified number
         of equally spaced apart profiles from the surface and fits them with a sinusoid. It then evaluates the actual
@@ -1684,7 +1686,7 @@ class Surface(CachedInstance):
         """
         return self.depth()[0] / self.period()
 
-    def roughness_parameters(self, parameters: list[str] | None = None) -> dict[str: float]:
+    def roughness_parameters(self, parameters: list[str] = None) -> dict[str: float]:
         """
         Computes multiple roughness parameters at once and returns them in a dictionary.
 
@@ -1704,7 +1706,7 @@ class Surface(CachedInstance):
         parameters: dict[str: float]
         """
         if parameters is None:
-            parameters = self.AVAILABLE_PARAMETERS
+            parameters = self.ISO_PARAMETERS
         results = dict()
         for parameter in parameters:
             if parameter in self.AVAILABLE_PARAMETERS:

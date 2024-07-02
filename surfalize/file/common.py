@@ -57,6 +57,16 @@ def get_unit_conversion(from_unit, to_unit):
     exponent = UNIT_EXPONENT[from_unit] - UNIT_EXPONENT[to_unit]
     return 10**exponent
 
+class FormatFromPrevious:
+
+    def __init__(self, previous, dtype):
+        self.previous = previous
+        self.dtype = dtype
+
+    def get_format(self, layout_dict):
+        size = layout_dict[self.previous]
+        return f'{size}{self.dtype}'
+
 def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
     """
     Writes a binary layout to a file.
@@ -123,6 +133,8 @@ def read_binary_layout(filehandle, layout, encoding='utf-8'):
         if name is None:
             filehandle.seek(format, 1)
             continue
+        if isinstance(format, FormatFromPrevious):
+            format = format.get_format(result)
         size = struct.calcsize(format)
         unpacked_data = struct.unpack(f'{format}', filehandle.read(size))[0]
         if isinstance(unpacked_data, bytes):
