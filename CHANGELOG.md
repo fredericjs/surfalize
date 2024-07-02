@@ -16,6 +16,7 @@
 - Fixed issues with cython imports during building of documentation
 - Replaced default roughness parameters calculated by Surface.roughness_parameters() by ISO parameters, omitting the 
   custom parameters
+- Added filename parsing to batch processing to conveniently extract parameters from filenames
 ## v0.9.2
 - Fixed bug with type hinting
 ## v0.9.1
