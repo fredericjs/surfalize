@@ -42,6 +42,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Download artifacs
+      uses: actions/download-artifact@v3
+      with:
+        path: dist/
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
