@@ -45,7 +45,6 @@ def test_sinusoid(expected_sinusoid_result):
     assert_array_almost_equal(arr, expected_sinusoid_result)
 
 class TestSinusoid:
-
     def setup_method(self, method):
         self.sinusoid = Sinusoid(2, 2, -1, 1)
 

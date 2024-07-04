@@ -27,6 +27,14 @@ class _Token:
         self.token_str = token_str
         self.extract()
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return self.token_str == other.token_str
+        return False
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}("{self.token_str}")'
+
     def extract(self):
         split_token = self.token_str.split('|')
         if len(split_token) < 2:

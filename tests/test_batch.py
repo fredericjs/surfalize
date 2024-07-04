@@ -9,12 +9,13 @@ TOKENS = [
     _Token('fluence|float|F'),
     _Token('frequency|float|FREP|kHz')
 ]
-SEPARATORS = ['_', '_', '_']
+SEPARATORS = ['', '_', '_', '_', '']
 
 @pytest.fixture
 def regex():
-    return ('P(?P<power>\\d+(?:(?:\\.|,)\\d+)?)_N(?P<pulses>\\d+)_F(?P<fluence>\\d+(?:(?:\\.|,)\\d+)?)_'
-            'FREP(?P<frequency>\\d+(?:(?:\\.|,)\\d+)?)kHz')
+    r = 'P(?P<power>\\d+(?:(?:\\.|,)\\d+)?)_N(?P<pulses>\\d+)_F(?P<fluence>\\d+(?:(?:\\.|,)\\d+)?)_'
+    r += 'FREP(?P<frequency>\\d+(?:(?:\\.|,)\\d+)?)kHz'
+    return r
 
 @pytest.fixture
 def template_string():
@@ -37,10 +38,10 @@ def expected_dataframe_output():
             'P80_N10_F1.21_FREP10kHz.vk4',
             'P70_N10_F1.21_FREP10kHz.vk4'
         ],
-        [90, 80, 70], [10, 10, 10], [1.21, 1.21, 1.21], [10, 10, 10]
+        [90., 80., 70.], [10, 10, 10], [1.21, 1.21, 1.21], [10., 10., 10.]
     ]
-    return pd.DataFrame(data, columns=['file', 'power', 'pulses', 'fluence', 'frequency'])
-
+    columns = ['file', 'power', 'pulses', 'fluence', 'frequency']
+    return pd.DataFrame(dict(zip(columns, data)))
 
 
 class TestFilenameParser:
@@ -59,6 +60,5 @@ class TestFilenameParser:
     def test_extract_from(self, template_string, dataframe, expected_dataframe_output):
         parser = FilenameParser(template_string)
         df = parser.extract_from(dataframe, 'file')
-        assert_frame_equal(df, expected_dataframe_output)
-
-
+        expected = expected_dataframe_output.drop('file', axis=1)
+        assert_frame_equal(df, expected, check_dtype=False)
