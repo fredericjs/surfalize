@@ -488,7 +488,7 @@ class Batch:
         Executes the Batch processing and returns the obtained data as a pandas DataFrame. The dataframe can be saved
         as an Excel file.
 
-        Example
+        Examples
         -------
         >>> pattern = ''
         >>> batch.execute(saveto='C:/users/example/documents/data.xlsx')
