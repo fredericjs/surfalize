@@ -16,11 +16,17 @@ Basic usage
 Extracting roughness and topographic parameters
 ===============================================
 
+All roughness parameters can be calculated via methods of the `Surface` class.
+The methods are named analogous to the parameters defined in the ISO 25178 standard for the 
+standardized parameters with a capitalized first letter.
+
 .. code:: python
 
     # Individual calculation of parameters
     sa = surface.Sa()
     sq = surface.Sq()
+
+.. code:: python
 
     # Calculation in batch
     parameters = surface.roughness_parameters(['Sa', 'Sq', 'Sz'])
