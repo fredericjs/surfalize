@@ -38,12 +38,12 @@ jobs:
       with:
         name: dist
         path: dist/*.whl
-
+  upload:
     - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-
+  
     - name: Publish package to PyPI
       env:
         TWINE_USERNAME: __token__
