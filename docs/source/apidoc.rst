@@ -49,11 +49,3 @@ Exceptions
    :members:
    :undoc-members:
    :show-inheritance:
-
-File
-====
-
-.. automodule:: surfalize.file
-   :members:
-   :undoc-members:
-   :show-inheritance:
