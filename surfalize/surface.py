@@ -25,7 +25,6 @@ from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
 from .filter import GaussianFilter
-from .roughness import height_parameters, surface_area
 from .image import Image
 
 
@@ -1008,7 +1007,20 @@ class Surface(CachedInstance):
 
     @cache
     def height_parameters(self):
-        return height_parameters(self.data, self.data.mean())
+        mean = self.data.mean()
+        centered_data = self.data - mean
+        abs_centered_data = np.abs(centered_data)
+        centered_data_sq = abs_centered_data ** 2
+
+        size = self.data.size
+        sa = np.sum(abs_centered_data) / size
+        sq = np.sqrt(np.sum(centered_data_sq) / size)
+        sv = np.abs(centered_data.min())
+        sp = centered_data.max()
+        sz = sp + sv
+        ssk = np.sum(centered_data_sq * centered_data) / size / sq ** 3
+        sku = np.sum(centered_data_sq ** 2) / size / sq ** 4
+        return {'Sa': sa, 'Sq': sq, 'Sv': sv, 'Sp': sp, 'Sz': sz, 'Ssk': ssk, 'Sku': sku}
 
     def Sa(self):
         """
@@ -1106,7 +1118,22 @@ class Surface(CachedInstance):
         -------
         area: float
         """
-        return surface_area(self.data, self.step_x, self.step_y)
+        # Calculate differences
+        dz_y = np.diff(self.data, axis=0)
+        dz_x = np.diff(self.data, axis=1)
+
+        # Calculate cross products
+        cross_x = self.step_y * dz_y[:, :-1]
+        cross_y = self.step_x * dz_x[:-1, :]
+        cross_z = self.step_x * self.step_y
+
+        # Calculate areas using vectorized operations
+        areas = 0.5 * np.sqrt(cross_x ** 2 + cross_y ** 2 + cross_z ** 2)
+
+        # Sum up all areas
+        total_area = 2 * np.sum(areas)  # Multiply by 2 for both triangles in each quad
+
+        return total_area
 
     def Sdr(self):
         """

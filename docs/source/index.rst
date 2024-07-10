@@ -11,7 +11,7 @@ rouggness and other topographic parameters. It is intended primarily for microte
 replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion for the most common tasks.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Documentation:
 
    install

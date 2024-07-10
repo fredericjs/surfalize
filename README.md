@@ -35,17 +35,12 @@ To install the latest release of surfalize, run the following command:
 ```commandline
 pip install surfalize
 ```
-If you want to build from source, clone this git repository and run the following command in the root folder
+If you want to install from source, clone this git repository and run the following command in the root folder
 of the cloned repository.
 ```commandline
 pip install .
 ```
-However, you will need to have both `Cython` and a C-Compiler installed (MSVC on Windows, 
-gcc on Linux, MinGW is not supported currently). If you install in editable mode using
-```
-pip install -e .
-```
-be aware that a change of the pyx files does not reinvoke the Cython build process. 
+While earlier versions used Cython, the current version is pure Python and can be installed without a C-compiler.
 
 ## Documentation
 

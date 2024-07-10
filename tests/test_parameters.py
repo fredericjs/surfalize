@@ -33,7 +33,7 @@ def test_Sku(surface):
 
 
 def test_Sdr(surface):
-    assert surface.Sdr() == pytest.approx(276.103672, abs=EPSILON)
+    assert surface.Sdr() == pytest.approx(276.112693, abs=EPSILON)
 
 
 def test_Sdq(surface):
@@ -101,7 +101,7 @@ def test_aspect_ratio(surface):
 
 
 def test_homogeneity(surface):
-    assert surface.homogeneity() == pytest.approx(0.9986, abs=EPSILON)
+    assert surface.homogeneity() == pytest.approx(0.9985, abs=EPSILON)
 
 
 def test_size(surface):

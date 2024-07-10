@@ -1,11 +1,8 @@
 from setuptools import setup, find_packages
-from Cython.Build import cythonize
 import glob
 
 with open('README.md', 'r', encoding='utf-8') as file:
     long_description = file.read()
-
-cython_extensions = glob.glob('surfalize/**/*.pyx', recursive=True)
 
 def get_version():
     with open('surfalize/_version.py', 'r') as file:
@@ -43,5 +40,4 @@ setup(
         'python-dateutil',
         'pillow'
     ],
-    ext_modules=cythonize(cython_extensions)
 )
