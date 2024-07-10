@@ -1,6 +1,7 @@
 name: Build Wheel
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
@@ -32,8 +33,29 @@ jobs:
       run: |
         python setup.py bdist_wheel
 
-    - name: Publish Wheel
+    - name: Upload Wheel
       uses: actions/upload-artifact@v3
       with:
         name: dist
         path: dist/*.whl
+  upload:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download artifacs
+      uses: actions/download-artifact@v3
+      with:
+        path: dist/
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+  
+    - name: Publish package to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        python -m pip install --upgrade twine
+        twine upload dist/*
