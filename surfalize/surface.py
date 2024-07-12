@@ -46,7 +46,7 @@ def no_nonmeasured_points(function):
     """
     @wraps(function)
     def wrapper_function(self, *args, **kwargs):
-        if self._nonmeasured_points_exist:
+        if self.has_missing_points:
             raise ValueError("Non-measured points must be filled before any other operation.")
         return function(self, *args, **kwargs)
     return wrapper_function
@@ -138,8 +138,6 @@ class Surface(CachedInstance):
 
         self.width_um = (height_data.shape[1] - 1) * step_x
         self.height_um = (height_data.shape[0] - 1) * step_y
-        # True if non-measured points exist on the surface
-        self._nonmeasured_points_exist = np.any(np.isnan(self.data))
 
     @property
     def size(self):
@@ -255,6 +253,7 @@ class Surface(CachedInstance):
     def __hash__(self):
         return hash((self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std()))
 
+    @property
     def has_missing_points(self):
         """
         Returns true if surface contains non-measured points.
@@ -263,7 +262,7 @@ class Surface(CachedInstance):
         -------
         bool
         """
-        return self._nonmeasured_points_exist
+        return np.any(np.isnan(self.data))
 
     @classmethod
     def load(cls, filepath, encoding='utf-8', read_image_layers=False):
@@ -590,7 +589,7 @@ class Surface(CachedInstance):
         surface: surfalize.Surface
             Surface object.
         """
-        if not self._nonmeasured_points_exist:
+        if not self.has_missing_points:
             return self
         values = self.data.ravel()
         mask = ~np.isnan(values)
@@ -602,7 +601,6 @@ class Surface(CachedInstance):
         
         if inplace:
             self._set_data(data=data_interpolated)
-            self._nonmeasured_points_exist = False
             return self
         return Surface(data_interpolated, self.step_x, self.step_y)
 
@@ -1006,6 +1004,7 @@ class Surface(CachedInstance):
     # Height parameters ################################################################################################
 
     @cache
+    @no_nonmeasured_points
     def height_parameters(self):
         mean = self.data.mean()
         centered_data = self.data - mean
@@ -1903,7 +1902,7 @@ class Surface(CachedInstance):
             cax.axis('off')
         ax.set_xlabel('x [µm]')
         ax.set_ylabel('y [µm]')
-        if layer == 'Topography' and self._nonmeasured_points_exist:
+        if layer == 'Topography' and self.has_missing_points:
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         return ax
