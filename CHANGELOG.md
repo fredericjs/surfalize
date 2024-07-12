@@ -1,8 +1,9 @@
-## [unrealsed changes]
+## v0.10.2
 - Fixed bug with file saving
 - Fixed bug with saving to SUR file format
 - Fixed bug with inplace removal of outliers, where the surface's non_measurepoints attribute was not updated, causing 
   filling of missing points to return without being executed
+- Added tests for fileformat writing
 ## V0.10.1
 - Entirely removed Cython from the codebase and replaced with efficient numpy code. This allows for the distribution
   of this library without compilation for different architectures and operating systems.
