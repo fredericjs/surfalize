@@ -88,7 +88,7 @@ def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
     -------
     None
     """
-    for name, format_, _ in layout:
+    for name, format_ in layout:
         if name is None:
             filehandle.write(b'\x00' * format_)
             continue
