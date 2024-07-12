@@ -387,8 +387,12 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
         'studiable_type': StudiableType.SURFACE,
         'name_object': '',
         'name_operator': '',
+        'p_size': 0,
+        'acquisition_type': 0,
+        'range_type': 0,
         'non_measured_points': nm_points,
         'absolute_z_axis': 0,
+        'gauge_resolution': 0,
         'bits_per_point': 32,
         'min_point': INT_DATA_MIN,
         'max_point': INT_DATA_MAX,
@@ -421,6 +425,7 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
         'year': timestamp.year,
         'week_day': timestamp.weekday(),
         'measurement_duration': 0,
+        'compressed_data_size': 0,
         'length_comment': 0,
         'length_private': 0,
         'client_zone': 'Exported by surfalize',
@@ -434,7 +439,7 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
     }
 
     # Pad all strings with spaces
-    for name, format_, _ in LAYOUT_HEADER:
+    for name, format_ in LAYOUT_HEADER:
         if name is None or not format_.endswith('s'):
             continue
         length = struct.calcsize(format_)
