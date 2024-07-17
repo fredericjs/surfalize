@@ -23,7 +23,7 @@ def _sanitize_mu(string):
 
     Parameters
     ----------
-    string: str
+    string : str
         Input string.
 
     Returns
@@ -41,14 +41,14 @@ def get_unit_conversion(from_unit, to_unit):
 
     Parameters
     ----------
-    from_unit: str
+    from_unit : str
         Unit from which to convert.
-    to_unit
+    to_unit : str
         Unit to which to convert.
 
     Returns
     -------
-    factor: float
+    factor : float
         Factor by which to multiply the original values.
     """
     from_unit = _sanitize_mu(from_unit)
@@ -73,15 +73,15 @@ def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
 
     Parameters
     ----------
-    filehandle: file object
+    filehandle : file object
         File-like object to read the data from.
-    layout: tuple[tuple[str, str, bool] | tuple[None, int, None]]
+    layout : tuple[tuple[str, str, bool] | tuple[None, int, None]]
         Layout of the bytes to read as a tuple of tuples in the form (<name>, <format>, <skip_fast>) or
         (None, <n_bytes>, None) for reserved bytes.
-    data: dict[str: any]
+    data : dict[str: any]
         Dictionary containing keys that correspond to the name value in the layout tuple and the values to write
         to the file as keys.
-    encoding: str, Default utf-8
+    encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
 
     Returns
@@ -116,12 +116,12 @@ def read_binary_layout(filehandle, layout, encoding='utf-8'):
 
     Parameters
     ----------
-    filehandle: file object
+    filehandle : file object
         File-like object to read the data from.
-    layout: tuple[tuple[str, str, bool] | tuple[None, int, None]]
+    layout : tuple[tuple[str, str, bool] | tuple[None, int, None]]
         Layout of the bytes to read as a tuple of tuples in the form (<name>, <format>, <skip_fast>) or
         (None, <n_bytes>, None) for reserved bytes.
-    encoding: str, Default utf-8
+    encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
 
     Returns
@@ -149,13 +149,13 @@ def np_fromany(fileobject, dtype, count=-1, offset=0):
 
     Parameters
     ----------
-    fileobject: buffer_like or file-like or str or Path
+    fileobject : buffer_like or file-like or str or Path
         An object that exposes the buffer interface or a file-like object or a str or Path representing a filepath.
-    dtype: data-type
+    dtype : data-type
         Data-type of the returned array.
-    count: int, Default -1.
+    count : int, Default -1.
         Number of items to read. -1 means all data in the buffer or file.
-    offset: int
+    offset : int
         Start reading the buffer from this offset (in bytes); default: 0.
 
     Returns

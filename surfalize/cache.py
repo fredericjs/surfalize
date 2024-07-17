@@ -13,7 +13,7 @@ def cache(method):
 
     Parameters
     ----------
-    method: method
+    method : method
         method to be decorated.
 
     Returns
@@ -63,11 +63,11 @@ class CachedInstance:
 
         Parameters
         ----------
-        method: function pointer
+        method : function pointer
             method to cache.
-        entry: any
+        entry : any
             return value that will be cached
-        args:
+        args
             arguments to the method call for which to create the cache entry
         kwargs
             keyword arguments to the method call for which to create the cache entry

@@ -37,7 +37,7 @@ def no_nonmeasured_points(function):
 
     Parameters
     ----------
-    function: function
+    function : function
         Function to be decorated.
 
     Returns
@@ -98,11 +98,11 @@ class Surface(CachedInstance):
 
     Parameters
     ----------
-    height_data: ndarray
+    height_data : ndarray
         A 2d numpy array containing the height data
-    step_x: float
+    step_x : float
         Interval between two datapoints in x-axis (horizontal axis, second array dimension)
-    step_y: float
+    step_y : float
         Interval between two datapoints in y-axis (vertical axis, first array dimension)
 
     Examples
@@ -147,7 +147,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        size: namedtuple(y, x)
+        size : namedtuple(y, x)
 
         Examples
         --------
@@ -170,11 +170,11 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        data: ndarray
+        data : ndarray
         A 2d numpy array containing the height data.
-        step_x: float
+        step_x : float
             Interval between two datapoints in x-axis (horizontal axis, second array dimension).
-        step_y: float
+        step_y : float
             Interval between two datapoints in y-axis (vertical axis, first array dimension).
 
         Returns
@@ -207,9 +207,9 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        other: float | Surface
+        other : float | Surface
             other operand.
-        func: function
+        func : function
             arithmetic function to be applied.
 
         Returns
@@ -271,16 +271,16 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        filepath: str | pathlib.Path
+        filepath : str | pathlib.Path
             Filepath pointing to the topography file.
-        encoding: str, Default utf-8
+        encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
-        read_image_layers: bool, Default False
+        read_image_layers : bool, Default False
             If true, reads all available image layers in the file and saves them in Surface.image_layers dict
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
         """
         raw_surface = load_file(filepath, encoding=encoding, read_image_layers=read_image_layers)
         return cls.from_raw_surface(raw_surface)
@@ -297,14 +297,14 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        filepath: str | pathlib.Path
+        filepath : str | pathlib.Path
             Filepath pointing to the topography file.
-        encoding: str, Default utf-8
+        encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
 
         Optional Parameters
         -------------------
-        binary: bool
+        binary : bool
             Specifies whether to save in the binary version of the format of the ascii version.
 
         Returns
@@ -330,19 +330,19 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        y: float
+        y : float
             vertical (height) value in µm from where the profile is extracted. The value is rounded to the closest data
             point.
-        average: int
+        average : int
             number of profiles over which to average. Defaults to 1. Profiles will be extracted above and below the
             position designated by y.
-        average_step: float, default None
+        average_step : float, default None
             distance in µm between parallel profiles used for averaging. The value is rounded to the closest integer
             multiple of the pixel resolution. If the value is None, a distance of 1 px will be assumed.
 
         Returns
         -------
-        profile: surfalize.Profile
+        profile : surfalize.Profile
         """
         if y > self.height_um:
             raise ValueError("y must not exceed height of surface.")
@@ -370,19 +370,19 @@ class Surface(CachedInstance):
 
          Parameters
          ----------
-         x: float
+         x : float
              laterial (width) value in µm from where the profile is extracted. The value is rounded to the closest data
              point.
-         average: int
+         average : int
              number of profiles over which to average. Defaults to 1. Profiles will be extracted above and below the
              position designated by x.
-         average_step: float, default None
+         average_step : float, default None
              distance in µm between parallel profiles used for averaging. The value is rounded to the closest integer
              multiple of the pixel resolution. If the value is None, a distance of 1 px will be assumed.
 
          Returns
          -------
-         profile: surfalize.Profile
+         profile : surfalize.Profile
          """
         if x > self.width_um:
             raise ValueError("x must not exceed height of surface.")
@@ -410,13 +410,13 @@ class Surface(CachedInstance):
 
          Parameters
          ----------
-         x0: float
+         x0 : float
             starting point of the profile in x.
-         y0: float
+         y0 : float
             starting point of the profile in y.
-         x1: float
+         x1 : float
             end point of the profile in x.
-         y1: float
+         y1 : float
             end point of the profile in y.
 
          Raises
@@ -426,7 +426,7 @@ class Surface(CachedInstance):
 
          Returns
          -------
-         profile: surfalize.Profile
+         profile : surfalize.Profile
          """
         x0px = int(x0 / self.width_um * self.size.x)
         y0px = int(y0 / self.height_um * self.size.y)
@@ -460,13 +460,13 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. 
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         data = self.data - np.nanmean(self.data)
@@ -481,13 +481,13 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. 
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         data = self.data - np.nanmin(self.data)
@@ -504,20 +504,20 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        n: float, default 3
+        n : float, default 3
             Number of standard deviations outside of which values are considered outliers if method is 'mean'. If the
             method is 'median', n represents the number of medians distances of the data to its median value.
-        method: {'mean', 'median'}, default 'mean'
+        method : {'mean', 'median'}, default 'mean'
             Method by which to perform the outlier detection. The default method is mean, which removes outliers outside
             an interval of n standard deviations from the mean. The method 'median' removes outliers outside n median
             distances of the data to its median.
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         data = self.data.copy()
@@ -541,18 +541,18 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        threshold: float or tuple[float, float], default 0.5
+        threshold : float or tuple[float, float], default 0.5
             Percentage threshold value of the material ratio. If threshold is a tuple, the first value represents the
             upper threshold and the second value represents the lower threshold. For example, threshold=0.5 removes the
             uppermost and lowermost 0.5% from the areal material ratio curve. The achieve the same result when
             specifiying the upper and lower threshold explicitly, the tuple passed ton threshold must be (0.5, 0.5)
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         y = np.sort(self.data[~np.isnan(self.data)])[::-1]
@@ -578,15 +578,15 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        method: {‘linear’, ‘nearest’, ‘cubic’}, default 'nearest'
+        method : {‘linear’, ‘nearest’, ‘cubic’}, default 'nearest'
             Method by which to perform the interpolation. See scipy.interpolate.griddata for details.
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         if not self.has_missing_points:
@@ -610,13 +610,13 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         x, y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
@@ -650,15 +650,15 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        angle: float
+        angle : float
             Angle in degrees.
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         rotated = ndimage.rotate(self.data, angle, reshape=True)
@@ -712,26 +712,26 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        filter_type: str
+        filter_type : str
             Mode of filtering. Possible values: 'highpass', 'lowpass', 'both', 'bandpass'.
-        cutoff: float
+        cutoff : float
             Cutoff wavelength in µm at which the high and low spatial frequencies are separated.
             Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
-        cutoff2: float | None, default None
+        cutoff2 : float | None, default None
             Used only in mode='bandpass'. Specifies the larger cutoff wavelength of the bandpass filter. Must be greater
             than cutoff.
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
             objects will be returned.
-        endeffect_mode: {reflect, constant, nearest, mirror, wrap}, default reflect
+        endeffect_mode : {reflect, constant, nearest, mirror, wrap}, default reflect
             The parameter determines how the endeffects of the filter at the boundaries of the data are managed.
             For details, see the documentation of scipy.ndimage.gaussian_filter.
             https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         if filter_type not in ('highpass', 'lowpass', 'both', 'bandpass'):
@@ -769,15 +769,15 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        factor: float
+        factor : float
             Factor by which the surface is magnified
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         y, x = self.size
@@ -794,14 +794,14 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        box: tuple[float, float, float, float]
+        box : tuple[float, float, float, float]
             The crop rectangle, as a (x0, x1, y0, y1) tuple.
-        in_units: bool, default True
+        in_units : bool, default True
             If true, the box is interpreted as physical units (µm). If false, the box is interpreted in pixel values.
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         if in_units:
@@ -829,18 +829,18 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        axis: {'x', 'y'}, default 'y'
+        axis : {'x', 'y'}, default 'y'
             The axis with which to align the texture with.
-        method: {'fft_refined', 'fft'}
+        method : {'fft_refined', 'fft'}
             Method by which to calculate the orientation. Default is 'fft_refined'. See Surface.orientation for more
             details.
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         if axis not in ('x', 'y'):
@@ -858,7 +858,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        (dx, dy): tuple[float,float]
+        (dx, dy) : tuple[float,float]
             Distance between largest Fourier peaks in x (dx) and in y (dy)
         """
         # Get rid of the zero peak in the DFT for data that features a substantial offset in the z-direction
@@ -918,13 +918,13 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self
 
         Returns
         -------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             Surface object.
         """
         mask = self._stepheight_get_mask()
@@ -959,7 +959,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        upper_median, lower_median: (float, flaot)
+        upper_median, lower_median : (float, flaot)
         """
         mask = self._stepheight_get_mask()
         upper_median = np.median(self.data[mask])
@@ -973,7 +973,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        stepheight: float
+        stepheight : float
         """
         upper_median, lower_median = self._stepheight_get_upper_lower_median()
         step_height = upper_median - lower_median
@@ -985,13 +985,13 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        threshold: float, default 0.5
+        threshold : float, default 0.5
             Percentage threshold value for the cutoff between the upper and lower levels used to determine the area
             inside which the volume is calculated.
 
         Returns
         -------
-        volume: float
+        volume : float
         """
         upper_median, lower_median = self._stepheight_get_upper_lower_median()
         stepheight = self.stepheight()
@@ -1006,6 +1006,14 @@ class Surface(CachedInstance):
     @cache
     @no_nonmeasured_points
     def height_parameters(self):
+        """
+        Calculates the roughness parameters from the height parameter family.
+        Returns a dictionary of the height parameters.
+
+        Returns
+        -------
+        dict[str: float]
+        """
         mean = self.data.mean()
         centered_data = self.data - mean
         abs_centered_data = np.abs(centered_data)
@@ -1027,7 +1035,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sa: float
+        Sa : float
         """
         return self.height_parameters()['Sa']
 
@@ -1037,7 +1045,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sq: float
+        Sq : float
         """
         return self.height_parameters()['Sq']
 
@@ -1047,7 +1055,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sp: float
+        Sp : float
         """
         return self.height_parameters()['Sp']
 
@@ -1057,7 +1065,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sv: float
+        Sv : float
         """
         return self.height_parameters()['Sv']
 
@@ -1067,7 +1075,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Ssk: float
+        Ssk : float
         """
         return self.height_parameters()['Sz']
 
@@ -1078,7 +1086,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Ssk: float
+        Ssk : float
         """
         return self.height_parameters()['Ssk']
 
@@ -1089,7 +1097,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sku: float
+        Sku : float
         """
         return self.height_parameters()['Sku']
     
@@ -1102,7 +1110,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        projected area: float
+        projected area : float
         """
         return (self.width_um - self.step_x) * (self.height_um - self.step_y)
     
@@ -1115,7 +1123,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        area: float
+        area : float
         """
         # Calculate differences
         dz_y = np.diff(self.data, axis=0)
@@ -1140,7 +1148,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        area: float
+        area : float
         """
         return (self.surface_area() / self.projected_area() -1) * 100
     
@@ -1152,7 +1160,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sdq: float
+        Sdq : float
         """
         A = self.size.y * self.size.x
         diff_x = np.diff(self.data, axis=1) / self.step_x
@@ -1182,7 +1190,7 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        s: float
+        s : float
             threshold value below which the data is considered to be uncorrelated. The
             point of fastest and slowest decay are calculated respective to the threshold
             value, to which the autocorrelation function decays. The threshold s is a fraction
@@ -1190,7 +1198,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sal: float
+        Sal : float
             autocorrelation length.
         """
         return self.get_autocorrelation_function().Sal(s=s)
@@ -1205,7 +1213,7 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        s: float
+        s : float
             threshold value below which the data is considered to be uncorrelated. The
             point of fastest and slowest decay are calculated respective to the threshold
             value, to which the autocorrelation function decays. The threshold s is a fraction
@@ -1213,7 +1221,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Str: float
+        Str : float
             texture aspect ratio.
         """
         return self.get_autocorrelation_function().Str(s=s)
@@ -1238,7 +1246,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Sk: float
+        Sk : float
         """
         return self.get_abbott_firestone_curve().Sk()
 
@@ -1248,7 +1256,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Spk: float
+        Spk : float
         """
         return self.get_abbott_firestone_curve().Spk()
 
@@ -1258,7 +1266,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Svk: float
+        Svk : float
         """
         return self.get_abbott_firestone_curve().Svk()
 
@@ -1268,7 +1276,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Smr1: float
+        Smr1 : float
         """
         return self.get_abbott_firestone_curve().Smr1()
 
@@ -1278,7 +1286,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        Smr2: float
+        Smr2 : float
         """
         return self.get_abbott_firestone_curve().Smr2()
 
@@ -1288,12 +1296,12 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        c: float
+        c : float
             height in µm.
 
         Returns
         -------
-        areal material ratio: float
+        areal material ratio : float
         """
         return self.get_abbott_firestone_curve().Smr(c)
 
@@ -1303,12 +1311,12 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        mr: float
+        mr : float
             areal material ratio in %.
 
         Returns
         -------
-        height: float
+        height : float
         """
         return self.get_abbott_firestone_curve().Smc(mr)
 
@@ -1319,9 +1327,9 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        p: float
+        p : float
             material ratio p in % as defined by the standard ISO 25178-3
-        q: float
+        q : float
             material ratio q in % as defined by the standard ISO 25178-3
 
         Returns
@@ -1338,12 +1346,12 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        p: float, default 10.
+        p : float, default 10.
             areal material ratio in %.
 
         Returns
         -------
-        Vmp: float
+        Vmp : float
         """
         return self.get_abbott_firestone_curve().Vmp(p=p)
 
@@ -1354,14 +1362,14 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        p: float, default 10.
+        p : float, default 10.
             areal material ratio in %.
-        q: float, default 80.
+        q : float, default 80.
             areal material ratio in %.
 
         Returns
         -------
-        Vmc: float
+        Vmc : float
         """
         return self.get_abbott_firestone_curve().Vmc(p=p, q=q)
 
@@ -1371,12 +1379,12 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        p: float, default 80.
+        p : float, default 80.
             areal material ratio in %.
 
         Returns
         -------
-        Vvv: float
+        Vvv : float
         """
         return self.get_abbott_firestone_curve().Vvv(q=q)
 
@@ -1387,14 +1395,14 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        p: float, default 10.
+        p : float, default 10.
             areal material ratio in %.
-        q: float, default 80.
+        q : float, default 80.
             areal material ratio in %.
 
         Returns
         -------
-        Vvc: float
+        Vvc : float
         """
         return self.get_abbott_firestone_curve().Vvc(p=p, q=q)
 
@@ -1411,7 +1419,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        period: float
+        period : float
         """
         dx, dy = self._get_fourier_peak_dx_dy()
         return 2/np.hypot(dx, dy)
@@ -1424,7 +1432,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        (periodx, periody): tuple[float, float]
+        (periodx, periody) : tuple[float, float]
         """
         dx, dy = self._get_fourier_peak_dx_dy()
         periodx = np.inf if dx == 0 else np.abs(2/dx)
@@ -1438,7 +1446,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        angle: float
+        angle : float
             Angle of the dominant texture to the vertical axis
         """
         dx, dy = self._get_fourier_peak_dx_dy()
@@ -1456,7 +1464,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        angle: float
+        angle : float
             Angle of the dominant texture to the vertical axis
         """
         SAMPLE_RATE_FACTOR = 0.1
@@ -1515,12 +1523,12 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        method: {'fft_refined', 'fft'}
+        method : {'fft_refined', 'fft'}
             Method by which to calculate the orientation. Default is 'fft_refined'.
 
         Returns
         -------
-        orientation: float
+        orientation : float
             Angle of dominant texture to vertical axis in degree.
         """
         if method == 'fft_refined':
@@ -1541,15 +1549,15 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        parameters: tuple[str], optional
+        parameters : tuple[str], optional
             Roughness parameters that are evaluated for their homogeneity distribution. Defaults to ['Sa', 'Sku', Sdr'].
-        period: None | float, optional
+        period : None | float, optional
             The period which is used to devide the surface into unit cells. If None, the period is automatically
             computed from the fourier transform.
 
         Returns
         -------
-        Homogeneity: float
+        Homogeneity : float
             Value between 0 and 1.
 
         Notes
@@ -1616,16 +1624,16 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        nprofiles: int, default 30
+        nprofiles : int, default 30
             Number of profiles to sample from the surface.
-        sampling_width: float, default 0.2
+        sampling_width : float, default 0.2
             Sampling width around the extrema of the sinusoid as a fraction of the spatial period.
-        plot: None | list-like[int], default None
+        plot : None | list-like[int], default None
             List of number of profiles to plot.
 
         Returns
         -------
-        Mean depth and standard deviation: tuple[float, float].
+        Mean depth and standard deviation : tuple[float, float].
         """
         # Check if alignment is more vertical or horizontal
         aligned_vertically = True if -45 < self.orientation(method='fft') < 45 else False
@@ -1708,7 +1716,7 @@ class Surface(CachedInstance):
 
         Returns
         -------
-        aspect_ratio: float
+        aspect_ratio : float
         """
         return self.depth()[0] / self.period()
 
@@ -1724,12 +1732,12 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        parameters: list-like[str], default None
+        parameters : list-like[str], default None
             List-like object of parameters to evaluate. If None, all available parameters are evaluated.
 
         Returns
         -------
-        parameters: dict[str: float]
+        parameters : dict[str: float]
         """
         if parameters is None:
             parameters = self.ISO_PARAMETERS
@@ -1748,7 +1756,7 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        nbars: int
+        nbars : int
             Number of bars to display for the material density
 
         Returns
@@ -1764,7 +1772,7 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        nbars: int
+        nbars : int
             Number of bars to display for the material density
 
         Returns
@@ -1786,19 +1794,19 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        log: bool, Default True
+        log : bool, Default True
             Shows the logarithm of the Fourier Transform to increase peak visibility.
-        hanning: bool, Default False
+        hanning : bool, Default False
             Applys a Hanning window to the data before the transform.
-        subtract_mean: bool, Default False
+        subtract_mean : bool, Default False
             Subtracts the mean of the data before the transform to avoid the zero peak.
-        fxmax: float, Default None
+        fxmax : float, Default None
             Maximum frequency displayed in x. The plot will be cropped to -fxmax : fxmax.
-        fymax: float, Default None
+        fymax : float, Default None
             Maximum frequency displayed in y. The plot will be cropped to -fymax : fymax.
-        cmap: str, Default 'inferno'
+        cmap : str, Default 'inferno'
             Matplotlib colormap with which to map the data.
-        adjust_colormap: bool, Default True
+        adjust_colormap : bool, Default True
             If True, the colormap starts at the mean and ends at 0.7 time the maximum of the data
             to increase peak visibility.
 
@@ -1861,14 +1869,14 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        cmap: str | mpl.cmap, default 'jet'
+        cmap : str | mpl.cmap, default 'jet'
             Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
-        maskcolor: str, default 'Black'
+        maskcolor : str, default 'Black'
             Color for masked values.
-        layer: str, default Topography
+        layer : str, default Topography
             Indicate the layer to plot, by default the topography layer is shown. Alternatively, the label of an image
             layer can be indicated.
-        ax: matplotlib axis, default None
+        ax : matplotlib axis, default None
             If specified, the plot will be drawn the specified axis.
 
         Returns
@@ -1913,14 +1921,14 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
-        cmap: str | mpl.cmap, default 'jet'
+        cmap : str | mpl.cmap, default 'jet'
             Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
-        maskcolor: str, default 'Black'
+        maskcolor : str, default 'Black'
             Color for masked values.
-        layer: str, default Topography
+        layer : str, default Topography
             Indicate the layer to plot, by default the topography layer is shown. Alternatively, the label of an image
             layer can be indicated.
-        ax: matplotlib axis, default None
+        ax : matplotlib axis, default None
             If specified, the plot will be drawn the specified axis.
 
         Returns

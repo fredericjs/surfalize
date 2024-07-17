@@ -73,7 +73,7 @@ class FilenameParser:
 
         Returns
         -------
-        tokens, separators:  list[_Token], list[str]
+        tokens, separators :  list[_Token], list[str]
             List of tokens and list of string separators
         """
         tokens = []
@@ -110,14 +110,14 @@ class FilenameParser:
 
         Parameters
         ----------
-        tokens: list[_Token]
+        tokens : list[_Token]
             List of tokens obtained from parsing the template string.
-        separators: list[str]
+        separators : list[str]
             List of string obtained from parsing the template string.
 
         Returns
         -------
-        regex: str
+        regex : str
         """
         patterns = []
         for token in tokens:
@@ -140,9 +140,9 @@ class FilenameParser:
 
         Parameters
         ----------
-        df: pd.DataFrame
+        df : pd.DataFrame
             DataFrame object that contains a column with filenames
-        column: str
+        column : str
             Name of the column which contains the filenames
         Returns
         -------
@@ -164,11 +164,11 @@ class FilenameParser:
 
         Parameters
         ----------
-        df: pd.DataFrame
+        df : pd.DataFrame
             DataFrame object that contains a column with filenames
-        column: str
+        column : str
             Name of the column which contains the filenames
-        insert_after_column: bool, default True
+        insert_after_column : bool, default True
             If True, inserts the new columns directly after the filename column, if False, appends them at the end of
             the dataframe
 
@@ -194,11 +194,11 @@ class Operation:
 
     Parameters
     ----------
-    identifier: str
+    identifier : str
         Name of the method. Must be identical to a method of the Surface class.
-    args: tuple
+    args : tuple
         Tuple of positional arguments that should be passed to the Surface method.
-    kwargs: dict
+    kwargs : dict
         Dictionary of keyword arguments that should be passed to the Surface method.
     """
     def __init__(self, identifier, args=None, kwargs=None):
@@ -212,7 +212,7 @@ class Operation:
 
         Parameters
         ----------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             surface object on which to execute the registered method.
 
         Returns
@@ -229,11 +229,11 @@ class Parameter:
 
     Parameters
     ----------
-    identifier: str
+    identifier : str
         Name of the method. Must be identical to a method of the Surface class.
-    args: tuple
+    args : tuple
         Tuple of positional arguments that should be passed to the Surface method.
-    kwargs: dict
+    kwargs : dict
         Dictionary of keyword arguments that should be passed to the Surface method.
 
     Examples
@@ -263,7 +263,7 @@ class Parameter:
 
         Parameters
         ----------
-        surface: surfalize.Surface
+        surface : surfalize.Surface
             surface object on which to execute the registered method.
 
         Returns
@@ -297,16 +297,16 @@ def _task(filepath, operations, parameters, ignore_errors):
 
     Parameters
     ----------
-    filepath: str | pathlib.Path
+    filepath : str | pathlib.Path
         Filepath pointing to the measurement file.
-    operations: list[Operation]
+    operations : list[Operation]
         List of operations to execute on the surface.
-    parameters: list[Parameter]
+    parameters : list[Parameter]
         List of parameters to calculate from the surface.
 
     Returns
     -------
-    results: dict[str: value]
+    results : dict[str: value]
         Dictionary containing the values for each invokes parameter, with the parameter's method identifier as
         key.
     """
@@ -354,9 +354,9 @@ class Batch:
 
    Parameters
    ----------
-   filepaths: list[pathlib.Path | str]
+   filepaths : list[pathlib.Path | str]
        List of filepaths of topography files
-   additional_data: str, pathlib.Path
+   additional_data : str, pathlib.Path
        Path to an Excel file containing additional parameters, such as
        input parameters. Excel file must contain a column 'file' with
        the filename including the file extension. Otherwise, an arbitrary
@@ -390,13 +390,13 @@ class Batch:
 
         Parameters
         ----------
-        dir_path: str | pathlib.Path
+        dir_path : str | pathlib.Path
             Path to the directory containing the files
-        file_extensions: str | list-like, optional
+        file_extensions : str | list-like, optional
             File extension or list of file extensions to be searched for, eg. '.vk4', '.plu'. The file extension must
             be prefixed by a dot. If no file extensions are specified, all files are added to the batch that have a file
             extension that corresponds to a supported file format.
-        additional_data: str, pathlib.Path, optional
+        additional_data : str, pathlib.Path, optional
             Path to an Excel file containing additional parameters, such as
             input parameters. Excel file must contain a column 'file' with
             the filename including the file extension. Otherwise, an arbitrary
@@ -437,12 +437,12 @@ class Batch:
 
         Parameters
         ----------
-        multiprocessing: bool, default True
+        multiprocessing : bool, default True
             If True, dispatches the task among CPU cores, otherwise sequentially computes the tasks.
 
         Returns
         -------
-        results: dict[str: value]
+        results : dict[str: value]
             Dictionary containing the values for each invokes parameter, with the parameter's method identifier as
             key.
         """
@@ -469,7 +469,7 @@ class Batch:
 
         Parameters
         ----------
-        results: dict[str: any]
+        results : dict[str: any]
 
         Returns
         -------
@@ -489,18 +489,18 @@ class Batch:
         as an Excel file.
 
         Examples
-        -------
+        --------
         >>> pattern = ''
         >>> batch.execute(saveto='C:/users/example/documents/data.xlsx')
 
         Parameters
         ----------
-        multiprocessing: bool, default True
+        multiprocessing : bool, default True
             If True, dispatches the task among CPU cores, otherwise sequentially computes the tasks.
-        ignore_errors: bool, default True
+        ignore_errors : bool, default True
             Errors that are raised during the calculation of parameters are ignored if True. Missing parameter values
             are filled with nan values. If False, the batch processing is interrupted when an error is raised.
-        saveto: str | pathlib.Path, default None
+        saveto : str | pathlib.Path, default None
             Path to an Excel file where the data is saved to. If the Excel file does already exist, it will be
             overwritten.
 
@@ -539,7 +539,7 @@ class Batch:
 
         Parameters
         ----------
-        filename_pattern: str | None
+        filename_pattern : str | None
             Pattern with which to extract parameters from filename.
 
         Returns
@@ -579,7 +579,7 @@ class Batch:
 
         Parameters
         ----------
-        threshold: float, default 0.5
+        threshold : float, default 0.5
             Threshold argument from Surface.threshold
 
         Returns
@@ -596,9 +596,9 @@ class Batch:
 
         Parameters
         ----------
-        n: float, default 3
+        n : float, default 3
             n argument from Surface.remove_outliers
-        method: {'mean', 'median'}, default 'mean'
+        method : {'mean', 'median'}, default 'mean'
             method argument from Surface.remove_outliers
 
         Returns
@@ -615,7 +615,7 @@ class Batch:
 
         Parameters
         ----------
-        method: {'linear', 'nearest', 'cubic'}, default 'nearest'
+        method : {'linear', 'nearest', 'cubic'}, default 'nearest'
             method argument from Surface.fill_nonmeasured
 
         Returns
@@ -632,7 +632,7 @@ class Batch:
 
         Parameters
         ----------
-        box: tuple[float, float, float, float]
+        box : tuple[float, float, float, float]
             The crop rectangle, as a (x0, x1, y0, y1) tuple.
 
         Returns
@@ -662,12 +662,12 @@ class Batch:
 
         Parameters
         ----------
-        filter_type: str
+        filter_type : str
             Mode of filtering. Possible values: 'highpass', 'lowpass', 'bandpass'.
-        cutoff: float
+        cutoff : float
             Cutoff frequency in 1/µm at which the high and low spatial frequencies are separated.
             Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
-        cutoff2: float | None, default None
+        cutoff2 : float | None, default None
             Used only in mode='bandpass'. Specifies the lower cutoff frequency of the bandpass filter. Must be greater
             than cutoff.
 
@@ -686,7 +686,7 @@ class Batch:
 
         Parameters
         ----------
-        angle: float
+        angle : float
             Angle in degrees.
 
         Returns
@@ -703,7 +703,7 @@ class Batch:
 
         Parameters
         ----------
-        axis: {'x', 'y'}, default 'y'
+        axis : {'x', 'y'}, default 'y'
             The axis with which to align the texture with.
 
         Returns
@@ -720,7 +720,7 @@ class Batch:
 
         Parameters
         ----------
-        factor: float
+        factor : float
             Factor by which the surface is magnified
 
         Returns
@@ -794,7 +794,7 @@ class Batch:
 
         Parameters
         ----------
-        parameters: list[str | surfalize.batch.Parameter]
+        parameters : list[str | surfalize.batch.Parameter]
             List of parameters to be registered, either as a string identifier or as a Parameter class.
 
         Returns

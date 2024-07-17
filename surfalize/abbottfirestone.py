@@ -11,9 +11,9 @@ class AbbottFirestoneCurve(CachedInstance):
 
     Parameters
     ----------
-    surface: Surface
+    surface : Surface
         Surface object from which to calcualte the Abbott-Firestone curve
-    nbins: int, default 10000
+    nbins : int, default 10000
         Number of bins for the material density histogram. Large numbers result in longer computation time but increased
         accuracy of results. The default value of 10000 represents a reasonable compromise.
     """
@@ -33,7 +33,7 @@ class AbbottFirestoneCurve(CachedInstance):
 
         Returns
         -------
-        height, material_ratio: tuple[ndarray[float], ndarray[float]]
+        height, material_ratio : tuple[ndarray[float], ndarray[float]]
         """
         hist, height = np.histogram(self._surface.data, bins=self._nbins)
         hist = hist[::-1]  # sort descending
@@ -115,7 +115,7 @@ class AbbottFirestoneCurve(CachedInstance):
 
         Parameters
         ----------
-        c: float
+        c : float
             Material height.
 
         Returns
@@ -130,7 +130,7 @@ class AbbottFirestoneCurve(CachedInstance):
 
         Parameters
         ----------
-        mr: float
+        mr : float
             Material ratio.
 
         Returns
