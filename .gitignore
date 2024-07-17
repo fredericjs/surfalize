@@ -1,3 +1,6 @@
+# Setuptools_scm version file
+surfalize/_version.py
+
 # Any cython transpiled c files
 *.c
 # ipython folder

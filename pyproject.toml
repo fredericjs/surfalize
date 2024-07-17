@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_file = "surfalize/_version.py"
+
+[project]
+name = "surfalize"
+dynamic = ["version"]
+description = "A python module to analyze surface roughness"
+readme = "README.md"
+readme-content-type = "text/markdown"
+requires-python = ">=3.6"
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "numpy>=1.18.1,<2.0",
+    "matplotlib>=3.1.1",
+    "pandas>=1.0.1",
+    "scipy>=1.4.1",
+    "tqdm>=4.64.1",
+    "openpyxl>=3.1.2",
+    "scikit-learn",
+    "python-dateutil",
+    "pillow"
+]
+
+[project.authors]
+name = "Frederic Schell"
+email = "frederic.schell@iws.fraunhofer.de"
+
+[tool.setuptools.packages.find]
+where = ["."]
