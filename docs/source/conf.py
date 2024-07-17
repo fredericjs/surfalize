@@ -6,12 +6,6 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
-sys.path.insert(0, os.path.abspath('../../examples'))
-
-def get_version():
-    with open('../../surfalize/_version.py', 'r') as file:
-        content = file.read()
-    return content.split()[-1].strip("'")
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -19,7 +13,7 @@ def get_version():
 project = 'surfalize'
 copyright = '2023, Frederic Schell'
 author = 'Frederic Schell'
-release = get_version()
+#release = get_version()
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -45,15 +39,10 @@ autodoc_mock_imports = [
     'scipy',
     'tqdm',
     'sklearn',
-    'surfalize.roughness.height',
-    'surfalize.roughness.hybrid'
 ]
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'furo'
-html_theme_options = {
-    "navigation_depth": 3
-}
 html_static_path = ['_static']
