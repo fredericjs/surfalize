@@ -7,11 +7,11 @@ class GaussianFilter:
 
     Parameters
     ----------
-    cutoff: float
+    cutoff : float
         Cutoff wavelength.
-    filter_type: {'lowpass', 'highpass'}
+    filter_type : {'lowpass', 'highpass'}
         Type of filter to apply. For highpass, simply subtracts the lowpass filtered data from the original data.
-    endeffect_mode: {reflect, constant, nearest, mirror, wrap}, default reflect
+    endeffect_mode : {reflect, constant, nearest, mirror, wrap}, default reflect
             The parameter determines how the endeffects of the filter at the boundaries of the data are managed.
             For details, see the documentation of scipy.ndimage.gaussian_filter.
             https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
@@ -36,18 +36,17 @@ class GaussianFilter:
 
         Parameters
         ----------
-        cutoff: float
+        cutoff : float
             Cutoff wavelength.
 
         Returns
         -------
-        sigma: float
+        sigma : float
 
         Notes
         -----
         This equation results from solving for the standard deviation when setting the generic Gaussian kernel to the
         Gaussian kernel defined in the norm.
-
         """
         return cutoff / np.pi * np.sqrt(np.log(2) / 2)
 
@@ -57,16 +56,16 @@ class GaussianFilter:
 
         Parameters
         ----------
-        surface: Surface
+        surface : Surface
             The surface object on which to apply the filter.
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
             objects will be returned.
 
         Returns
         -------
-        filtered_surface: Surface
+        filtered_surface : Surface
         """
         return self.apply(surface, inplace=inplace)
 
@@ -76,16 +75,16 @@ class GaussianFilter:
 
         Parameters
         ----------
-        surface: Surface
+        surface : Surface
             The surface object on which to apply the filter.
-        inplace: bool, default False
+        inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
             objects will be returned.
 
         Returns
         -------
-        filtered_surface: Surface
+        filtered_surface : Surface
         """
         cutoff_x_px = self._cutoff / surface.step_x
         cutoff_y_px = self._cutoff / surface.step_y

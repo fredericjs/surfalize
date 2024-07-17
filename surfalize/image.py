@@ -19,7 +19,7 @@ class Image:
 
         Parameters
         ----------
-        path: str | Path
+        path : str | Path
             Path where the image should be saved. The extension determines the file format.
 
         Returns
@@ -45,7 +45,7 @@ class Image:
 
         Parameters
         ----------
-        array: ndarray
+        array : ndarray
             ndarray of ndim 3.
 
         Returns

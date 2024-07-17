@@ -13,7 +13,7 @@ class AutocorrelationFunction(CachedInstance):
 
     Parameters
     ----------
-    surface: Surface
+    surface : Surface
         Surface object on which to calculate the 2d autocorrelation function.
     """
     def __init__(self, surface):
@@ -38,7 +38,7 @@ class AutocorrelationFunction(CachedInstance):
 
         Parameters
         ----------
-        s: float
+        s : float
             threshold value below which the data is considered to be uncorrelated. The
             point of fastest and slowest decay are calculated respective to the threshold
             value, to which the autocorrelation function decays. The threshold s is a fraction
@@ -84,7 +84,7 @@ class AutocorrelationFunction(CachedInstance):
 
         Parameters
         ----------
-        s: float
+        s : float
             threshold value below which the data is considered to be uncorrelated. The
             point of fastest and slowest decay are calculated respective to the threshold
             value, to which the autocorrelation function decays. The threshold s is a fraction
@@ -92,7 +92,7 @@ class AutocorrelationFunction(CachedInstance):
 
         Returns
         -------
-        Sal: float
+        Sal : float
             autocorrelation length.
         """
         if self._current_threshold != s:
@@ -111,7 +111,7 @@ class AutocorrelationFunction(CachedInstance):
 
         Parameters
         ----------
-        s: float
+        s : float
             threshold value below which the data is considered to be uncorrelated. The
             point of fastest and slowest decay are calculated respective to the threshold
             value, to which the autocorrelation function decays. The threshold s is a fraction
@@ -119,7 +119,7 @@ class AutocorrelationFunction(CachedInstance):
 
         Returns
         -------
-        Str: float
+        Str : float
             texture aspect ratio.
         """
         if self._current_threshold != s:

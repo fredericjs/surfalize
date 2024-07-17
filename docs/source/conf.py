@@ -29,6 +29,7 @@ master_doc = 'index'
 extensions = [
     'sphinx.ext.autodoc',
     'numpydoc',
+    'nbsphinx'
 ]
 
 templates_path = ['_templates']
@@ -53,9 +54,6 @@ autodoc_mock_imports = [
 
 html_theme = 'furo'
 html_theme_options = {
-    "sidebar_hide_name": False,
-    "navigation_with_keys": True,
-    # Add this line:
-    "navigation_depth": 3  # Adjust this number as needed
+    "navigation_depth": 3
 }
 html_static_path = ['_static']

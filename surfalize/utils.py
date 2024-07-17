@@ -6,7 +6,7 @@ def is_list_like(obj):
 
     Parameters
     ----------
-    obj: object
+    obj : object
 
     Returns
     -------
@@ -24,7 +24,7 @@ def register_returnlabels(labels):
 
     Parameters
     ----------
-    labels: list[str]
+    labels : list[str]
         List of labels with the same length as the number of return values of the method to be decorated.
 
     Returns

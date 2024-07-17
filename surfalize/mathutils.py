@@ -15,17 +15,17 @@ def interp1d(xdata, ydata, assume_sorted=False):
 
     Parameters
     ----------
-    xdata: array_like
+    xdata : array_like
         array of x-values
-    ydata: array_like
+    ydata : array_like
         array of y-values
-    assume_sorted: bool, default False
+    assume_sorted : bool, default False
         If True, they xdata array must be supplied with ascendingly ordered values and sorting is skipped.
         If False, the array xdata will be sorted in ascending order and the array ydata will be sorted accordingly.
 
     Returns
     -------
-    function:
+    function
         Linear interpolation function y(x).
     """
     if not assume_sorted:
@@ -46,14 +46,14 @@ def argclosest(x, xdata):
 
     Parameters
     ----------
-    x: float
+    x : float
         value to which closest array value index should be computed
-    xdata: array_like
+    xdata : array_like
         array of x-values
 
     Returns
     -------
-    index:
+    index : int
         Index of the value in xdata that is closest to x.
     """
     return np.argmin(np.abs(xdata - x))
@@ -64,14 +64,14 @@ def closest(x, data):
 
     Parameters
     ----------
-    x: float
+    x : float
         value to which closest array value index should be computed
-    xdata: array_like
+    xdata : array_like
         array of x-values
 
     Returns
     -------
-    value:
+    value
         Value in xdata that is closest to x.
     """
     return data.ravel()[argclosest(x, data.ravel())]
@@ -82,14 +82,14 @@ def get_period_fft_1d(xdata, ydata):
 
     Parameters
     ----------
-    xdata: list-like
+    xdata : list-like
         array of uniformly spaced xdata.
-    ydata: list-like
+    ydata : list-like
         array of ydata with the same size as xdata.
 
     Returns
     -------
-    period: float
+    period : float
     """
     fft = np.abs(np.fft.fft(ydata))
     freq = np.fft.fftfreq(len(ydata), d=xdata[1] - xdata[0])
@@ -109,19 +109,19 @@ def _sinusoid(x, a, p, x0, y0):
 
     Parameters
     ----------
-    x: float | array-like
-    amplitude: float
+    x : float | array-like
+    amplitude : float
         amplitude.
-    period: float
+    period : float
         period.
-    x0: float
+    x0 : float
         offset in x.
-    y0: float
+    y0 : float
         offset in y.
 
     Returns
     -------
-    y: float | array-lile
+    y : float | array-like
     """
     return a * np.sin((x - x0) / p * 2 * np.pi) + y0
 
@@ -132,13 +132,13 @@ class Sinusoid:
 
     Parameters
     ----------
-    amplitude: float
+    amplitude : float
         amplitude.
-    period: float
+    period : float
         period.
-    x0: float
+    x0 : float
         offset in x.
-    y0: float
+    y0 : float
         offset in y.
     """
     def __init__(self, amplitude, period, x0, y0):
@@ -161,13 +161,13 @@ class Sinusoid:
 
         Parameters
         ----------
-        xdata: list-like
+        xdata : list-like
             array of x-data
-        ydata: list-like
+        ydata : list-like
             array of y-data
-        p0: list-like[float, float, float, float] | None, defaults to None
+        p0 : list-like[float, float, float, float] | None, defaults to None
             Optional initial guess for the parameters a, p, x0, y0.
-        infer_p0: bool, defaults to False
+        infer_p0 : bool, defaults to False
             If True, automatically infers starting guesses of the parameters. Any values provided to the p0 keyword
             argument will be overwritten with the automatically inferred values.
 
@@ -201,11 +201,11 @@ class Sinusoid:
 
         Parameters
         ----------
-        x: float | ndarray
+        x : float | ndarray
             x-value at which to evaluate the sinusoid.
         Returns
         -------
-        y: float
+        y : float
         """
         return _sinusoid(x, self.amplitude, self.period, self.x0, self.y0)
 
@@ -215,7 +215,7 @@ class Sinusoid:
 
         Returns
         -------
-        xfe: float
+        xfe : float
         """
         # position of first extremum for x > x0
         x0e = self.x0 + self.period / 4
@@ -229,7 +229,7 @@ class Sinusoid:
 
         Returns
         -------
-        xfp: float
+        xfp : float
         """
         x0e = self.x0 + self.period / 4
         # position of first peak for x >= 0
