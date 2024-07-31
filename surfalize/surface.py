@@ -620,9 +620,9 @@ class Surface(CachedInstance):
         -------
         Surface
         """
-        self.detrend_polynomial(degree=1, inplace=inplace, return_trend=return_trend)
+        return self.detrend_polynomial(degree=1, inplace=inplace, return_trend=return_trend)
 
-    def detrend_polynomial(self, degree=1, inplace=True, return_trend=False):
+    def detrend_polynomial(self, degree=1, inplace=False, return_trend=False):
         """
         Detrend a 2d array of height data using a polynomial surface
 
@@ -630,26 +630,40 @@ class Surface(CachedInstance):
         ----------
         degree : int, default 1
             Polynomial degree.
-        return_trend: bool, default False
-            return the trend as a Surface object alongside the detrended surface if True.
         inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
+        return_trend: bool, default False
+            return the trend as a Surface object alongside the detrended surface if True.
 
         Returns
         -------
-        Surface
+        Surface or tuple of Surfaces
         """
         rows, cols = self.size
-        x, y = np.meshgrid(range(cols), range(rows))
+        y, x = np.mgrid[:rows, :cols]
+
+        # Normalize coordinates to [-1, 1] range
+        x = (x - x.mean()) / x.max()
+        y = (y - y.mean()) / y.max()
+
         x_flat = x.flatten()
         y_flat = y.flatten()
         z_flat = self.data.flatten()
-        A = np.column_stack([np.ones(x_flat.shape)] +
-                            [x_flat ** i for i in range(1, degree + 1)] +
-                            [y_flat ** i for i in range(1, degree + 1)])
+
+        # Create design matrix with cross-terms
+        A = np.ones((len(x_flat), 1))
+        for i in range(1, degree + 1):
+            for j in range(i + 1):
+                A = np.column_stack((A, (x_flat ** (i - j)) * (y_flat ** j)))
+
+        # Fit polynomial using SVD for improved numerical stability
         coeffs, _, _, _ = np.linalg.lstsq(A, z_flat, rcond=None)
+
+        # Calculate trend
         trend = np.dot(A, coeffs).reshape(self.size)
+
+        # Subtract trend from data
         detrended = self.data - trend
 
         if inplace:
@@ -657,6 +671,7 @@ class Surface(CachedInstance):
             return_surface = self
         else:
             return_surface = Surface(detrended, self.step_x, self.step_y)
+
         if return_trend:
             return return_surface, Surface(trend, self.step_x, self.step_y)
         return return_surface
