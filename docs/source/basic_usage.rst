@@ -74,7 +74,7 @@ it does not copy the data and does not need to instantiate a new object.
     surface = surface.align(axis='y')
 
     # Remove outliers
-    surface = surace.remove_outliers()
+    surface = surface.remove_outliers()
 
     # Threshold the surface, default threshold value is 0.5% of the AbbottCurve
     surface = surface.threshold(threshold=0.5)
