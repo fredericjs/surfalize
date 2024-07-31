@@ -7,10 +7,13 @@ version_file = "surfalize/_version.py"
 
 [project]
 name = "surfalize"
+authors = [
+    {name = "Frederic Schell", email = "frederic.schell@iws.fraunhofer.de"}
+]
 dynamic = ["version"]
 description = "A python module to analyze surface roughness"
 readme = "README.md"
-readme-content-type = "text/markdown"
+license = {file = "LICENSE"}
 requires-python = ">=3.6"
 classifiers = [
     "Programming Language :: Python",
@@ -22,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
+
 dependencies = [
     "numpy>=1.18.1,<2.0",
     "matplotlib>=3.1.1",
@@ -33,10 +37,6 @@ dependencies = [
     "python-dateutil",
     "pillow"
 ]
-
-[project.authors]
-name = "Frederic Schell"
-email = "frederic.schell@iws.fraunhofer.de"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -604,43 +604,63 @@ class Surface(CachedInstance):
             return self
         return Surface(data_interpolated, self.step_x, self.step_y)
 
-    def level(self, inplace=False):
+    def level(self, return_trend=False, inplace=False):
         """
         Levels the surface by subtraction of a least squares fit plane.
 
         Parameters
         ----------
+        return_trend: bool, default False
+            return the trend as a Surface object alongside the detrended surface if True.
         inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self.
 
         Returns
         -------
-        surface : surfalize.Surface
-            Surface object.
+        Surface
         """
-        x, y = np.meshgrid(np.arange(self.size.x), np.arange(self.size.y))
-        # Use only valid values
-        height_flat = self.data.flatten()
-        mask = ~np.isnan(height_flat)
-        x_flat = x.flatten()[mask]
-        y_flat = y.flatten()[mask]
-        height_flat = height_flat[mask]
-        # Create a design matrix A for linear regression
-        A = np.column_stack((x_flat, y_flat, np.ones_like(x_flat)))
-        # Use linear regression to fit a plane to the data
-        coefficients, _, _, _ = lstsq(A, height_flat)
-        # Extract the coefficients for the plane equation
-        a, b, c = coefficients
-        # Calculate the plane values for each point in the grid
-        plane = a * x + b * y + c
-        plane = plane - plane.mean()
-        # Subtract the plane from the original height data to level it
-        leveled_data = self.data - plane
+        self.detrend_polynomial(degree=1, inplace=inplace, return_trend=return_trend)
+
+    def detrend_polynomial(self, degree=1, inplace=True, return_trend=False):
+        """
+        Detrend a 2d array of height data using a polynomial surface
+
+        Parameters
+        ----------
+        degree : int, default 1
+            Polynomial degree.
+        return_trend: bool, default False
+            return the trend as a Surface object alongside the detrended surface if True.
+        inplace : bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        Surface
+        """
+        rows, cols = self.size
+        x, y = np.meshgrid(range(cols), range(rows))
+        x_flat = x.flatten()
+        y_flat = y.flatten()
+        z_flat = self.data.flatten()
+        A = np.column_stack([np.ones(x_flat.shape)] +
+                            [x_flat ** i for i in range(1, degree + 1)] +
+                            [y_flat ** i for i in range(1, degree + 1)])
+        coeffs, _, _, _ = np.linalg.lstsq(A, z_flat, rcond=None)
+        trend = np.dot(A, coeffs).reshape(self.size)
+        detrended = self.data - trend
+
         if inplace:
-            self._set_data(data=leveled_data)
-            return self
-        return Surface(leveled_data, self.step_x, self.step_y)
+            self._set_data(data=detrended)
+            return_surface = self
+        else:
+            return_surface = Surface(detrended, self.step_x, self.step_y)
+        if return_trend:
+            return return_surface, Surface(trend, self.step_x, self.step_y)
+        return return_surface
+
     
     @no_nonmeasured_points
     def rotate(self, angle, inplace=False):
