@@ -22,8 +22,7 @@ master_doc = 'index'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'numpydoc',
-    'nbsphinx'
+    'numpydoc'
 ]
 
 templates_path = ['_templates']
