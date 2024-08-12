@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 from .surface import Surface
 from .utils import is_list_like
-from .file import supported_formats
+from .file import supported_formats_read
 from .exceptions import BatchError, CalculationError
 
 class ParsingError(Exception):
@@ -414,7 +414,7 @@ class Batch:
         dir_path = Path(dir_path)
         filepaths = []
         if file_extensions is None:
-            file_extensions = supported_formats
+            file_extensions = supported_formats_read
         elif isinstance(file_extensions, str):
             file_extensions = [file_extensions]
         for extension in file_extensions:

@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 import numpy as np
 from surfalize import Surface
-from surfalize.file import supported_formats
+from surfalize.file import supported_formats_read
 from surfalize.file.loader import dispatcher
 
 module_path = Path(__file__).parent
@@ -24,7 +24,7 @@ def almost_equal(surface1, surface2):
 def testfile_dir():
     return module_path / 'test_files'
 
-@pytest.mark.parametrize('fileformat', supported_formats)
+@pytest.mark.parametrize('fileformat', supported_formats_read)
 def test_fileformat_loading(testfile_dir, fileformat):
     files = list(testfile_dir.glob(f'*{fileformat}'))
     if not files:

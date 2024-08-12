@@ -35,8 +35,13 @@ dependencies = [
     "openpyxl>=3.1.2",
     "scikit-learn",
     "python-dateutil",
-    "pillow"
+    "pillow",
+    "click",
+    "fpdf2"
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[project.scripts]
+surfalize = "surfalize.cli:cli"

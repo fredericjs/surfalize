@@ -32,7 +32,8 @@ dispatcher = {
     '.os3d':    {'read': read_os3d}
 }
 
-supported_formats = list(dispatcher.keys())
+supported_formats_read = [k for k, v in dispatcher.items() if 'read' in v]
+supported_formats_write = [k for k, v in dispatcher.items() if 'write' in v]
 
 def load_file(filepath, read_image_layers=False, encoding="utf-8"):
     filepath = Path(filepath)
