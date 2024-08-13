@@ -38,5 +38,9 @@ dependencies = [
     "pillow"
 ]
 
+[tool.setuptools]
+include-package-data = false
+
 [tool.setuptools.packages.find]
-where = ["."]
+include = ["surfalize*"]
+exclude = ["docs*", "tests*"]
