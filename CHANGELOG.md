@@ -1,5 +1,6 @@
-## [unreleased changes]
+## v0.11.1
 - Removed hierarch keyword from fits readers
+- Fixed bug with reshaping of fits arrays
 ## v0.11.0
 - Added polynomial detrending
 - Added FITS file format
