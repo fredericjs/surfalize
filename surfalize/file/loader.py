@@ -14,6 +14,7 @@ from .al3d import read_al3d, write_al3d
 from .sdf import read_sdf, write_sdf
 from .gwy import read_gwy
 from .os3d import read_os3d
+from .fits import read_fits
 
 dispatcher = {
     '.sur':     {'read': read_sur, 'write': write_sur},
@@ -29,7 +30,8 @@ dispatcher = {
     '.al3d':    {'read': read_al3d, 'write': write_al3d},
     '.sdf':     {'read': read_sdf, 'write': write_sdf},
     '.gwy':     {'read': read_gwy},
-    '.os3d':    {'read': read_os3d}
+    '.os3d':    {'read': read_os3d},
+    '.fits':    {'read': read_fits}
 }
 
 supported_formats_read = [k for k, v in dispatcher.items() if 'read' in v]

@@ -40,8 +40,14 @@ dependencies = [
     "fpdf2"
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
-
 [project.scripts]
 surfalize = "surfalize.cli:cli"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["surfalize*"]
+exclude = ["docs*", "tests*"]
+
+

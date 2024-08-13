@@ -9,12 +9,19 @@ MU_ALIASES = {
 
 UNIT_EXPONENT = {
     'm':   0,
+    'meter': 0,
     'dm': -1,
+    'decimeter': -1,
     'cm': -2,
+    'centimeter': -2,
     'mm': -3,
+    'millimeter': -3,
     'um': -6,
+    'micrometer': -6,
     'nm': -9,
-    'pm': -12
+    'nanometer': -9,
+    'pm': -12,
+    'picometer': -12
 }
 
 def _sanitize_mu(string):
@@ -52,6 +59,8 @@ def get_unit_conversion(from_unit, to_unit):
         Factor by which to multiply the original values.
     """
     from_unit = _sanitize_mu(from_unit)
+    from_unit = from_unit.lower()
+    to_unit = to_unit.lower()
     if from_unit not in UNIT_EXPONENT or to_unit not in UNIT_EXPONENT:
         raise ValueError('Unit does not exist.')
     exponent = UNIT_EXPONENT[from_unit] - UNIT_EXPONENT[to_unit]
