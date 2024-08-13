@@ -81,8 +81,8 @@ def read_fits(filepath, read_image_layers=False, encoding='utf-8'):
                     raise UnsupportedFileFormatError("Array with number of dimensions not equal to 2 detected.")
                 datasize = hdu_header['NAXIS1'] * hdu_header['NAXIS2'] * int(abs(hdu_header['BITPIX'] / 8))
                 data = np.fromfile(filehandle, dtype=dtype_map[hdu_header['BITPIX']],
-                                   count=hdu_header['NAXIS1'] * hdu_header['NAXIS2']).reshape(hdu_header['NAXIS1'],
-                                                                                              hdu_header['NAXIS2'])
+                                   count=hdu_header['NAXIS1'] * hdu_header['NAXIS2']).reshape(hdu_header['NAXIS2'],
+                                                                                              hdu_header['NAXIS1'])
                 # Skip the remaining blocksize
                 filehandle.seek(BLOCKSIZE - (datasize % BLOCKSIZE), 1)
                 layers[hdu_header['EXTNAME']] = HeaderDataUnit(hdu_header, data)
