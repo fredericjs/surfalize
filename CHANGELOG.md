@@ -1,4 +1,4 @@
-## [unrealsed changes]
+## v0.11.0
 - Added polynomial detrending
 - Added FITS file format
 ## v0.10.2
