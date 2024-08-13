@@ -48,20 +48,21 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 
 ## Currently supported file formats
 
-| Manufacturer      | Format                 | Reading | Writing |
-|-------------------|------------------------|---------|---------|
-| Keyence           | *.vk4*, *.vk6*, *.vk7* | Yes     | No      | 
-| Leica             | *.plu*                 | Yes     | No      | 
-| Sensofar          | *.plu*, *.plux*        | Yes     | No      | 
-| Digital Surf      | *.sur*                 | Yes     | Yes     | 
-| KLA Zeta          | *.zmg*                 | Yes     | No      | 
-| Wyko              | *.opd*                 | Yes     | No      | 
-| Nanofocus         | *.nms*                 | Yes     | No      | 
-| Alicona           | *.al3d*                | Yes     | Yes     | 
-| Digital Surf      | *.sdf*                 | Yes     | Yes     | 
-| Gwyddion          | *.gwy*                 | Yes     | No      | 
-| Digital Metrology | *.os3d*                | Yes     | No      | 
-| General           | *.xyz*                 | Yes     | No      |
+| Manufacturer           | Format                  | Reading | Writing |
+|------------------------|-------------------------|---------|---------|
+| Keyence                | *.vk4*, *.vk6*, *.vk7*  | Yes     | No      | 
+| Leica                  | *.plu*                  | Yes     | No      | 
+| Sensofar               | *.plu*, *.plux*         | Yes     | No      | 
+| Digital Surf           | *.sur*                  | Yes     | Yes     | 
+| KLA Zeta               | *.zmg*                  | Yes     | No      | 
+| Wyko                   | *.opd*                  | Yes     | No      | 
+| Nanofocus              | *.nms*                  | Yes     | No      | 
+| Alicona                | *.al3d*                 | Yes     | Yes     | 
+| Digital Surf           | *.sdf*                  | Yes     | Yes     | 
+| Gwyddion               | *.gwy*                  | Yes     | No      | 
+| Digital Metrology      | *.os3d*                 | Yes     | No      |
+| IAU FITS Working Group | *.fits*                 | Yes     | No      |
+| General                | *.xyz*                  | Yes     | No      |
 
 ## Supported roughness parameters
 
