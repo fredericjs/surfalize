@@ -1,3 +1,6 @@
+## [unrealsed changes]
+- Added polynomial detrending
+- Added FITS file format
 ## v0.10.2
 - Fixed bug with file saving
 - Fixed bug with saving to SUR file format
