@@ -47,6 +47,8 @@ def parse_header_block(block):
         left, right = line.split('=')
         left = left.strip()
         right = right.strip()
+        if left.startswith('HIERARCH'):
+            left = left.replace('HIERARCH ', '')
         header[left] = convert_dtype(right)
     return header, block_ended
 
@@ -98,9 +100,9 @@ def read_fits(filepath, read_image_layers=False, encoding='utf-8'):
     if 'MASK' in layers:
         mask = layers['MASK'].data.astype('bool')
         data[~mask] = np.nan
-    x_factor = header['HIERARCH UnitMultiplicatorDeltas'] * get_unit_conversion(header['UNITX'], 'um')
-    y_factor = header['HIERARCH UnitMultiplicatorDeltas'] * get_unit_conversion(header['UNITX'], 'um')
-    z_factor = header['HIERARCH UnitMultiplicatorHeights'] * get_unit_conversion(header['UNITZ'], 'um')
+    x_factor = header['UnitMultiplicatorDeltas'] * get_unit_conversion(header['UNITX'], 'um')
+    y_factor = header['UnitMultiplicatorDeltas'] * get_unit_conversion(header['UNITX'], 'um')
+    z_factor = header['UnitMultiplicatorHeights'] * get_unit_conversion(header['UNITZ'], 'um')
     step_x = header['DELTAX'] * x_factor
     step_y = header['DELTAY'] * y_factor
     data = data * z_factor
