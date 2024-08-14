@@ -1486,9 +1486,9 @@ class Surface(CachedInstance):
         """
         dx, dy = self._get_fourier_peak_dx_dy()
         # Account for special cases
-        if dx == np.inf:
+        if dx == np.inf or dx == 0:
             return 90
-        if dy == np.inf:
+        if dy == np.inf or dy == 0:
             return 0
         return np.rad2deg(np.arctan(dy / dx))
 
