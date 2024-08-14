@@ -61,7 +61,7 @@ class FilenameParser:
     TYPES = {
         'float': r'\d+(?:(?:\.|,)\d+)?',
         'int': r'\d+',
-        'str': r'[A-Za-z]+'
+        'str': r'.+'
     }
 
     def __init__(self, template_str):
@@ -184,8 +184,33 @@ class FilenameParser:
             df = df.copy()
             idx = df.columns.get_loc(column) + 1
             for col in cols[::-1]:
-                df.insert(idx, col, '')
+                if col not in df.columns:
+                    df.insert(idx, col, '')
         return df.assign(**extracted)
+
+
+class BatchResult:
+
+    def __init__(self, df):
+        self.__df = df.copy()
+
+    def __getattr__(self, attr):
+        if attr in self.__dict__:
+            return getattr(self, attr)
+        return getattr(self.__df, attr)
+
+    def __getitem__(self, item):
+        return self.__df.__getitem__(item)
+
+    def __setitem__(self, item, value):
+        self.__df.__setitem__(item, value)
+
+    def get_dataframe(self):
+        return self.__df
+
+    def extract_from_filename(self, pattern):
+        parser = FilenameParser(pattern)
+        self.__df = parser.apply_on(self.__df, 'file')
 
 class Operation:
     """
@@ -514,7 +539,7 @@ class Batch:
         df = self._construct_dataframe(results)
         if saveto is not None:
             df.to_excel(saveto)
-        return df
+        return BatchResult(df)
 
     def extract_from_filename(self, pattern):
         """
