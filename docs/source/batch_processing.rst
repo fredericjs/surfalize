@@ -80,13 +80,16 @@ If arguments need to be supplied, the parameter must be constructed as a `Parame
 Executing the batch process
 ===========================
 
-Finally, the batch processing is executed by calling `Batch.execute`, returning a `pd.DataFrame`. Optionally,
-`multiprocessing=True` can be specified to split the load among all available CPU cores. Moreover, the results
-can be saved to an Excel Spread sheet by specifiying a path for `saveto=r'path\to\excel_file.xlsx`.
+Finally, the batch processing is executed by calling `Batch.execute`, returning a `BatchResult` object. The
+`BatchResult` class wraps a `pd.DataFrame` object (but is not a subclass of it) and exposes all its methods. Therefore,
+it can be used like a `DataFrame` for most purposes but also offers some additional functionality. To access the
+underlying `DataFrame` object, the method `get_dataframe` can be called on the object.
+Optionally, `multiprocessing=True` can be specified to `Batch.execute` to split the load among all available CPU cores.
+Moreover, the results can be saved to an Excel Spread sheet by specifiying a path for `saveto=r'path\to\excel_file.xlsx`.
 
 .. code:: python
 
-    df = batch.execute(multiprocessing=True)
+    result = batch.execute(multiprocessing=True)
 
 If the calculation of one parameter fails for even one surface, which could be the case for instance when a
 `FittingError` occurs during the calculation of the structure depth, the entire batch processing stops and the error
@@ -96,7 +99,7 @@ values. If you specifically want any errors to be raised nonetheless, specify `i
 
 .. code:: python
 
-    df = batch.execute(multiprocessing=True, ignore_errors=False)
+    result = batch.execute(multiprocessing=True, ignore_errors=False)
 
 Optionally, a Batch object can be initialized with a filepath pointing to an Excel File which contains additional
 parameters, such as laser parameters. The file must contain a column `file`, which specifies the filename including file
@@ -107,7 +110,7 @@ Dataframe that is returned by `Batch.execute`.
 
     batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\laserparameters.xlsx')
     batch.level().filter('highpass', 20).align().roughness_parameters()
-    df = batch.execute()
+    result = batch.execute()
 
 Parsing filenames for additional parameters
 ===========================================
@@ -153,7 +156,20 @@ object:
     pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float|V>_<hatch_distance|float|HD>_<overscans|int|OS>'
     batch.extract_from_filename(pattern)
     batch.roughness_parameters()
-    df = batch.execute()
+    result = batch.execute()
+
+Instead of on the `Batch` object, the filename extraction can also be applied on the `BatchResult` object, which has the
+advantage that the Batch does not have to be executed every time the template string is changed, for instance when the
+template string was constructed wrong. The method `BatchResult.extract_from_filename` operates inplace on the object.
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.level()
+    batch.roughness_parameters()
+    result = batch.execute()
+    pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float|V>_<hatch_distance|float|HD>_<overscans|int|OS>'
+    result.extract_from_filename(pattern)
 
 Full example
 ============
@@ -183,9 +199,9 @@ Excel files located in `C:\users\exampleuser\documents\topo_files\laserparameter
     filepaths = Path(r'C:\users\exampleuser\documents\topo_files').glob('*.vk4')
     batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\topo_files\laserparameters.xlsx')
     batch.level().filter('highpass', 20).align().roughness_parameters(['Sa', 'Sq', 'Sz'])
-    batch.execute(multiprocessing=True, saveto=r'C:\users\exampleuser\documents\roughness_results.xlsx')
+    result = batch.execute(multiprocessing=True, saveto=r'C:\users\exampleuser\documents\roughness_results.xlsx')
 
-The result will be a DataFrame that looks like this:
+The result will be a BatchResult that looks like this:
 
 +------------+-------+---------------+----------------+------+------+------+
 | file       | power | pulse_overlap | hatch_distance | Sa   | Sq   | Sz   |
