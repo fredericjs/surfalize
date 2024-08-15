@@ -4,6 +4,7 @@
   methods, but allows for other methods such as filename extraction on the result and potentially other methods in the
   future
 - Fixed bug in orientation_fft
+- Added vmin and vmax keyword to Surface.plot_2d
 ## v0.11.1
 - Removed hierarch keyword from fits readers
 - Fixed bug with reshaping of fits arrays
