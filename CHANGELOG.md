@@ -1,5 +1,13 @@
 ## [unreleased changes]
+- Fixed string match in filename extraction to also include non alphabetic characters
+- Batch.execute now returns BatchResult class instead of DataFrame, which wraps the DataFrame and exposes the same
+  methods, but allows for other methods such as filename extraction on the result and potentially other methods in the
+  future
+- Fixed bug in orientation_fft
+- Added vmin, vmax and show_cbar keyword to Surface.plot_2d
+## v0.11.1
 - Removed hierarch keyword from fits readers
+- Fixed bug with reshaping of fits arrays
 ## v0.11.0
 - Added polynomial detrending
 - Added FITS file format
