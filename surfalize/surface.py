@@ -1898,7 +1898,7 @@ class Surface(CachedInstance):
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         return ax
 
-    def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
+    def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, vmin=None, vmax=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1938,7 +1938,7 @@ class Surface(CachedInstance):
                 cmap = 'gray'
         else:
             raise ValueError(f'Layer {layer} does not exist.')
-        im = ax.imshow(data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um))
+        im = ax.imshow(data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um), vmin=vmin, vmax=vmax)
         if show_cbar:
             fig.colorbar(im, cax=cax, label='z [µm]')
         else:
