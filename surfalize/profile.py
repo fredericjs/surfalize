@@ -55,10 +55,14 @@ class Profile:
     def Rku(self):
         return ((self._data - self._data.mean()) ** 4).sum() / self._data.size / self.Rq() ** 4
 
-    def show(self):
+    def plot_2d(self):
         fig, ax = plt.subplots(figsize=(10, 3))
         ax.set_xlim(0, self._length_um)
         ax.set_xlabel('x [µm]')
         ax.set_ylabel('z [µm]')
         ax.plot(np.linspace(0, self._length_um, self._data.size), self._data, c='k', lw=1)
+        return ax
+
+    def show(self):
+        self.plot_2d()
         plt.show()
