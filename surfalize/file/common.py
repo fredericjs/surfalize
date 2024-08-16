@@ -101,6 +101,8 @@ def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
         if name is None:
             filehandle.write(b'\x00' * format_)
             continue
+        if isinstance(format_, FormatFromPrevious):
+            format_ = format_.get_format(data)
         value = data[name]
         if isinstance(value, str):
             value = value.encode(encoding)
