@@ -1,5 +1,5 @@
 from pathlib import Path
-from functools import partial
+
 from ..exceptions import UnsupportedFileFormatError
 
 from .vk import read_vk4, read_vk6_vk7
@@ -15,6 +15,7 @@ from .sdf import read_sdf, write_sdf
 from .gwy import read_gwy
 from .os3d import read_os3d
 from .fits import read_fits
+from .sflz import read_sflz, write_sflz
 
 dispatcher = {
     '.sur':     {'read': read_sur, 'write': write_sur},
@@ -31,7 +32,8 @@ dispatcher = {
     '.sdf':     {'read': read_sdf, 'write': write_sdf},
     '.gwy':     {'read': read_gwy},
     '.os3d':    {'read': read_os3d},
-    '.fits':    {'read': read_fits}
+    '.fits':    {'read': read_fits},
+    '.sflz':    {'read': read_sflz, 'write': write_sflz}
 }
 
 supported_formats = list(dispatcher.keys())

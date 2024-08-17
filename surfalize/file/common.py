@@ -76,6 +76,18 @@ class FormatFromPrevious:
         size = layout_dict[self.previous]
         return f'{size}{self.dtype}'
 
+class Apply:
+
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+    def convert_from_file(self):
+        self.read()
+
+    def convert_to_file(self):
+        self.write()
+
+
 def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
     """
     Writes a binary layout to a file.
