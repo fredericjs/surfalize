@@ -1,5 +1,6 @@
 import struct
 import numpy as np
+from abc import abstractmethod
 
 MU_ALIASES = {
     chr(181): 'u',
@@ -194,3 +195,57 @@ class RawSurface:
         self.step_y = step_y
         self.metadata = {} if metadata is None else metadata
         self.image_layers = {} if image_layers is None else image_layers
+
+
+class FileHandler:
+    _readers = {}
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+
+        # Ensure the subclass defines the required class attributes
+        if not hasattr(cls, 'suffixes'):
+            raise AttributeError(f"Class {cls.__name__} must define a 'suffixes' class attribute")
+        if not isinstance(cls.suffixes, (list, tuple)):
+            raise TypeError(f"'suffixes' must be a list or tuple in {cls.__name__}")
+        if not hasattr(cls, 'magic'):
+            raise AttributeError(f"Class {cls.__name__} must define a 'magic' class attribute")
+
+        # Automatically register the subclass for each suffix
+        for suffix in cls.suffixes:
+            FileHandler._readers[suffix] = cls
+
+    @classmethod
+    def get_reader(cls, file_format=None, file=None):
+        if file_format:
+            # Try to get the reader based on the file extension
+            reader_class = cls._readers.get(file_format)
+            if reader_class and reader_class.check_magic(file):
+                return reader_class()
+        else:
+            # No file_format provided, so check all readers by magic number
+            for reader_cls in cls._readers.values():
+                if reader_cls.check_magic(file):
+                    return reader_cls()
+
+        raise ValueError("No suitable reader found based on file format or magic number")
+
+    @classmethod
+    def check_magic(cls, file):
+        if isinstance(file, str):  # It's a file path
+            with open(file, 'rb') as f:
+                file_start = f.read(len(cls.magic))
+        else:  # It's a file-like object
+            file.seek(0)
+            file_start = file.read(len(cls.magic))
+            file.seek(0)  # Reset the file pointer after reading
+
+        return file_start == cls.magic
+
+    @abstractmethod
+    def read(self, file):
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @abstractmethod
+    def write(self, file):
+        raise NotImplementedError("Subclasses must implement this method")
