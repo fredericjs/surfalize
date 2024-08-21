@@ -2,7 +2,7 @@ import struct
 import re
 from datetime import datetime
 import numpy as np
-from .common import read_binary_layout, RawSurface, get_unit_conversion, write_binary_layout
+from .common import RawSurface, get_unit_conversion, Entry, Layout
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # File format specifications taken from ISO 25178-71
@@ -14,19 +14,19 @@ CONVERSION_FACTOR = get_unit_conversion(FIXED_UNIT, 'um')
 ASCII_DATE_FORMAT = "%d%m%Y%H%M"
 ASCII_FLOAT_PRECISION = 10
 
-LAYOUT_HEADER = (
-    ("ManufacID", "10s"),
-    ("CreateDate", "12s"),
-    ("ModDate", "12s"),
-    ("NumPoints", "H"),
-    ("NumProfiles", "H"),
-    ("Xscale", "d"),
-    ("Yscale", "d"),
-    ("Zscale", "d"),
-    ("Zresolution", "d"),
-    ("Compression", "B"),
-    ("DataType", "B"),
-    ("CheckType", "B"),
+LAYOUT_HEADER = Layout(
+    Entry("ManufacID", "10s"),
+    Entry("CreateDate", "12s"),
+    Entry("ModDate", "12s"),
+    Entry("NumPoints", "H"),
+    Entry("NumProfiles", "H"),
+    Entry("Xscale", "d"),
+    Entry("Yscale", "d"),
+    Entry("Zscale", "d"),
+    Entry("Zresolution", "d"),
+    Entry("Compression", "B"),
+    Entry("DataType", "B"),
+    Entry("CheckType", "B"),
 )
 
 ASCII_HEADER_TYPES = {
@@ -96,7 +96,7 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
     return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=None)
 
 def read_binary_sdf(filehandle, encoding="utf-8"):
-    header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
+    header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
     num_points = header["NumPoints"]
     num_profiles = header["NumProfiles"]
     data_type = header["DataType"]
@@ -179,7 +179,7 @@ def write_sdf(filepath, surface, encoding='utf-8', binary=True):
     if binary:
         with open(filepath, 'wb') as filehandle:
             filehandle.write(MAGIC_BINARY) # write magic identifier
-            write_binary_layout(filehandle, LAYOUT_HEADER, header)
+            LAYOUT_HEADER.write(filehandle, header)
             data.tofile(filehandle)
     # Write in ascii mode
     else:

@@ -1,47 +1,47 @@
 import dateutil
 import numpy as np
-from .common import read_binary_layout, RawSurface
+from .common import RawSurface, Reserved, Entry, Layout
 
 NON_MEASURED_VALUE = 1000001
 
 DATE_SIZE = 128
 COMMENT_SIZE = 256
 
-LAYOUT_CALIBRATION = (
-    ('yres', 'I'),
-    ('xres', 'I'),
-    ('N_tall', 'I'),
-    ('dy_multip', 'f'),
-    ('mppx', 'f'),
-    ('mppy', 'f'),
-    ('x_0', 'f'),
-    ('y_0', 'f'),
-    ('mpp_tall', 'f'),
-    ('z0', 'f')
+LAYOUT_CALIBRATION = Layout(
+    Entry('yres', 'I'),
+    Entry('xres', 'I'),
+    Entry('N_tall', 'I'),
+    Entry('dy_multip', 'f'),
+    Entry('mppx', 'f'),
+    Entry('mppy', 'f'),
+    Entry('x_0', 'f'),
+    Entry('y_0', 'f'),
+    Entry('mpp_tall', 'f'),
+    Entry('z0', 'f')
 )
 
-LAYOUT_MEASURE_CONFIG = (
-   ('type', 'I'),
-   ('algorithm', 'I'),
-   ('method', 'I'),
-   ('objective', 'I'),
-   ('area', 'I'),
-   ('xres_area', 'I'),
-   ('yres_area', 'I'),
-   ('xres', 'I'),
-   ('yres', 'I'),
-   ('na', 'I'),
-   ('incr_z', 'd'),
-   ('range', 'f'),
-   ('n_planes', 'I'),
-   ('tpc_umbral_F', 'I'),
-   ('restore', 'b'),
-   ('num_layers', 'b'),
-   ('version', 'b'),
-   ('config_hardware', 'b'),
-   ('stack_in_num', 'b'),
-   (None, 3),
-   ('factorio_delmacio', 'I')
+LAYOUT_MEASURE_CONFIG = Layout(
+   Entry('type', 'I'),
+   Entry('algorithm', 'I'),
+   Entry('method', 'I'),
+   Entry('objective', 'I'),
+   Entry('area', 'I'),
+   Entry('xres_area', 'I'),
+   Entry('yres_area', 'I'),
+   Entry('xres', 'I'),
+   Entry('yres', 'I'),
+   Entry('na', 'I'),
+   Entry('incr_z', 'd'),
+   Entry('range', 'f'),
+   Entry('n_planes', 'I'),
+   Entry('tpc_umbral_F', 'I'),
+   Entry('restore', 'b'),
+   Entry('num_layers', 'b'),
+   Entry('version', 'b'),
+   Entry('config_hardware', 'b'),
+   Entry('stack_in_num', 'b'),
+   Reserved(3),
+   Entry('factorio_delmacio', 'I')
 )
 
 def read_plu(filepath, read_image_layers=False, encoding='utf-8'):
@@ -49,8 +49,8 @@ def read_plu(filepath, read_image_layers=False, encoding='utf-8'):
         date_block = filehandle.read(DATE_SIZE)
         timestamp = dateutil.parser.parse(date_block.decode().rstrip('\x00'))
         filehandle.seek(COMMENT_SIZE + 4, 1)
-        calibration = read_binary_layout(filehandle, LAYOUT_CALIBRATION, encoding=encoding)
-        measure_config = read_binary_layout(filehandle, LAYOUT_MEASURE_CONFIG, encoding=encoding)
+        calibration = LAYOUT_CALIBRATION.read(filehandle, encoding=encoding)
+        measure_config = LAYOUT_MEASURE_CONFIG.read(filehandle, encoding=encoding)
         data_length = calibration['xres'] * calibration['yres']
         data = np.fromfile(filehandle, dtype=np.float32, count=data_length)
         image_layers = {}

@@ -3,7 +3,7 @@ import struct
 from datetime import datetime
 
 import numpy as np
-from .common import read_binary_layout, get_unit_conversion, RawSurface, np_fromany
+from .common import get_unit_conversion, RawSurface, np_fromany, Entry, Reserved, Layout
 from ..exceptions import CorruptedFileError
 
 HEADER_SIZE = 12
@@ -11,119 +11,119 @@ FIXED_UNIT = 'pm'
 
 DTYPE_MAP = {16: 'uint16', 32: 'uint32'}
 
-LAYOUT_OFFSET_TABLE = (
-    ('meas_conds', 'I'),
-    ('color_peak', 'I'),
-    ('color_light', 'I'),
-    ('light', 'I'),
-    (None, 8),
-    ('height', 'I'),
-    (None, 8),
-    ('clr_peak_thumb', 'I'),
-    ('clr_thumb', 'I'),
-    ('light_thumb', 'I'),
-    ('height_thumb', 'I'),
-    ('assembly_info', 'I'),
-    ('line_measure', 'I'),
-    ('line_thickness', 'I'),
-    ('string_data', 'I'),
+LAYOUT_OFFSET_TABLE = Layout(
+    Entry('meas_conds', 'I'),
+    Entry('color_peak', 'I'),
+    Entry('color_light', 'I'),
+    Entry('light', 'I'),
+    Reserved(8),
+    Entry('height', 'I'),
+    Reserved(8),
+    Entry('clr_peak_thumb', 'I'),
+    Entry('clr_thumb', 'I'),
+    Entry('light_thumb', 'I'),
+    Entry('height_thumb', 'I'),
+    Entry('assembly_info', 'I'),
+    Entry('line_measure', 'I'),
+    Entry('line_thickness', 'I'),
+    Entry('string_data', 'I'),
 )
 
-LAYOUT_MEASUREMENT_CONDITIONS = (
-    ('size', 'I'),
-    ('year', 'I'),
-    ('month', 'I'),
-    ('day', 'I'),
-    ('hour', 'I'),
-    ('minute', 'I'),
-    ('second', 'I'),
-    ('diff_from_UTC', 'i'),
-    ('img_attributes', 'I'),
-    ('user_interface_mode', 'I'),
-    ('color_composite_mode', 'I'),
-    ('img_layer_number', 'I'),
-    ('run_mode', 'I'),
-    ('peak_mode', 'I'),
-    ('sharpening_level', 'I'),
-    ('speed', 'I'),
-    ('distance', 'I'),
-    ('pitch', 'I'),
-    ('optical_zoom', 'I'),
-    ('number_of_lines', 'I'),
-    ('line0_position', 'I'),
-    (None, 12),
-    ('lens_magnification', 'I'),
-    ('PMT_gain_mode', 'I'),
-    ('PMT_gain', 'I'),
-    ('PMT_offset', 'I'),
-    ('ND_filter', 'I'),
-    (None, 4),
-    ('persist_count', 'I'),
-    ('shutter_speed_mode', 'I'),
-    ('shutter_speed', 'I'),
-    ('white_balance_mode', 'I'),
-    ('white_balance_red', 'I'),
-    ('white_balance_blue', 'I'),
-    ('camera_gain', 'I'),
-    ('plane_compensation', 'I'),
-    ('xy_length_unit', 'I'),
-    ('z_length_unit', 'I'),
-    ('xy_decimal_place', 'I'),
-    ('z_decimal_place', 'I'),
-    ('x_length_per_pixel', 'I'),
-    ('y_length_per_pixel', 'I'),
-    ('z_length_per_digit', 'I'),
-    (None, 20),
-    ('light_filter_type', 'I'),
-    (None, 4),
-    ('gamma_reverse', 'I'),
-    ('gamma', 'I'),
-    ('gamma_correction_offset', 'I'),
-    ('CCD_BW_offset', 'I'),
-    ('num_aperture', 'I'),
-    ('head_type', 'I'),
-    ('PMT_gain_2', 'I'),
-    ('omit_color_img', 'I'),
-    ('lens_ID', 'I'),
-    ('light_lut_mode', 'I'),
-    ('light_lut_in0', 'I'),
-    ('light_lut_out0', 'I'),
-    ('light_lut_in1', 'I'),
-    ('light_lut_out1', 'I'),
-    ('light_lut_in2', 'I'),
-    ('light_lut_out2', 'I'),
-    ('light_lut_in3', 'I'),
-    ('light_lut_out3', 'I'),
-    ('light_lut_in4', 'I'),
-    ('light_lut_out4', 'I'),
-    ('upper_position', 'I'),
-    ('lower_position', 'I'),
-    ('light_effective_bit_depth', 'I'),
-    ('height_effective_bit_depth', 'I')
+LAYOUT_MEASUREMENT_CONDITIONS = Layout(
+    Entry('size', 'I'),
+    Entry('year', 'I'),
+    Entry('month', 'I'),
+    Entry('day', 'I'),
+    Entry('hour', 'I'),
+    Entry('minute', 'I'),
+    Entry('second', 'I'),
+    Entry('diff_from_UTC', 'i'),
+    Entry('img_attributes', 'I'),
+    Entry('user_interface_mode', 'I'),
+    Entry('color_composite_mode', 'I'),
+    Entry('img_layer_number', 'I'),
+    Entry('run_mode', 'I'),
+    Entry('peak_mode', 'I'),
+    Entry('sharpening_level', 'I'),
+    Entry('speed', 'I'),
+    Entry('distance', 'I'),
+    Entry('pitch', 'I'),
+    Entry('optical_zoom', 'I'),
+    Entry('number_of_lines', 'I'),
+    Entry('line0_position', 'I'),
+    Reserved(12),
+    Entry('lens_magnification', 'I'),
+    Entry('PMT_gain_mode', 'I'),
+    Entry('PMT_gain', 'I'),
+    Entry('PMT_offset', 'I'),
+    Entry('ND_filter', 'I'),
+    Reserved(4),
+    Entry('persist_count', 'I'),
+    Entry('shutter_speed_mode', 'I'),
+    Entry('shutter_speed', 'I'),
+    Entry('white_balance_mode', 'I'),
+    Entry('white_balance_red', 'I'),
+    Entry('white_balance_blue', 'I'),
+    Entry('camera_gain', 'I'),
+    Entry('plane_compensation', 'I'),
+    Entry('xy_length_unit', 'I'),
+    Entry('z_length_unit', 'I'),
+    Entry('xy_decimal_place', 'I'),
+    Entry('z_decimal_place', 'I'),
+    Entry('x_length_per_pixel', 'I'),
+    Entry('y_length_per_pixel', 'I'),
+    Entry('z_length_per_digit', 'I'),
+    Reserved(20),
+    Entry('light_filter_type', 'I'),
+    Reserved(4),
+    Entry('gamma_reverse', 'I'),
+    Entry('gamma', 'I'),
+    Entry('gamma_correction_offset', 'I'),
+    Entry('CCD_BW_offset', 'I'),
+    Entry('num_aperture', 'I'),
+    Entry('head_type', 'I'),
+    Entry('PMT_gain_2', 'I'),
+    Entry('omit_color_img', 'I'),
+    Entry('lens_ID', 'I'),
+    Entry('light_lut_mode', 'I'),
+    Entry('light_lut_in0', 'I'),
+    Entry('light_lut_out0', 'I'),
+    Entry('light_lut_in1', 'I'),
+    Entry('light_lut_out1', 'I'),
+    Entry('light_lut_in2', 'I'),
+    Entry('light_lut_out2', 'I'),
+    Entry('light_lut_in3', 'I'),
+    Entry('light_lut_out3', 'I'),
+    Entry('light_lut_in4', 'I'),
+    Entry('light_lut_out4', 'I'),
+    Entry('upper_position', 'I'),
+    Entry('lower_position', 'I'),
+    Entry('light_effective_bit_depth', 'I'),
+    Entry('height_effective_bit_depth', 'I')
 )
 
-LAYOUT_HEIGHT_DATA = (
-    ('width', 'I'),
-    ('height', 'I'),
-    ('bit_depth', 'I'),
-    ('compression', 'I'),
-    ('data_byte_size', 'I'),
-    ('palette_range_min', 'I'),
-    ('palette_range_max', 'I'),
-    (None, 768)
+LAYOUT_HEIGHT_DATA = Layout(
+    Entry('width', 'I'),
+    Entry('height', 'I'),
+    Entry('bit_depth', 'I'),
+    Entry('compression', 'I'),
+    Entry('data_byte_size', 'I'),
+    Entry('palette_range_min', 'I'),
+    Entry('palette_range_max', 'I'),
+    Reserved(768)
 )
 
-LAYOUT_IMAGE_DATA = (
-    ('width', 'I'),
-    ('height', 'I'),
-    ('bit_depth', 'I'),
-    ('compression', 'I'),
-    ('data_byte_size', 'I')
+LAYOUT_IMAGE_DATA = Layout(
+    Entry('width', 'I'),
+    Entry('height', 'I'),
+    Entry('bit_depth', 'I'),
+    Entry('compression', 'I'),
+    Entry('data_byte_size', 'I')
 )
 
 def read_rgb_layer(filehandle, offset):
     filehandle.seek(offset, 0)
-    channel_table = read_binary_layout(filehandle, LAYOUT_IMAGE_DATA)
+    channel_table = LAYOUT_IMAGE_DATA.read(filehandle)
     channel_length = channel_table['width'] * channel_table['height'] * 3
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / (8 * 3):
         raise CorruptedFileError(f'Size of channel () does not correspond to expected size.')
@@ -134,7 +134,7 @@ def read_rgb_layer(filehandle, offset):
 
 def read_height_layer(filehandle, offset):
     filehandle.seek(offset, 0)
-    channel_table = read_binary_layout(filehandle, LAYOUT_HEIGHT_DATA)
+    channel_table = LAYOUT_HEIGHT_DATA.read(filehandle)
     channel_length = channel_table['width'] * channel_table['height']
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / 8:
         raise CorruptedFileError('Size of channel does not correspond to expected size.')
@@ -158,9 +158,9 @@ def read_string_data(filehandle, offset):
 def extract_vk4(filehandle, read_image_layers=False, encoding='utf-8'):
     metadata = dict()
     header = filehandle.read(HEADER_SIZE)
-    offset_table = read_binary_layout(filehandle, LAYOUT_OFFSET_TABLE)
+    offset_table = LAYOUT_OFFSET_TABLE.read(filehandle)
     filehandle.seek(offset_table['meas_conds'], 0)
-    measurement_conditions = read_binary_layout(filehandle, LAYOUT_MEASUREMENT_CONDITIONS)
+    measurement_conditions = LAYOUT_MEASUREMENT_CONDITIONS.read(filehandle)
 
     if read_image_layers:
         image_layers = {}

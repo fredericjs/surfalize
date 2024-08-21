@@ -5,6 +5,8 @@
   future
 - Fixed bug in orientation_fft
 - Added vmin, vmax and show_cbar keyword to Surface.plot_2d
+- Added SFLZ file format
+- Refactored file layout reading and writing
 ## v0.11.1
 - Removed hierarch keyword from fits readers
 - Fixed bug with reshaping of fits arrays
