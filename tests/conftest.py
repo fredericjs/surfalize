@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import subprocess
 from surfalize import Surface
 
 @pytest.fixture
