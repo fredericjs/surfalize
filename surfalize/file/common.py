@@ -1,5 +1,6 @@
 import struct
 import numpy as np
+from abc import abstractmethod, ABC
 
 MU_ALIASES = {
     chr(181): 'u',
@@ -81,89 +82,140 @@ class Apply:
     def __init__(self, dtype):
         self.dtype = dtype
 
-    def convert_from_file(self):
-        self.read()
+    @abstractmethod
+    def read(self, data):
+        raise NotImplementedError
 
-    def convert_to_file(self):
-        self.write()
+    @abstractmethod
+    def write(self, data):
+        raise NotImplementedError
+
+    def convert_from_file(self, filehandle):
+        size = struct.calcsize(self.dtype)
+        unpacked_data = struct.unpack(f'{self.dtype}', filehandle.read(size))[0]
+        return self.read(unpacked_data)
+
+    def convert_to_file(self, filehandle, value):
+        size = struct.calcsize(self.dtype)
+        filehandle.write(struct.pack(self.dtype, self.write(value)))
+
+class BaseEntry(ABC):
+
+    @abstractmethod
+    def read(self, filehandle, data, encoding):
+        raise NotImplementedError
+
+    @abstractmethod
+    def write(self, filehandle, data, encoding):
+        raise NotImplementedError
+
+class Reserved(BaseEntry):
+
+    def __init__(self, nbytes):
+        self.nbytes = nbytes
+
+    def read(self, filehandle, data, encoding):
+        filehandle.seek(self.nbytes, 1)
+
+    def write(self, filehandle, data, encoding):
+        filehandle.write(b'\x00' * self.nbytes)
 
 
-def write_binary_layout(filehandle, layout, data, encoding='utf-8'):
-    """
-    Writes a binary layout to a file.
+class Entry(BaseEntry):
 
-    Parameters
-    ----------
-    filehandle : file object
-        File-like object to read the data from.
-    layout : tuple[tuple[str, str, bool] | tuple[None, int, None]]
-        Layout of the bytes to read as a tuple of tuples in the form (<name>, <format>, <skip_fast>) or
-        (None, <n_bytes>, None) for reserved bytes.
-    data : dict[str: any]
-        Dictionary containing keys that correspond to the name value in the layout tuple and the values to write
-        to the file as keys.
-    encoding : str, Default utf-8
-            Encoding of characters in the file. Defaults to utf-8.
+    def __init__(self, name, format):
+        self.name = name
+        self.format = format
 
-    Returns
-    -------
-    None
-    """
-    for name, format_ in layout:
-        if name is None:
-            filehandle.write(b'\x00' * format_)
-            continue
-        if isinstance(format_, FormatFromPrevious):
-            format_ = format_.get_format(data)
-        value = data[name]
+    def write(self, filehandle, data, encoding):
+        if isinstance(self.format, Apply):
+            self.format.convert_to_file(filehandle, data[self.name])
+            return
+        if isinstance(self.format, FormatFromPrevious):
+            format = self.format.get_format(data)
+        else:
+            format = self.format
+        value = data[self.name]
         if isinstance(value, str):
-            value = value.encode(encoding)
-        filehandle.write(struct.pack(format_, value))
+            # Pad all strings with spaces
+            length = struct.calcsize(format)
+            value = value.ljust(length).encode(encoding)
+        filehandle.write(struct.pack(format, value))
 
-def read_binary_layout(filehandle, layout, encoding='utf-8'):
-    """
-    Reads a binary layout specified by a tuple of tuples from an opened file and returns a dict with the read values.
-    The layout must be provided in the form:
-
-    LAYOUT = (
-        (<name>, <format_specifier>),
-        (...),
-        ...
-    )
-
-    Each tuple in the layout contains three values. The first is a name that will be used as a key for the returned
-    dictionary. The second value is a format specified according to the struct module.
-
-    Reserved bytes in the layout should be indicated by specifying None for the name and the number of bytes to skip as
-    an int for the format specified, e.g. (None, <n_bytes: int>).
-
-    Parameters
-    ----------
-    filehandle : file object
-        File-like object to read the data from.
-    layout : tuple[tuple[str, str, bool] | tuple[None, int, None]]
-        Layout of the bytes to read as a tuple of tuples in the form (<name>, <format>, <skip_fast>) or
-        (None, <n_bytes>, None) for reserved bytes.
-    encoding : str, Default utf-8
-            Encoding of characters in the file. Defaults to utf-8.
-
-    Returns
-    -------
-    dict[str: any]
-    """
-    result = dict()
-    for name, format in layout:
-        if name is None:
-            filehandle.seek(format, 1)
-            continue
-        if isinstance(format, FormatFromPrevious):
-            format = format.get_format(result)
+    def read(self, filehandle, data, encoding):
+        if isinstance(self.format, Apply):
+            data[self.name] = self.format.convert_from_file(filehandle)
+            return
+        if isinstance(self.format, FormatFromPrevious):
+            format = self.format.get_format(data)
+        else:
+            format = self.format
         size = struct.calcsize(format)
         unpacked_data = struct.unpack(f'{format}', filehandle.read(size))[0]
         if isinstance(unpacked_data, bytes):
             unpacked_data = unpacked_data.decode(encoding).rstrip(' \x00')
-        result[name] = unpacked_data
-    return result
+        data[self.name] = unpacked_data
+
+
+class Layout:
+
+    def __init__(self, *entries):
+        self._entries = entries
+
+    def write(self, filehandle, data, encoding='utf-8'):
+        """
+        Writes a binary layout to a file.
+
+        Parameters
+        ----------
+        data : dict[str: any]
+            Dictionary containing keys that correspond to the name value in the layout tuple and the values to write
+            to the file as keys.
+        encoding : str, Default utf-8
+                Encoding of characters in the file. Defaults to utf-8.
+
+        Returns
+        -------
+        None
+        """
+        for entry in self._entries:
+            entry.write(filehandle, data, encoding)
+
+    def read(self, filehandle, encoding='utf-8'):
+        """
+        Reads a binary layout specified by a tuple of tuples from an opened file and returns a dict with the read values.
+        The layout must be provided in the form:
+
+        LAYOUT = (
+            (<name>, <format_specifier>),
+            (...),
+            ...
+        )
+
+        Each tuple in the layout contains three values. The first is a name that will be used as a key for the returned
+        dictionary. The second value is a format specified according to the struct module.
+
+        Reserved bytes in the layout should be indicated by specifying None for the name and the number of bytes to skip as
+        an int for the format specified, e.g. (None, <n_bytes: int>).
+
+        Parameters
+        ----------
+        filehandle : file object
+            File-like object to read the data from.
+        layout : tuple[tuple[str, str, bool] | tuple[None, int, None]]
+            Layout of the bytes to read as a tuple of tuples in the form (<name>, <format>, <skip_fast>) or
+            (None, <n_bytes>, None) for reserved bytes.
+        encoding : str, Default utf-8
+                Encoding of characters in the file. Defaults to utf-8.
+
+        Returns
+        -------
+        dict[str: any]
+        """
+        data = dict()
+        for entry in self._entries:
+            entry.read(filehandle, data, encoding)
+        return data
 
 def np_fromany(fileobject, dtype, count=-1, offset=0):
     """

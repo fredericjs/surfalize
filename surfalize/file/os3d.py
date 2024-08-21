@@ -5,26 +5,26 @@ import io
 import dateutil
 from PIL import Image
 import numpy as np
-from .common import read_binary_layout, FormatFromPrevious, RawSurface
+from .common import FormatFromPrevious, RawSurface, Entry, Layout
 from ..exceptions import CorruptedFileError
 
 MAGIC = b'OmniSurf3D'
 INVALID_VALUE = -3.4028235e38
 THRESHOLD = -3e38
 
-LAYOUT_HEADER = (
-    ('nMajorVersion', 'i'),
-    ('nMinorVersion', 'i'),
-    ('nIdentificationStringLength', 'i'),
-    ('chArrayIdentification', FormatFromPrevious('nIdentificationStringLength', 's')),
-    ('nMeasureDateTimeStringLength', 'i'),
-    ('chArrayMeasureDateTime', FormatFromPrevious('nMeasureDateTimeStringLength', 's')),
-    ('nPointsAlongX', 'i'),
-    ('nPointsAlongY', 'i'),
-    ('dSpacingAlongXUM', 'd'),
-    ('dSpacingAlongYUM', 'd'),
-    ('dXOriginUM', 'd'),
-    ('dYOriginUM', 'd'),
+LAYOUT_HEADER = Layout(
+    Entry('nMajorVersion', 'i'),
+    Entry('nMinorVersion', 'i'),
+    Entry('nIdentificationStringLength', 'i'),
+    Entry('chArrayIdentification', FormatFromPrevious('nIdentificationStringLength', 's')),
+    Entry('nMeasureDateTimeStringLength', 'i'),
+    Entry('chArrayMeasureDateTime', FormatFromPrevious('nMeasureDateTimeStringLength', 's')),
+    Entry('nPointsAlongX', 'i'),
+    Entry('nPointsAlongY', 'i'),
+    Entry('dSpacingAlongXUM', 'd'),
+    Entry('dSpacingAlongYUM', 'd'),
+    Entry('dXOriginUM', 'd'),
+    Entry('dYOriginUM', 'd'),
 )
 
 def read_os3d(filepath, read_image_layers=False, encoding='utf-8'):
@@ -32,7 +32,7 @@ def read_os3d(filepath, read_image_layers=False, encoding='utf-8'):
         magic = filehandle.read(len(MAGIC))
         if magic != MAGIC:
             raise CorruptedFileError(f'Unknown file magic detected: {magic.decode()}')
-        header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
+        header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
         data = np.fromfile(filehandle, count=header['nPointsAlongX'] * header['nPointsAlongY'], dtype='float32')
         data = data.reshape(header['nPointsAlongY'], header['nPointsAlongX'])
         data[data < THRESHOLD] = np.nan
