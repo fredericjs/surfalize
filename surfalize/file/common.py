@@ -25,6 +25,7 @@ UNIT_EXPONENT = {
     'picometer': -12
 }
 
+
 def _sanitize_mu(string):
     """
     replaces all possible unicode versions of µm with um.
@@ -67,6 +68,7 @@ def get_unit_conversion(from_unit, to_unit):
     exponent = UNIT_EXPONENT[from_unit] - UNIT_EXPONENT[to_unit]
     return 10**exponent
 
+
 class FormatFromPrevious:
 
     def __init__(self, previous, dtype):
@@ -76,6 +78,7 @@ class FormatFromPrevious:
     def get_format(self, layout_dict):
         size = layout_dict[self.previous]
         return f'{size}{self.dtype}'
+
 
 class Apply:
 
@@ -99,6 +102,7 @@ class Apply:
         size = struct.calcsize(self.dtype)
         filehandle.write(struct.pack(self.dtype, self.write(value)))
 
+
 class BaseEntry(ABC):
 
     @abstractmethod
@@ -108,6 +112,7 @@ class BaseEntry(ABC):
     @abstractmethod
     def write(self, filehandle, data, encoding):
         raise NotImplementedError
+
 
 class Reserved(BaseEntry):
 
