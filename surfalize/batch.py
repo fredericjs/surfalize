@@ -123,7 +123,11 @@ class FilenameParser:
         for token in tokens:
             s = token.prefix
             s += f'(?P<{token.name}>'
-            s += self.TYPES[token.dtype]
+            try:
+                s += self.TYPES[token.dtype]
+            except KeyError:
+                raise ParsingError(f'The datatype {token.dtype} is invalid. '
+                                   f'Possible datatypes are "int", "float", "str"') from None
             s += ')'
             s += token.suffix
             patterns.append(s)
