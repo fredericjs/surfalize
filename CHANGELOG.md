@@ -1,4 +1,4 @@
-## [unreleased changes]
+## v0.12.0
 - Fixed string match in filename extraction to also include non alphabetic characters
 - Batch.execute now returns BatchResult class instead of DataFrame, which wraps the DataFrame and exposes the same
   methods, but allows for other methods such as filename extraction on the result and potentially other methods in the
@@ -7,6 +7,12 @@
 - Added vmin, vmax and show_cbar keyword to Surface.plot_2d
 - Added SFLZ file format
 - Refactored file layout reading and writing
+- Replaced DataFrame with BatchResult as the return value for Batch.execute. BatchResult wraps the DataFrame but also 
+  exposes additional methods, such as filename parameter extraction.
+- Batch.execute now raises error if parameter is computed twice and overwritten
+- Parameters in Batch can now be given a custom name using the custom_name kwarg to change the name of the column in
+  the DataFrame. This allows for the computation of multiple versions of the same parameter
+- Removed numpy dependency restriction to versions below 2.0
 ## v0.11.1
 - Removed hierarch keyword from fits readers
 - Fixed bug with reshaping of fits arrays
