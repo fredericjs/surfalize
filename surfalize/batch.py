@@ -1,3 +1,4 @@
+from collections import defaultdict
 from multiprocessing.pool import ThreadPool
 from functools import partial
 from pathlib import Path
@@ -61,7 +62,7 @@ class FilenameParser:
     TYPES = {
         'float': r'\d+(?:(?:\.|,)\d+)?',
         'int': r'\d+',
-        'str': r'[A-Za-z]+'
+        'str': r'.+'
     }
 
     def __init__(self, template_str):
@@ -123,7 +124,11 @@ class FilenameParser:
         for token in tokens:
             s = token.prefix
             s += f'(?P<{token.name}>'
-            s += self.TYPES[token.dtype]
+            try:
+                s += self.TYPES[token.dtype]
+            except KeyError:
+                raise ParsingError(f'The datatype {token.dtype} is invalid. '
+                                   f'Possible datatypes are "int", "float", "str"') from None
             s += ')'
             s += token.suffix
             patterns.append(s)
@@ -184,8 +189,33 @@ class FilenameParser:
             df = df.copy()
             idx = df.columns.get_loc(column) + 1
             for col in cols[::-1]:
-                df.insert(idx, col, '')
+                if col not in df.columns:
+                    df.insert(idx, col, '')
         return df.assign(**extracted)
+
+
+class BatchResult:
+
+    def __init__(self, df):
+        self.__df = df.copy()
+
+    def __getattr__(self, attr):
+        if attr in self.__dict__:
+            return getattr(self, attr)
+        return getattr(self.__df, attr)
+
+    def __getitem__(self, item):
+        return self.__df.__getitem__(item)
+
+    def __setitem__(self, item, value):
+        self.__df.__setitem__(item, value)
+
+    def get_dataframe(self):
+        return self.__df
+
+    def extract_from_filename(self, pattern):
+        parser = FilenameParser(pattern)
+        self.__df = parser.apply_on(self.__df, 'file')
 
 class Operation:
     """
@@ -248,8 +278,9 @@ class Parameter:
     >>> batch.roughness_parameters(['Sa', 'Sq', 'Sz', homogeneity])
     >>> batch.execute()
     """
-    def __init__(self, identifier, args=None, kwargs=None):
+    def __init__(self, identifier, args=None, kwargs=None, custom_name=None):
         self.identifier = identifier
+        self.name = custom_name if custom_name is not None else identifier
         self.args = tuple() if args is None else args
         self.kwargs = dict() if kwargs is None else kwargs
 
@@ -287,8 +318,8 @@ class Parameter:
                 raise BatchError(f"No return labels registered for Surface.{self.identifier}.") from None
             if len(result) != len(labels):
                 raise BatchError("Number of registered return labels do not match number of returned values.") from None
-            return {f'{self.identifier}_{label}': value for value, label in zip(result, labels)}
-        return {self.identifier: result}
+            return {f'{self.name}_{label}': value for value, label in zip(result, labels)}
+        return {self.name: result}
 
 def _task(filepath, operations, parameters, ignore_errors):
     """
@@ -510,11 +541,18 @@ class Batch:
         """
         if not self._parameters and not self._operations:
             raise BatchError('No operations of parameters defined.')
+        # Check for duplicate parameters without custom names and raise an error.
+        parameter_dict = defaultdict(int)
+        for parameter in self._parameters:
+            if parameter_dict[parameter.name] > 0:
+                raise BatchError(f'The parameter "{parameter.identifier}" is computed twice. If this was not a mistake,'
+                                 f' consider giving it an alternate name using the keyword argument "custom_name".')
+            parameter_dict[parameter.name] += 1
         results = self._disptach_tasks(multiprocessing=multiprocessing, ignore_errors=ignore_errors)
         df = self._construct_dataframe(results)
         if saveto is not None:
             df.to_excel(saveto)
-        return df
+        return BatchResult(df)
 
     def extract_from_filename(self, pattern):
         """
@@ -755,8 +793,8 @@ class Batch:
         except KeyError:
             if attr not in Surface.AVAILABLE_PARAMETERS:
                 raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{attr}'")
-        def parameter_dummy_method(*args, **kwargs):
-            parameter = Parameter(attr, args=args, kwargs=kwargs)
+        def parameter_dummy_method(*args, custom_name=None, **kwargs):
+            parameter = Parameter(attr, args=args, kwargs=kwargs, custom_name=custom_name)
             self._parameters.append(parameter)
             return self
 

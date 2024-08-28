@@ -1486,9 +1486,9 @@ class Surface(CachedInstance):
         """
         dx, dy = self._get_fourier_peak_dx_dy()
         # Account for special cases
-        if dx == np.inf:
+        if dx == np.inf or dx == 0:
             return 90
-        if dy == np.inf:
+        if dy == np.inf or dy == 0:
             return 0
         return np.rad2deg(np.arctan(dy / dx))
 
@@ -1898,7 +1898,8 @@ class Surface(CachedInstance):
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         return ax
 
-    def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
+    def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, vmin=None, vmax=None,
+                show_cbar=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1913,6 +1914,13 @@ class Surface(CachedInstance):
             layer can be indicated.
         ax : matplotlib axis, default None
             If specified, the plot will be drawn the specified axis.
+        vmin : float, default None
+            Minimum value of the colormap, passed to imshow.
+        vmax : float, default None
+            Maximum value of the colormap, passed to imshow.
+        show_cbar : bool | None, default None
+            Determines whether to show a colorbar. If the value is None, the colorbar is shown only for topographies
+            and omitted for image data.
 
         Returns
         -------
@@ -1928,17 +1936,19 @@ class Surface(CachedInstance):
         cax = divider.append_axes("right", size="5%", pad=0.05)
         if layer == 'Topography':
             data = self.data
-            show_cbar = True
+            if show_cbar is None:
+                show_cbar = True
         elif layer in self.image_layers.keys():
             data = self.image_layers[layer].data
-            show_cbar = False
+            if show_cbar is None:
+                show_cbar = False
             if data.ndim == 3:
                 cmap = None
             elif data.ndim == 2:
                 cmap = 'gray'
         else:
             raise ValueError(f'Layer {layer} does not exist.')
-        im = ax.imshow(data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um))
+        im = ax.imshow(data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um), vmin=vmin, vmax=vmax)
         if show_cbar:
             fig.colorbar(im, cax=cax, label='z [µm]')
         else:
