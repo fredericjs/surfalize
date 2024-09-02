@@ -624,7 +624,7 @@ class Surface(CachedInstance):
 
     def detrend_polynomial(self, degree=1, inplace=False, return_trend=False):
         """
-        Detrend a 2d array of height data using a polynomial surface
+        Detrend a 2d array of height data using a polynomial surface, handling NaN values
 
         Parameters
         ----------
@@ -651,20 +651,30 @@ class Surface(CachedInstance):
         y_flat = y.flatten()
         z_flat = self.data.flatten()
 
+        # Create mask for non-NaN values
+        mask = ~np.isnan(z_flat)
+        x_valid = x_flat[mask]
+        y_valid = y_flat[mask]
+        z_valid = z_flat[mask]
+
         # Create design matrix with cross-terms
-        A = np.ones((len(x_flat), 1))
+        A = np.ones((len(x_valid), 1))
         for i in range(1, degree + 1):
             for j in range(i + 1):
-                A = np.column_stack((A, (x_flat ** (i - j)) * (y_flat ** j)))
+                A = np.column_stack((A, (x_valid ** (i - j)) * (y_valid ** j)))
 
         # Fit polynomial using SVD for improved numerical stability
-        coeffs, _, _, _ = np.linalg.lstsq(A, z_flat, rcond=None)
+        coeffs, _, _, _ = np.linalg.lstsq(A, z_valid, rcond=None)
 
-        # Calculate trend
-        trend = np.dot(A, coeffs).reshape(self.size)
+        # Calculate trend for all points
+        A_full = np.ones((len(x_flat), 1))
+        for i in range(1, degree + 1):
+            for j in range(i + 1):
+                A_full = np.column_stack((A_full, (x_flat ** (i - j)) * (y_flat ** j)))
+        trend = np.dot(A_full, coeffs).reshape(self.size)
 
-        # Subtract trend from data
-        detrended = self.data - trend
+        # Subtract trend from data, preserving NaN values
+        detrended = np.where(np.isnan(self.data), np.nan, self.data - trend)
 
         if inplace:
             self._set_data(data=detrended)
@@ -675,7 +685,6 @@ class Surface(CachedInstance):
         if return_trend:
             return return_surface, Surface(trend, self.step_x, self.step_y)
         return return_surface
-
     
     @no_nonmeasured_points
     def rotate(self, angle, inplace=False):
