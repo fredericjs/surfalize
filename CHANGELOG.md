@@ -1,3 +1,5 @@
+## v0.12.1
+- Fixed bug where Surface.level would return only nan if surface has missing points
 ## v0.12.0
 - Fixed string match in filename extraction to also include non alphabetic characters
 - Batch.execute now returns BatchResult class instead of DataFrame, which wraps the DataFrame and exposes the same
