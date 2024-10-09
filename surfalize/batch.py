@@ -193,6 +193,20 @@ class FilenameParser:
                     df.insert(idx, col, '')
         return df.assign(**extracted)
 
+class _CustomParameter:
+
+    def __init__(self, func):
+        self.func = func
+        self.name = id(func)
+
+    def calculate_from(self, surface, ignore_errors=True):
+        try:
+            result = self.func(surface)
+        except CalculationError as error:
+            if not ignore_errors:
+                raise error
+        return result
+
 
 class BatchResult:
 
@@ -217,7 +231,7 @@ class BatchResult:
         parser = FilenameParser(pattern)
         self.__df = parser.apply_on(self.__df, 'file')
 
-class Operation:
+class _Operation:
     """
     Class that holds the identifier and arguments to register a call to a surface method that operates on its data.
     This class is used to implement lazy processing of topography files.
@@ -252,7 +266,7 @@ class Operation:
         method = getattr(surface, self.identifier)
         method(*self.args, **self.kwargs)
 
-class Parameter:
+class _Parameter:
     """
     Class that holds the identifier and arguments to register a call to a surface method that returns a parameter.
     This class is used to implement lazy processing of topography files.
@@ -270,7 +284,7 @@ class Parameter:
     --------
     Customize the arguments for `Surface.homogeneity()` to include Sa, Sdr, Sk and Sal.
 
-    >>> homogeneity = Parameter('homogeneity', kwargs=dict(parameters=['Sa', 'Sdr', 'Sk', 'Sal']))
+    >>> homogeneity = _Parameter('homogeneity', kwargs=dict(parameters=['Sa', 'Sdr', 'Sk', 'Sal']))
     >>> homogeneity.calculate_from(surface)
 
     The intended use is to supply it to `Batch.roughness_parameters()` instead of a string.
@@ -330,9 +344,9 @@ def _task(filepath, operations, parameters, ignore_errors):
     ----------
     filepath : str | pathlib.Path
         Filepath pointing to the measurement file.
-    operations : list[Operation]
+    operations : list[_Operation]
         List of operations to execute on the surface.
-    parameters : list[Parameter]
+    parameters : list[_Parameter]
         List of parameters to calculate from the surface.
 
     Returns
@@ -595,7 +609,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('zero', kwargs=dict(inplace=True))
+        operation = _Operation('zero', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 
@@ -607,7 +621,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('center', kwargs=dict(inplace=True))
+        operation = _Operation('center', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 
@@ -624,7 +638,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('threshold', kwargs=dict(threshold=threshold, inplace=True))
+        operation = _Operation('threshold', kwargs=dict(threshold=threshold, inplace=True))
         self._operations.append(operation)
         return self
 
@@ -643,7 +657,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('remove_outliers', kwargs = dict(n=n, method=method, inplace=True))
+        operation = _Operation('remove_outliers', kwargs = dict(n=n, method=method, inplace=True))
         self._operations.append(operation)
         return self
             
@@ -660,7 +674,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('fill_nonmeasured', kwargs=dict(method=method, inplace=True))
+        operation = _Operation('fill_nonmeasured', kwargs=dict(method=method, inplace=True))
         self._operations.append(operation)
         return self
 
@@ -677,7 +691,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('crop', args=(box,), kwargs=dict(inplace=True))
+        operation = _Operation('crop', args=(box,), kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
             
@@ -689,7 +703,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('level', kwargs=dict(inplace=True))
+        operation = _Operation('level', kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
             
@@ -713,8 +727,8 @@ class Batch:
         -------
         self
         """
-        operation = Operation('filter', args=(filter_type, cutoff),
-                              kwargs=dict(cutoff2=cutoff2, inplace=True))
+        operation = _Operation('filter', args=(filter_type, cutoff),
+                               kwargs=dict(cutoff2=cutoff2, inplace=True))
         self._operations.append(operation)
         return self
     
@@ -731,7 +745,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('rotate', args=(angle,), kwargs=dict(inplace=True))
+        operation = _Operation('rotate', args=(angle,), kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
     
@@ -748,7 +762,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('align', kwargs=dict(inplace=True, axis=axis))
+        operation = _Operation('align', kwargs=dict(inplace=True, axis=axis))
         self._operations.append(operation)
         return self
 
@@ -765,7 +779,7 @@ class Batch:
         -------
         self
         """
-        operation = Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
+        operation = _Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
         self._operations.append(operation)
         return self
 
@@ -777,8 +791,40 @@ class Batch:
         -------
         self
         """
-        operation = Operation('stepheight_level', kwargs=dict(inplace=True))
+        operation = _Operation('stepheight_level', kwargs=dict(inplace=True))
         self._operations.append(operation)
+        return self
+
+    def custom_parameter(self, func):
+        """
+        Add a custom parameter calculation in the form of a simple function to the batch calculation. The function
+        must take the surface object as its only parameter and return a dictionary, where the keys are the parameter
+        names and parameter values. If the parameter consists of only one value, the dictionary should have only one
+        entry. The keys of the returned dictionary will be used as the column names in the resulting DataFrame.
+
+        An examplary function might look like this:
+
+        def median(surface):
+            median = np.median(surface.data)
+            return {'height_median': median}
+
+        Or with multiple parameters:
+
+        def mean_std(surface):
+            mean = np.mean(surface.data)
+            std = np.std(surface.data)
+            return {'mean_value': mean, 'std_value': std}
+
+        Parameters
+        ----------
+        func: callable
+            Function to be executed. Must take a surface object as the only argument and return a dictionary.
+
+        Returns
+        -------
+        self
+        """
+        self._parameters.append(_CustomParameter(func))
         return self
 
     def __getattr__(self, attr):
@@ -794,7 +840,7 @@ class Batch:
             if attr not in Surface.AVAILABLE_PARAMETERS:
                 raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{attr}'")
         def parameter_dummy_method(*args, custom_name=None, **kwargs):
-            parameter = Parameter(attr, args=args, kwargs=kwargs, custom_name=custom_name)
+            parameter = _Parameter(attr, args=args, kwargs=kwargs, custom_name=custom_name)
             self._parameters.append(parameter)
             return self
 
@@ -826,13 +872,13 @@ class Batch:
         Here, we define a custom Parameter class that allows for the specification of keyword arguments. Note that we
         are passing the Parameter to the method instead of the string version.
 
-        >>> from surfalize.batch import Parameter
-        >>> Vmc = Parameter('Vmc', kwargs=dict(p=5, q=95))
+        >>> from surfalize.batch import _Parameter
+        >>> Vmc = _Parameter('Vmc', kwargs=dict(p=5, q=95))
         >>> batch.roughness_parameters(['Sa', 'Sq', 'Sz', 'Sdr', Vmc])
 
         Parameters
         ----------
-        parameters : list[str | surfalize.batch.Parameter]
+        parameters : list[str | surfalize.batch._Parameter]
             List of parameters to be registered, either as a string identifier or as a Parameter class.
 
         Returns
@@ -843,6 +889,6 @@ class Batch:
             parameters = list(Surface.ISO_PARAMETERS)
         for parameter in parameters:
             if isinstance(parameter, str):
-                parameter = Parameter(parameter)
+                parameter = _Parameter(parameter)
             self._parameters.append(parameter)
         return self
