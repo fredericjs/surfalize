@@ -171,6 +171,31 @@ template string was constructed wrong. The method `BatchResult.extract_from_file
     pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float|V>_<hatch_distance|float|HD>_<overscans|int|OS>'
     result.extract_from_filename(pattern)
 
+Adding custom parameters
+========================
+
+Custom parameters can be added to the batch calculation by passing a user defined function to `Batch.custom_parameter`.
+This function must take only one argument, which is the surface object. It must return a dictionary, where the key
+represents the name of the parameter that is used for the column name in the DataFrame and the value is the result of
+the calculation. If multiple return values are needed, each must be inserted with a different key into the dictionary.
+
+.. code:: python
+
+    # With one return value
+    def median(surface):
+        median = np.median(surface.data)
+        return {'height_median': median}
+
+    # With multiple return values
+    def mean_std(surface):
+        mean = np.mean(surface.data)
+        std = np.std(surface.data)
+        return {'mean_value': mean, 'std_value': std}
+
+    # Register the functions for batch execution
+    batch.custom_parameter(median)
+    batch.custom_parameter(mean_std)
+
 Full example
 ============
 
