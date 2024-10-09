@@ -1,3 +1,6 @@
+## v0.13.0
+- Added support for extracting cag files by importing extract_cag from surfalize.file.cag (currently undocumented)
+- Added support for adding custom parameters to batch calculation through Batch.custom_parameter 
 ## v0.12.1
 - Fixed bug where Surface.level would return only nan if surface has missing points
 ## v0.12.0
