@@ -329,7 +329,7 @@ def get_surface(sur_obj):
 
 def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
     filesize = filepath.stat().st_size
-    with (open(filepath, 'rb') as filehandle):
+    with open(filepath, 'rb') as filehandle:
         top_level_sur_obj = read_sur_object(filehandle)
         if top_level_sur_obj.header['n_objects'] > 1:
             raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
