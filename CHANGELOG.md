@@ -1,3 +1,6 @@
+## v0.13.1
+- Updated minimum Python version requirement to 3.9
+- Fixed bug with OPD file reader that occurs when no date is present in the metadata
 ## v0.13.0
 - Added support for extracting cag files by importing extract_cag from surfalize.file.cag (currently undocumented)
 - Added support for adding custom parameters to batch calculation through Batch.custom_parameter 
