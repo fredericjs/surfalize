@@ -110,10 +110,12 @@ def read_opd(filepath, read_image_layers=False, encoding='utf-8'):
                     # Skip empty strings
                     continue
                 metadata[name] = contents
-
-        metadata['timestamp'] = dateutil.parser.parse(metadata['Date'] + ' ' + metadata['Time'])
-        del metadata['Date']
-        del metadata['Time']
+        try:
+            metadata['timestamp'] = dateutil.parser.parse(metadata['Date'] + ' ' + metadata['Time'])
+            del metadata['Date']
+            del metadata['Time']
+        except KeyError:
+            pass
 
         for label in ['Wavelength', 'Mult', 'Aspect', 'Pixel_size']:
             if label not in metadata:
