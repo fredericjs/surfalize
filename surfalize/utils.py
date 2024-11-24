@@ -1,5 +1,28 @@
 import numpy as np
 
+def approximately_equal(a, b, epsilon=1e-6):
+    """
+    Check if two floating point values are approximately equal.
+
+    Parameters
+    ----------
+    a : float
+        First value.
+    b : float
+        Second value.
+    epsilon : float
+        Maximum tolerated difference between the floating point values.
+        Defaults to 1e-6.
+
+    Returns
+    -------
+    bool
+    """
+    if abs(a - b) < epsilon:
+        return True
+    return False
+
+
 def is_list_like(obj):
     """
     Determines whether an object is list-like. For now, lists, tuples and numpy arrays are considered list-like.

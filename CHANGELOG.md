@@ -1,3 +1,5 @@
+## v0.13.2
+- File loader now issues warning if step_x and step_y are not equal
 ## v0.13.1
 - Updated minimum Python version requirement to 3.9
 - Fixed bug with OPD file reader that occurs when no date is present in the metadata
