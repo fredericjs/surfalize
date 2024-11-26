@@ -1,5 +1,7 @@
 import numpy as np
 import scipy.ndimage as ndimage
+from skimage.measure import label
+from skimage.segmentation import expand_labels
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 

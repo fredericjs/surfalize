@@ -48,8 +48,7 @@ def load_file(filepath, read_image_layers=False, encoding="utf-8"):
         raise UnsupportedFileFormatError(f"File format {filepath.suffix} is currently not supported.") from None
     raw_surface = loader(filepath, read_image_layers=read_image_layers, encoding=encoding)
     if not approximately_equal(raw_surface.step_x , raw_surface.step_y):
-        warnings.warn('The surface has different pixel size in x and y. '
-                      'Some methods might result in incorrect values.')
+        warnings.warn('The surface has different pixel size in x and y. Some methods might result in incorrect values.')
     return raw_surface
 
 def write_file(filepath, surface, encoding='utf-8', **kwargs):
