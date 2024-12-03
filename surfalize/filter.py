@@ -50,14 +50,14 @@ class GaussianFilter:
         """
         return cutoff / np.pi * np.sqrt(np.log(2) / 2)
 
-    def __call__(self, surface, inplace=False):
+    def __call__(self, studiable, inplace=False):
         """
         Applied the filter to a Surface object
 
         Parameters
         ----------
-        surface : Surface
-            The surface object on which to apply the filter.
+        studiable : BaseStudiable
+            The studiable object on which to apply the filter.
         inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
@@ -67,16 +67,16 @@ class GaussianFilter:
         -------
         filtered_surface : Surface
         """
-        return self.apply(surface, inplace=inplace)
+        return self.apply(studiable, inplace=inplace)
 
-    def apply(self, surface, inplace=False):
+    def apply(self, studiable, inplace=False):
         """
         Applied the filter to a Surface object.
 
         Parameters
         ----------
-        surface : Surface
-            The surface object on which to apply the filter.
+        studiable : BaseStudiable
+            The studiable object on which to apply the filter.
         inplace : bool, default False
             If False, create and return new Surface object with processed data. If True, changes data inplace and
             return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
@@ -86,16 +86,16 @@ class GaussianFilter:
         -------
         filtered_surface : Surface
         """
-        cutoff_x_px = self._cutoff / surface.step_x
-        cutoff_y_px = self._cutoff / surface.step_y
+        cutoff_x_px = self._cutoff / studiable.step_x
+        cutoff_y_px = self._cutoff / studiable.step_y
         sigma_x = self.sigma(cutoff_x_px)
         sigma_y = self.sigma(cutoff_y_px)
-        data = ndimage.gaussian_filter(surface.data, (sigma_y, sigma_y), mode=self._endeffect_mode)
+        data = ndimage.gaussian_filter(studiable.data, (sigma_y, sigma_y), mode=self._endeffect_mode)
         if self._filter_type == 'highpass':
-            data = surface.data - data
+            data = studiable.data - data
         if inplace:
-            surface._set_data(data=data)
-            return surface
+            studiable._set_data(data=data)
+            return studiable
         # We use surface.__class__ to obtain the class without needing to import it
         # This mitigates a circular import conflict
-        return surface.__class__(data, surface.step_x, surface.step_y)
+        return studiable.__class__(data, studiable.step_x, studiable.step_y)

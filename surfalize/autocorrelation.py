@@ -135,7 +135,7 @@ class AutocorrelationFunction(CachedInstance):
             fig = ax.figure
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        im = ax.imshow(self.acf_data, cmap=cmap, extent=(0, self._surface.width_um, 0, self._surface.height_um))
+        im = ax.imshow(self.acf_data, cmap=cmap, extent=(0, self._surface.width, 0, self._surface.height))
         if show_cbar:
             fig.colorbar(im, cax=cax, label='z [µm²]')
         else:

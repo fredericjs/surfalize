@@ -1,3 +1,8 @@
+## unreleased changes
+- Added support for arithmetic operations with numpy arrays
+- Added support for offset values in x and y for the surface data
+- Breaking change: Width and height of a surface are now calculated by multiplying the stepsize with the total number
+  of data points of the respective axis instead of the number of datapoints - 1
 ## v0.13.0
 - Added support for extracting cag files by importing extract_cag from surfalize.file.cag (currently undocumented)
 - Added support for adding custom parameters to batch calculation through Batch.custom_parameter 
