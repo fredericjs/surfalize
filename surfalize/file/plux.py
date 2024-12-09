@@ -10,8 +10,8 @@ IMAGE_FILE_NAME = 'LAYER_0.stack.raw'
 XML_METADATA_FILE_NAME = 'index.xml'
 
 @FileHandler.register_reader(suffix='.plux')
-def read_plux(filepath, read_image_layers=False, encoding='utf-8'):
-    with zipfile.ZipFile(filepath) as archive:
+def read_plux(filehandle, read_image_layers=False, encoding='utf-8'):
+    with zipfile.ZipFile(filehandle) as archive:
         contents = archive.namelist()
         data_raw = archive.read(TOPOGRAPHY_FILE_NAME)
         if read_image_layers and IMAGE_FILE_NAME in contents:

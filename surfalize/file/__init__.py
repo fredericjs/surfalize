@@ -9,4 +9,5 @@ for loader, name, is_pkg in pkgutil.iter_modules(__path__):
 
 from .common import FileHandler
 
-supported_formats = FileHandler.supported_formats
+supported_formats_read = FileHandler.get_supported_formats_read()
+supported_formats_write = FileHandler.get_supported_formats_write()

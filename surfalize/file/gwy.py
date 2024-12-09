@@ -2,7 +2,7 @@ import re
 import struct
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT, FileHandler
+from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT, FileHandler, np_from_any
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'GWYP'
@@ -174,7 +174,7 @@ class Component:
             return [Container(filehandle).read_contents() for _ in range(array_size)]
         elif self.datatype == 's':
             return [read_null_terminated_string(filehandle) for _ in range(array_size)]
-        return np.fromfile(filehandle, count=array_size, dtype=self.datatype)
+        return np_from_any(filehandle, count=array_size, dtype=self.datatype)
 
     def _read_atomic(self, filehandle):
         if self.datatype == 'o':
@@ -211,58 +211,57 @@ def parse_gwy_tree(filehandle):
 # can only be disqualified using heuristic 4 or 5.
 
 @FileHandler.register_reader(suffix='.gwy', magic=MAGIC)
-def read_gwy(filepath, read_image_layers=False, encoding='utf-8'):
-    with open(filepath, 'rb') as filehandle:
-        if filehandle.read(4) != MAGIC:
-            raise FileFormatError('Unknown file magic detected.')
+def read_gwy(filehandle, read_image_layers=False, encoding='utf-8'):
+    if filehandle.read(4) != MAGIC:
+        raise FileFormatError('Unknown file magic detected.')
 
-        tree = parse_gwy_tree(filehandle)
-        # Image related layers refers to all layers / channels that contain 2d data that can be represented as an image
-        # This also encompasses height data, or DFT, etc.
-        image_related_layers = get_image_related_layer_keys(tree)
-        height_layer_key = guess_height_channel(tree, image_related_layers)
+    tree = parse_gwy_tree(filehandle)
+    # Image related layers refers to all layers / channels that contain 2d data that can be represented as an image
+    # This also encompasses height data, or DFT, etc.
+    image_related_layers = get_image_related_layer_keys(tree)
+    height_layer_key = guess_height_channel(tree, image_related_layers)
 
-        datafield = tree['GwyContainer'][f'/{height_layer_key}/data']['GwyDataField']
+    datafield = tree['GwyContainer'][f'/{height_layer_key}/data']['GwyDataField']
 
-        data = datafield['data']
-        unit_xy = datafield['si_unit_xy']['GwySIUnit']['unitstr']
-        unit_z = datafield['si_unit_z']['GwySIUnit']['unitstr']
-        xreal = datafield['xreal']
-        yreal = datafield['yreal']
-        nx = datafield['xres']
-        ny = datafield['yres']
+    data = datafield['data']
+    unit_xy = datafield['si_unit_xy']['GwySIUnit']['unitstr']
+    unit_z = datafield['si_unit_z']['GwySIUnit']['unitstr']
+    xreal = datafield['xreal']
+    yreal = datafield['yreal']
+    nx = datafield['xres']
+    ny = datafield['yres']
 
-        xy_conversion_factor = get_unit_conversion(unit_xy, 'um')
-        step_x = xreal / nx * xy_conversion_factor
-        step_y = yreal / ny * xy_conversion_factor
+    xy_conversion_factor = get_unit_conversion(unit_xy, 'um')
+    step_x = xreal / nx * xy_conversion_factor
+    step_y = yreal / ny * xy_conversion_factor
 
-        data = data * get_unit_conversion(unit_z, 'um')
+    data = data * get_unit_conversion(unit_z, 'um')
 
-        if f'/{height_layer_key}/mask' in tree['GwyContainer']:
-            mask = tree['GwyContainer'][f'/{height_layer_key}/mask']['GwyDataField']['data'].astype('bool')
-            data[mask] = np.nan
+    if f'/{height_layer_key}/mask' in tree['GwyContainer']:
+        mask = tree['GwyContainer'][f'/{height_layer_key}/mask']['GwyDataField']['data'].astype('bool')
+        data[mask] = np.nan
 
-        data = data.reshape(ny, nx)
+    data = data.reshape(ny, nx)
 
-        metadata = {}
-        if f'/{height_layer_key}/meta' in tree['GwyContainer']:
-            metadata.update(tree['GwyContainer'][f'/{height_layer_key}/meta']['GwyContainer'])
+    metadata = {}
+    if f'/{height_layer_key}/meta' in tree['GwyContainer']:
+        metadata.update(tree['GwyContainer'][f'/{height_layer_key}/meta']['GwyContainer'])
 
-        image_layers = {}
-        if read_image_layers:
-            image_channel_keys = guess_image_channels(tree, image_related_layers)
-            for layer_key in image_channel_keys:
-                datafield = tree['GwyContainer'][f'/{layer_key}/data']['GwyDataField']
-                title = tree['GwyContainer'][f'/{layer_key}/data/title']
-                img_data = datafield['data']
+    image_layers = {}
+    if read_image_layers:
+        image_channel_keys = guess_image_channels(tree, image_related_layers)
+        for layer_key in image_channel_keys:
+            datafield = tree['GwyContainer'][f'/{layer_key}/data']['GwyDataField']
+            title = tree['GwyContainer'][f'/{layer_key}/data/title']
+            img_data = datafield['data']
 
-                img_unit_xy = datafield['si_unit_xy']['GwySIUnit']['unitstr']
-                img_nx = datafield['xres']
-                img_ny = datafield['yres']
+            img_unit_xy = datafield['si_unit_xy']['GwySIUnit']['unitstr']
+            img_nx = datafield['xres']
+            img_ny = datafield['yres']
 
-                if img_nx != nx or img_ny != ny or img_unit_xy != unit_xy:
-                    continue
+            if img_nx != nx or img_ny != ny or img_unit_xy != unit_xy:
+                continue
 
-                image_layers[title] = img_data.reshape(ny, nx)
+            image_layers[title] = img_data.reshape(ny, nx)
 
     return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=image_layers)

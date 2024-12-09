@@ -1,5 +1,8 @@
 import numpy as np
-from .common import RawSurface, Layout, Entry, Reserved, FileHandler
+from .common import RawSurface, Layout, Entry, Reserved, FileHandler, np_from_any
+from ..exceptions import CorruptedFileError
+
+MAGIC = b'Zeta-Instruments'
 
 LAYOUT_HEADER = Layout(
     Reserved(85),
@@ -14,13 +17,16 @@ LAYOUT_HEADER = Layout(
     Reserved(84)
 )
 
-@FileHandler.register_reader(suffix='.zmg')
-def read_zmg(filepath, read_image_layers=False, encoding='utf-8'):
-    with open(filepath, 'rb') as filehandle:
-        header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
-        filehandle.seek(header['comment_size'], 1)
-        data_length = header['res_x'] * header['res_y']
-        data = np.fromfile(filehandle, dtype=np.int16, count=data_length) * header['step_z']
+@FileHandler.register_reader(suffix='.zmg', magic=MAGIC)
+def read_zmg(filehandle, read_image_layers=False, encoding='utf-8'):
+    detected_magic = filehandle.read(len(MAGIC))
+    if detected_magic != MAGIC:
+        raise CorruptedFileError('Wrong magic detected!')
+    filehandle.seek(0, 0)
+    header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
+    filehandle.seek(header['comment_size'], 1)
+    data_length = header['res_x'] * header['res_y']
+    data = np_from_any(filehandle, dtype=np.int16, count=data_length) * header['step_z']
     data = data.reshape((header['res_y'], header['res_x']))
 
     step_x = header['step_x']

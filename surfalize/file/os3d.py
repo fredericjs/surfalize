@@ -5,7 +5,7 @@ import io
 import dateutil
 from PIL import Image
 import numpy as np
-from .common import FormatFromPrevious, RawSurface, Entry, Layout, FileHandler
+from .common import FormatFromPrevious, RawSurface, Entry, Layout, FileHandler, np_from_any
 from ..exceptions import CorruptedFileError
 
 MAGIC = b'OmniSurf3D'
@@ -28,24 +28,23 @@ LAYOUT_HEADER = Layout(
 )
 
 @FileHandler.register_reader(suffix='.os3d', magic=MAGIC)
-def read_os3d(filepath, read_image_layers=False, encoding='utf-8'):
-    with open(filepath, 'rb') as filehandle:
-        magic = filehandle.read(len(MAGIC))
-        if magic != MAGIC:
-            raise CorruptedFileError(f'Unknown file magic detected: {magic.decode()}')
-        header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
-        data = np.fromfile(filehandle, count=header['nPointsAlongX'] * header['nPointsAlongY'], dtype='float32')
-        data = data.reshape(header['nPointsAlongY'], header['nPointsAlongX'])
-        data[data < THRESHOLD] = np.nan
-        step_x = header['dSpacingAlongXUM']
-        step_y = header['dSpacingAlongYUM']
+def read_os3d(filehandle, read_image_layers=False, encoding='utf-8'):
+    magic = filehandle.read(len(MAGIC))
+    if magic != MAGIC:
+        raise CorruptedFileError(f'Unknown file magic detected: {magic.decode()}')
+    header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
+    data = np_from_any(filehandle, count=header['nPointsAlongX'] * header['nPointsAlongY'], dtype='float32')
+    data = data.reshape(header['nPointsAlongY'], header['nPointsAlongX'])
+    data[data < THRESHOLD] = np.nan
+    step_x = header['dSpacingAlongXUM']
+    step_y = header['dSpacingAlongYUM']
 
-        metadata = header
-        metadata['timestamp'] = dateutil.parser.parse(header['chArrayMeasureDateTime'])
+    metadata = header
+    metadata['timestamp'] = dateutil.parser.parse(header['chArrayMeasureDateTime'])
 
-        has_image = struct.unpack('b', filehandle.read(1))
-        image_layers = {}
-        if has_image and read_image_layers:
-            img_data = io.BytesIO(filehandle.read())
-            image_layers['RGBA'] = np.array(Image.open(img_data))
+    has_image = struct.unpack('b', filehandle.read(1))
+    image_layers = {}
+    if has_image and read_image_layers:
+        img_data = io.BytesIO(filehandle.read())
+        image_layers['RGBA'] = np.array(Image.open(img_data))
     return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=metadata)

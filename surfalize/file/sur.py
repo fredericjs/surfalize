@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface, Entry, Reserved, Layout, FileHandler
+from .common import get_unit_conversion, RawSurface, Entry, Reserved, Layout, FileHandler, np_from_any, np_to_any
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # This is not fully implemented! Won't work with all SUR files.
@@ -182,7 +182,7 @@ def read_directory(filehandle):
 
 
 def read_uncompressed_data(filehandle, dtype, num_points):
-    return np.fromfile(filehandle, count=num_points, dtype=dtype)
+    return np_from_any(filehandle, count=num_points, dtype=dtype)
 
 
 def read_compressed_data(filehandle, dtype, expected_compressed_size):
@@ -326,42 +326,40 @@ def get_surface(sur_obj):
     # timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
     return (data, step_x, step_y)
 
-@FileHandler.register_reader(suffix='.sur', magic=(MAGIC_CLASSIC, MAGIC_COMPRESSED))
-def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
-    filesize = filepath.stat().st_size
-    with (open(filepath, 'rb') as filehandle):
-        top_level_sur_obj = read_sur_object(filehandle)
-        if top_level_sur_obj.header['n_objects'] > 1:
-            raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
-        image_layers = {}
-        if top_level_sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(top_level_sur_obj):
-            data, step_x, step_y = get_surface(top_level_sur_obj)
-        elif top_level_sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
-            # after the surface, the r,g,b channels and the intensity image follow.
-            data, step_x, step_y = get_surface(top_level_sur_obj)
+@FileHandler.register_reader(suffix='.sur', magic=(MAGIC_CLASSIC.encode(), MAGIC_COMPRESSED.encode()))
+def read_sur(filehandle, read_image_layers=False, encoding='utf-8'):
+    top_level_sur_obj = read_sur_object(filehandle)
+    if top_level_sur_obj.header['n_objects'] > 1:
+        raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
+    image_layers = {}
+    if top_level_sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(top_level_sur_obj):
+        data, step_x, step_y = get_surface(top_level_sur_obj)
+    elif top_level_sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
+        # after the surface, the r,g,b channels and the intensity image follow.
+        data, step_x, step_y = get_surface(top_level_sur_obj)
 
-            if read_image_layers:
-                # read rgb layers
-                rgb_layers = []
-                for i in range(3):
-                    rgb_layers.append(read_sur_object(filehandle).data)
-                # image is grayscale
-                if np.all(rgb_layers[0] == rgb_layers[1]) and np.all(rgb_layers[0] == rgb_layers[2]):
-                    image_layers['Grayscale'] = rgb_layers[0]
-                # image is rgb
-                else:
-                    image_layers['RGB'] = np.stack(rgb_layers, axis=-1)
+        if read_image_layers:
+            # read rgb layers
+            rgb_layers = []
+            for i in range(3):
+                rgb_layers.append(read_sur_object(filehandle).data)
+            # image is grayscale
+            if np.all(rgb_layers[0] == rgb_layers[1]) and np.all(rgb_layers[0] == rgb_layers[2]):
+                image_layers['Grayscale'] = rgb_layers[0]
+            # image is rgb
+            else:
+                image_layers['RGB'] = np.stack(rgb_layers, axis=-1)
 
-                # read intensity layer
-                image_layers['Intensity'] = read_sur_object(filehandle).data
-        else:
-            raise UnsupportedFileFormatError(
-                f'Studiables of type {top_level_sur_obj.header["studiable_type"].name} are not supported.'
-            )
-        return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=top_level_sur_obj.header)
+            # read intensity layer
+            image_layers['Intensity'] = read_sur_object(filehandle).data
+    else:
+        raise UnsupportedFileFormatError(
+            f'Studiables of type {top_level_sur_obj.header["studiable_type"].name} are not supported.'
+        )
+    return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=top_level_sur_obj.header)
 
 @FileHandler.register_writer(suffix='.sur')
-def write_sur(filepath, surface, encoding='utf-8', compressed=False):
+def write_sur(filehandle, surface, encoding='utf-8', compressed=False):
     INT32_MAX = int(2 ** 32 / 2) - 1
     INT32_MIN = -int(2 ** 32 / 2)
 
@@ -438,17 +436,15 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
         'unit_step_t': ''
     }
 
-
-    with open(filepath, 'wb') as file:
-        LAYOUT_HEADER.write(file, header)
-        if not compressed:
-            data.tofile(file)
-            return
-        else:
-            uncompressed_data = data.tobytes()
-            compressed_data = zlib.compress(uncompressed_data)
-            # Write directory count = 1 and the length of a single data stream containing all the compressed data
-            file.write(struct.pack('<3I', 1, len(uncompressed_data), len(compressed_data)))
-            file.write(compressed_data)
-            return
+    LAYOUT_HEADER.write(filehandle, header)
+    if not compressed:
+        np_to_any(data, filehandle)
+        return
+    else:
+        uncompressed_data = data.tobytes()
+        compressed_data = zlib.compress(uncompressed_data)
+        # Write directory count = 1 and the length of a single data stream containing all the compressed data
+        filehandle.write(struct.pack('<3I', 1, len(uncompressed_data), len(compressed_data)))
+        filehandle.write(compressed_data)
+        return
 

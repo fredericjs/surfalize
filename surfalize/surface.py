@@ -265,14 +265,18 @@ class Surface(CachedInstance):
         return np.any(np.isnan(self.data))
 
     @classmethod
-    def load(cls, filepath, encoding='utf-8', read_image_layers=False):
+    def load(cls, path_or_buffer, format=None, encoding='utf-8', read_image_layers=False):
         """
         Classmethod to load a topography from a file.
 
         Parameters
         ----------
-        filepath : str | pathlib.Path
-            Filepath pointing to the topography file.
+        path_or_buffer : str | pathlib.Path | buffer
+            Filepath pointing to the topography file or buffer.
+        format : str | None
+            File format in which file should be read. If the file is provided as a path and does not contain a suffix,
+            the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
+            If the surface is read from a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
         read_image_layers : bool, Default False
@@ -282,7 +286,8 @@ class Surface(CachedInstance):
         -------
         surface : surfalize.Surface
         """
-        raw_surface = FileHandler(filepath).read(encoding=encoding, read_image_layers=read_image_layers)
+        raw_surface = FileHandler(path_or_buffer, format_=format).read(encoding=encoding,
+                                                                      read_image_layers=read_image_layers)
         return cls.from_raw_surface(raw_surface)
 
     @classmethod
@@ -291,14 +296,18 @@ class Surface(CachedInstance):
         return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
                    image_layers=image_layers)
 
-    def save(self, filepath, encoding='utf-8', **kwargs):
+    def save(self, path_or_buffer, format=None, encoding='utf-8', **kwargs):
         """
         Saves the surface to a supported file format. The kwargs are specific to individual file formats.
 
         Parameters
         ----------
-        filepath : str | pathlib.Path
-            Filepath pointing to the topography file.
+        path_or_buffer : str | pathlib.Path | buffer
+            Filepath pointing to the topography file or buffer.
+        format : str | None
+            File format in which file should be saved. If the file is provided as a path and does not contain a suffix,
+            the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
+            If the surface is saved to a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
 
@@ -311,7 +320,7 @@ class Surface(CachedInstance):
         -------
         None
         """
-        FileHandler(filepath).write(encoding=encoding, **kwargs)
+        FileHandler(path_or_buffer, format_=format).write(self, encoding=encoding, **kwargs)
 
     def get_image_layer_names(self):
         """

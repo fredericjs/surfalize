@@ -86,7 +86,9 @@ def open_file_like(file_or_path, mode='r'):
         with open(file_or_path, mode) as f:
             yield f
     elif isinstance(file_or_path, io.IOBase):
+        current_pos = file_or_path.tell()
         yield file_or_path
+        file_or_path.seek(current_pos, 0)
     else:
         raise TypeError("Expected a file path or file-like object")
 
@@ -240,7 +242,7 @@ class Layout:
             entry.read(filehandle, data, encoding)
         return data
 
-def np_fromany(fileobject, dtype, count=-1, offset=0):
+def np_from_any(fileobject, dtype, count=-1, offset=0):
     """
     Function that invokes either np.frombuffer or np.fromfile depending on whether the object is a file-like object
     or a buffer.
@@ -260,17 +262,23 @@ def np_fromany(fileobject, dtype, count=-1, offset=0):
     -------
     np.ndarray
     """
-    try:
-        return np.frombuffer(fileobject, dtype, count=count, offset=offset)
-    except TypeError:
+    try :
+        result = np.fromfile(fileobject, dtype, count=count, offset=offset)
+    except Exception:
         if offset > 0:
             fileobject.seek(offset, 1)
         if count == -1:
             buffer = fileobject.read()
         else:
             buffer = fileobject.read(count * np.dtype(dtype).itemsize)
-        return np.frombuffer(buffer, dtype)
+        result = np.frombuffer(buffer, dtype).copy()
+    return result
 
+def np_to_any(data, fileobject):
+    try:
+        data.tofile(fileobject)
+    except io.UnsupportedOperation:
+        fileobject.write(data.tobytes())
 
 class RawSurface:
 
@@ -288,13 +296,19 @@ class FileHandler:
     _readers_by_magic = {}
     _writers = {}
 
-    def __init__(self, file):
-        self.file = Path(file)
+    def __init__(self, file, format_=None):
+        self.file = file
+        if self.is_path_like():
+            self.file = Path(file)
+        self.format = format_
 
-    @property
     @classmethod
-    def supported_formats(cls):
+    def get_supported_formats_read(cls):
         return set(cls._readers_by_suffix.keys())
+
+    @classmethod
+    def get_supported_formats_write(cls):
+        return set(cls._writers.keys())
 
     @classmethod
     def register_reader(cls, *, suffix, magic=None):
@@ -328,33 +342,52 @@ class FileHandler:
             return func
         return decorator
 
+    def is_path_like(self):
+        if isinstance(self.file, (str, os.PathLike)):
+            return True
+        return False
+
     def read(self, read_image_layers=False, encoding="utf-8"):
-        suffix = self.file.suffix
-        if suffix not in self._readers_by_suffix:
-            raise UnsupportedFileFormatError(f"File format {suffix} is currently not supported.") from None
-        reader = self._readers_by_suffix[suffix]
-        try:
-            return reader(self.file, read_image_layers=read_image_layers, encoding=encoding)
-        except Exception as e:
-            exception = e
+        exception = None
+        if self.is_path_like() or self.format is not None:
+            if self.format is None:
+                suffix = self.file.suffix
+            else:
+                suffix = self.format
+            if suffix not in self._readers_by_suffix:
+                raise UnsupportedFileFormatError(f"File format {suffix} is currently not supported.") from None
+            reader = self._readers_by_suffix[suffix]
+            try:
+                with open_file_like(self.file, 'rb') as filehandle:
+                    return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+            except Exception as e:
+                exception = e
 
         for magic, reader in self._readers_by_magic.items():
-            with open(self.file, 'rb') as file:
-                detected_magic = file.read(len(magic))
+            with open_file_like(self.file, 'rb') as filehandle:
+                detected_magic = filehandle.read(len(magic))
                 if detected_magic == magic:
-                    warnings.warn(f'The file suffix indicates a file of type {self.file.suffix}. However, the file '
-                                  f'seems to actually be of type {reader._suffix}. Check if the file extensions is '
-                                  f'correct. The file was now loaded as {reader._suffix}.')
-                    return reader(self.file, read_image_layers=read_image_layers, encoding=encoding)
-        else:
+                    if self.is_path_like() and reader._suffix != suffix:
+                        warnings.warn(f'The file suffix indicates a file of type {self.file.suffix}. However, the file '
+                                      f'seems to actually be of type {reader._suffix}. Check if the file extensions is '
+                                      f'correct. The file was now loaded as {reader._suffix}.')
+                    filehandle.seek(0, 0)
+                    return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+        if exception is not None:
             raise exception
+        raise UnsupportedFileFormatError('The file format is unsupported or could not be correctly matched by file '
+                                         'magic.')
 
     def write(self, surface, encoding='utf-8', **kwargs):
-        suffix = self.file.suffix
+        if self.is_path_like():
+            suffix = self.file.suffix
+        else:
+            suffix = self.format
         if not suffix:
             raise ValueError('No format for the file specified.') from None
         if suffix not in self._writers:
             raise UnsupportedFileFormatError(
                 f"File format {suffix} is currently not supported for writing.") from None
-        writer = self._writers[self.file.suffix]
-        writer(surface, encoding=encoding, **kwargs)
+        writer = self._writers[suffix]
+        with open_file_like(self.file, 'wb') as filehandle:
+            writer(filehandle, surface, encoding=encoding, **kwargs)
