@@ -1,3 +1,7 @@
+## v0.13.2
+- Ensured compatibility of trapezoid function with numpy versions (trapz for np < 2.X, trapezoid for > 2.X) 
+- Added hook to batch execution that is called after each processed file. This hook can be used for instance to display
+  a custom progress bar.
 ## v0.13.1
 - Updated minimum Python version requirement to 3.9
 - Fixed bug with OPD file reader that occurs when no date is present in the metadata
