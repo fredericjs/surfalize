@@ -427,6 +427,9 @@ class Batch:
         self._parameters = []
         self._filename_pattern = None
 
+    def __len__(self):
+        return len(self._filepaths)
+
     @classmethod
     def from_dir(cls, dir_path, file_extensions=None, additional_data=None):
         """
@@ -467,7 +470,7 @@ class Batch:
         return cls(filepaths, additional_data=additional_data)
 
 
-    def _disptach_tasks(self, multiprocessing=True, ignore_errors=True):
+    def _disptach_tasks(self, multiprocessing=True, ignore_errors=True, on_file_complete=None):
         """
         Dispatches the individual tasks between CPU cores if multiprocessing is True, otherwise executes them
         sequentially.
@@ -498,6 +501,8 @@ class Batch:
                 with tqdm(total=len(self._filepaths), desc='Processing files') as progress_bar:
                     for result in pool.imap_unordered(task, self._filepaths):
                         results.append(result)
+                        if on_file_complete is not None:
+                            on_file_complete(result)
                         progress_bar.update()
                 pool.close()
                 pool.join()
@@ -528,7 +533,7 @@ class Batch:
             df = parser.apply_on(df, 'file')
         return df
 
-    def execute(self, multiprocessing=True, ignore_errors=True, saveto=None):
+    def execute(self, multiprocessing=True, ignore_errors=True, saveto=None, on_file_complete=None):
         """
         Executes the Batch processing and returns the obtained data as a pandas DataFrame. The dataframe can be saved
         as an Excel file.
@@ -562,7 +567,8 @@ class Batch:
                 raise BatchError(f'The parameter "{parameter.identifier}" is computed twice. If this was not a mistake,'
                                  f' consider giving it an alternate name using the keyword argument "custom_name".')
             parameter_dict[parameter.name] += 1
-        results = self._disptach_tasks(multiprocessing=multiprocessing, ignore_errors=ignore_errors)
+        results = self._disptach_tasks(multiprocessing=multiprocessing, ignore_errors=ignore_errors,
+                                       on_file_complete=on_file_complete)
         df = self._construct_dataframe(results)
         if saveto is not None:
             df.to_excel(saveto)
