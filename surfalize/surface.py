@@ -20,7 +20,7 @@ from sklearn.cluster import KMeans
 from .file import load_file, write_file
 from .utils import is_list_like, register_returnlabels
 from .cache import CachedInstance, cache
-from .mathutils import Sinusoid, argclosest, interp1d
+from .mathutils import Sinusoid, argclosest, trapezoid
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -1648,7 +1648,7 @@ class Surface(CachedInstance):
             lorenz[1:] = np.cumsum(results[i]) / np.sum(results[i])
             x, step = np.linspace(0, 1, lorenz.size, retstep=True)
             y = lorenz.min() + (lorenz.max() - lorenz.min()) * x
-            B = np.trapz(lorenz, dx=step)
+            B = trapezoid(lorenz, dx=step)
             A = 0.5 - B
             gini = A / 0.5
             h.append(1 - gini)

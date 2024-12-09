@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .mathutils import argclosest, interp1d
+from .mathutils import argclosest, interp1d, trapezoid
 from .cache import CachedInstance, cache
 
 class AbbottFirestoneCurve(CachedInstance):
@@ -176,7 +176,7 @@ class AbbottFirestoneCurve(CachedInstance):
 
         # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
         idx = argclosest(self._yupper, self._height)
-        A1 = np.abs(np.trapz(self._material_ratio[:idx], x=self._height[:idx]))
+        A1 = np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx]))
         Spk = 2 * A1 / self.Smr1()
         return Spk
 
@@ -191,29 +191,29 @@ class AbbottFirestoneCurve(CachedInstance):
         """
         # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
         idx = argclosest(self._ylower, self._height)
-        A2 = np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:]))
+        A2 = np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:]))
         Svk = 2 * A2 / (100 - self.Smr2())
         return Svk
 
     @cache
     def Vmp(self, p=10):
         idx = argclosest(self.Smc(p), self._height)
-        return np.abs(np.trapz(self._material_ratio[:idx], x=self._height[:idx]) / 100)
+        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx]) / 100)
 
     @cache
     def Vmc(self, p=10, q=80):
         idx = argclosest(self.Smc(q), self._height)
-        return np.abs(np.trapz(self._material_ratio[:idx], x=self._height[:idx])) / 100 - self.Vmp(p)
+        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx])) / 100 - self.Vmp(p)
 
     @cache
     def Vvv(self, q=80):
         idx = argclosest(self.Smc(80), self._height)
-        return np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100
+        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100
 
     @cache
     def Vvc(self, p=10, q=80):
         idx = argclosest(self.Smc(10), self._height)
-        return np.abs(np.trapz(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.Vvv(q)
+        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.Vvv(q)
 
     def plot(self, nbars=20, ax=None):
         if ax is None:
