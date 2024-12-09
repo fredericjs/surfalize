@@ -2,7 +2,7 @@ import struct
 import re
 from datetime import datetime
 import numpy as np
-from .common import RawSurface, get_unit_conversion, Entry, Layout
+from .common import RawSurface, get_unit_conversion, Entry, Layout, FileHandler
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # File format specifications taken from ISO 25178-71
@@ -125,6 +125,7 @@ def read_binary_sdf(filehandle, encoding="utf-8"):
     step_y = header["Yscale"] * CONVERSION_FACTOR
     return RawSurface(data, step_x, step_y, metadata=header)
 
+@FileHandler.register_reader(suffix='.sdf', magic=(MAGIC_ASCII, MAGIC_BINARY))
 def read_sdf(file_path, read_image_layers=False, encoding="utf-8"):
     with open(file_path, "rb") as filehandle:
         magic = filehandle.read(8)
@@ -135,6 +136,7 @@ def read_sdf(file_path, read_image_layers=False, encoding="utf-8"):
         else:
             raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
 
+@FileHandler.register_writer(suffix='.sdf')
 def write_sdf(filepath, surface, encoding='utf-8', binary=True):
     now = datetime.now()
     mod_date = now.strftime(ASCII_DATE_FORMAT)

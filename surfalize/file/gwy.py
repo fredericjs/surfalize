@@ -2,7 +2,7 @@ import re
 import struct
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT
+from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT, FileHandler
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'GWYP'
@@ -209,6 +209,8 @@ def parse_gwy_tree(filehandle):
 # E.g. if a gwy file is saved from a Gwyddion session, where multiple panels have been generated, such as DFTs,
 # they will also be present as layers in the file, possibly even have a length unit for the z-axis. Such layers
 # can only be disqualified using heuristic 4 or 5.
+
+@FileHandler.register_reader(suffix='.gwy', magic=MAGIC)
 def read_gwy(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         if filehandle.read(4) != MAGIC:

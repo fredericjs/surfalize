@@ -5,7 +5,7 @@ import io
 import dateutil
 from PIL import Image
 import numpy as np
-from .common import FormatFromPrevious, RawSurface, Entry, Layout
+from .common import FormatFromPrevious, RawSurface, Entry, Layout, FileHandler
 from ..exceptions import CorruptedFileError
 
 MAGIC = b'OmniSurf3D'
@@ -27,6 +27,7 @@ LAYOUT_HEADER = Layout(
     Entry('dYOriginUM', 'd'),
 )
 
+@FileHandler.register_reader(suffix='.os3d', magic=MAGIC)
 def read_os3d(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         magic = filehandle.read(len(MAGIC))

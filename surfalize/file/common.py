@@ -1,6 +1,16 @@
 import struct
+import os
+import io
+from contextlib import contextmanager
+from pathlib import Path
+import warnings
 import numpy as np
 from abc import abstractmethod, ABC
+
+from surfalize.exceptions import UnsupportedFileFormatError
+from surfalize.utils import is_list_like
+
+warnings.formatwarning = lambda msg, *args, **kwargs: f'Warning: {msg}\n'
 
 MU_ALIASES = {
     chr(181): 'u',
@@ -66,6 +76,19 @@ def get_unit_conversion(from_unit, to_unit):
         raise ValueError('Unit does not exist.')
     exponent = UNIT_EXPONENT[from_unit] - UNIT_EXPONENT[to_unit]
     return 10**exponent
+
+@contextmanager
+def open_file_like(file_or_path, mode='r'):
+    """
+    Context manager that handles both file paths and file-like objects
+    """
+    if isinstance(file_or_path, (str, os.PathLike)):
+        with open(file_or_path, mode) as f:
+            yield f
+    elif isinstance(file_or_path, io.IOBase):
+        yield file_or_path
+    else:
+        raise TypeError("Expected a file path or file-like object")
 
 class FormatFromPrevious:
 
@@ -258,3 +281,80 @@ class RawSurface:
         self.step_y = step_y
         self.metadata = {} if metadata is None else metadata
         self.image_layers = {} if image_layers is None else image_layers
+
+class FileHandler:
+
+    _readers_by_suffix = {}
+    _readers_by_magic = {}
+    _writers = {}
+
+    def __init__(self, file):
+        self.file = Path(file)
+
+    @property
+    @classmethod
+    def supported_formats(cls):
+        return set(cls._readers_by_suffix.keys())
+
+    @classmethod
+    def register_reader(cls, *, suffix, magic=None):
+        def decorator(func):
+            if is_list_like(suffix):
+                for s in suffix:
+                    cls._readers_by_suffix[s] = func
+            else:
+                cls._readers_by_suffix[suffix] = func
+            if magic is None:
+                return func
+            if is_list_like(magic):
+                for m in magic:
+                    cls._readers_by_magic[m] = func
+            else:
+                cls._readers_by_magic[magic] = func
+            func._suffix = suffix
+            func._magic = magic
+            return func
+        return decorator
+
+    @classmethod
+    def register_writer(cls, *, suffix):
+        def decorator(func):
+            if is_list_like(suffix):
+                for s in suffix:
+                    cls._writers[s] = func
+            else:
+                cls._writers[suffix] = func
+            func._suffix = suffix
+            return func
+        return decorator
+
+    def read(self, read_image_layers=False, encoding="utf-8"):
+        suffix = self.file.suffix
+        if suffix not in self._readers_by_suffix:
+            raise UnsupportedFileFormatError(f"File format {suffix} is currently not supported.") from None
+        reader = self._readers_by_suffix[suffix]
+        try:
+            return reader(self.file, read_image_layers=read_image_layers, encoding=encoding)
+        except Exception as e:
+            exception = e
+
+        for magic, reader in self._readers_by_magic.items():
+            with open(self.file, 'rb') as file:
+                detected_magic = file.read(len(magic))
+                if detected_magic == magic:
+                    warnings.warn(f'The file suffix indicates a file of type {self.file.suffix}. However, the file '
+                                  f'seems to actually be of type {reader._suffix}. Check if the file extensions is '
+                                  f'correct. The file was now loaded as {reader._suffix}.')
+                    return reader(self.file, read_image_layers=read_image_layers, encoding=encoding)
+        else:
+            raise exception
+
+    def write(self, surface, encoding='utf-8', **kwargs):
+        suffix = self.file.suffix
+        if not suffix:
+            raise ValueError('No format for the file specified.') from None
+        if suffix not in self._writers:
+            raise UnsupportedFileFormatError(
+                f"File format {suffix} is currently not supported for writing.") from None
+        writer = self._writers[self.file.suffix]
+        writer(surface, encoding=encoding, **kwargs)

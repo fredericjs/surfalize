@@ -1,6 +1,6 @@
 import dateutil
 import numpy as np
-from .common import RawSurface, Reserved, Entry, Layout
+from .common import RawSurface, Reserved, Entry, Layout, FileHandler
 
 NON_MEASURED_VALUE = 1000001
 
@@ -44,6 +44,7 @@ LAYOUT_MEASURE_CONFIG = Layout(
    Entry('factorio_delmacio', 'I')
 )
 
+@FileHandler.register_reader(suffix='.plu')
 def read_plu(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         date_block = filehandle.read(DATE_SIZE)

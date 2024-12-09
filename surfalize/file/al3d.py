@@ -1,7 +1,7 @@
 import struct
 import numpy as np
 from ..exceptions import CorruptedFileError
-from .common import RawSurface
+from .common import RawSurface, FileHandler
 
 MAGIC = b'AliconaImaging\x00\r\n'
 TAG_LAYOUT = '20s30s2s'
@@ -20,6 +20,7 @@ def write_tag(filehandle, key, value, encoding='utf-8'):
                              '\r\n'.encode(encoding))
     filehandle.write(binary_tag)
 
+@FileHandler.register_writer(suffix='.al3d')
 def write_al3d(filepath, surface, encoding='utf-8'):
     header = dict()
     header['Version'] = 1
@@ -44,6 +45,7 @@ def write_al3d(filepath, surface, encoding='utf-8'):
         data = surface.data.astype(DTYPE) * 1e-6
         data.tofile(file)
 
+@FileHandler.register_reader(suffix='.al3d', magic=MAGIC)
 def read_al3d(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as file:
         magic = file.read(17)

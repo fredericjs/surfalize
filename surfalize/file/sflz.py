@@ -1,7 +1,7 @@
 import zlib
 import lzma
 import numpy as np
-from surfalize.file.common import FormatFromPrevious, RawSurface, Apply, Entry, Layout
+from surfalize.file.common import FormatFromPrevious, RawSurface, Apply, Entry, Layout, FileHandler
 
 MAGIC = b'SFLZ'
 
@@ -60,6 +60,7 @@ def decompress(data, compression_type):
     elif compression_type == 'lzma':
         return lzma.decompress(data)
 
+@FileHandler.register_reader(suffix='.sflz', magic=MAGIC)
 def read_sflz(filepath, encoding='utf-8', read_image_layers=True):
     with open(filepath, 'rb') as filehandle:
         magic = filehandle.read(len(MAGIC))
@@ -92,7 +93,7 @@ def read_sflz(filepath, encoding='utf-8', read_image_layers=True):
                 image_layers[layer_header['name']] = data
         return RawSurface(height_data, header['step_x'], header['step_y'], image_layers=image_layers)
 
-
+@FileHandler.register_writer(suffix='.sflz')
 def write_sflz(filepath, surface, encoding='utf-8', compression='zlib', save_image_layers=True,
                write_metadata=True, dtype='<u4'):
     with open(filepath, 'wb') as filehandle:

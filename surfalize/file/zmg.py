@@ -1,5 +1,5 @@
 import numpy as np
-from .common import RawSurface, Layout, Entry, Reserved
+from .common import RawSurface, Layout, Entry, Reserved, FileHandler
 
 LAYOUT_HEADER = Layout(
     Reserved(85),
@@ -14,6 +14,7 @@ LAYOUT_HEADER = Layout(
     Reserved(84)
 )
 
+@FileHandler.register_reader(suffix='.zmg')
 def read_zmg(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         header = LAYOUT_HEADER.read(filehandle, encoding=encoding)

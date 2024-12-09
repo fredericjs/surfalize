@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface, Entry, Reserved, Layout
+from .common import get_unit_conversion, RawSurface, Entry, Reserved, Layout, FileHandler
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # This is not fully implemented! Won't work with all SUR files.
@@ -326,7 +326,7 @@ def get_surface(sur_obj):
     # timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
     return (data, step_x, step_y)
 
-
+@FileHandler.register_reader(suffix='.sur', magic=(MAGIC_CLASSIC, MAGIC_COMPRESSED))
 def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
     filesize = filepath.stat().st_size
     with (open(filepath, 'rb') as filehandle):
@@ -360,7 +360,7 @@ def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
             )
         return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=top_level_sur_obj.header)
 
-
+@FileHandler.register_writer(suffix='.sur')
 def write_sur(filepath, surface, encoding='utf-8', compressed=False):
     INT32_MAX = int(2 ** 32 / 2) - 1
     INT32_MIN = -int(2 ** 32 / 2)

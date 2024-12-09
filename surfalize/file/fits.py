@@ -1,5 +1,5 @@
 import numpy as np
-from .common import RawSurface, get_unit_conversion
+from .common import RawSurface, get_unit_conversion, FileHandler
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'SIMPLE'
@@ -62,6 +62,7 @@ def read_header(filehandle):
         header.update(partial_header)
     return header
 
+@FileHandler.register_reader(suffix=('.fits', '.fit', '.fts'), magic=MAGIC)
 def read_fits(filepath, read_image_layers=False, encoding='utf-8'):
     filesize = filepath.stat().st_size
     with open(filepath, 'rb') as filehandle:

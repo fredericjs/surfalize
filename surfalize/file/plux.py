@@ -2,13 +2,14 @@ import zipfile
 import dateutil
 import xml.etree.ElementTree as ET
 import numpy as np
-from .common import RawSurface
+from .common import RawSurface, FileHandler
 
 # Names of the files in the zip archive
 TOPOGRAPHY_FILE_NAME = 'LAYER_0.raw'
 IMAGE_FILE_NAME = 'LAYER_0.stack.raw'
 XML_METADATA_FILE_NAME = 'index.xml'
 
+@FileHandler.register_reader(suffix='.plux')
 def read_plux(filepath, read_image_layers=False, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
         contents = archive.namelist()

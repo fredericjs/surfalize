@@ -17,7 +17,7 @@ import scipy.ndimage as ndimage
 from sklearn.cluster import KMeans
 
 # Custom imports
-from .file import load_file, write_file
+from .file import FileHandler
 from .utils import is_list_like, register_returnlabels
 from .cache import CachedInstance, cache
 from .mathutils import Sinusoid, argclosest, trapezoid
@@ -282,7 +282,7 @@ class Surface(CachedInstance):
         -------
         surface : surfalize.Surface
         """
-        raw_surface = load_file(filepath, encoding=encoding, read_image_layers=read_image_layers)
+        raw_surface = FileHandler(filepath).read(encoding=encoding, read_image_layers=read_image_layers)
         return cls.from_raw_surface(raw_surface)
 
     @classmethod
@@ -311,7 +311,7 @@ class Surface(CachedInstance):
         -------
         None
         """
-        write_file(filepath, self, encoding=encoding, **kwargs)
+        FileHandler(filepath).write(encoding=encoding, **kwargs)
 
     def get_image_layer_names(self):
         """

@@ -3,7 +3,7 @@ import struct
 from datetime import datetime
 
 import numpy as np
-from .common import get_unit_conversion, RawSurface, np_fromany, Entry, Reserved, Layout
+from .common import get_unit_conversion, RawSurface, np_fromany, Entry, Reserved, Layout, FileHandler
 from ..exceptions import CorruptedFileError
 
 HEADER_SIZE = 12
@@ -188,10 +188,12 @@ def extract_vk4(filehandle, read_image_layers=False, encoding='utf-8'):
 
     return RawSurface(height_layer, step_x, step_y, metadata, image_layers)
 
+@FileHandler.register_reader(suffix='.vk4', magic=b'VK4_')
 def read_vk4(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         return extract_vk4(filehandle, read_image_layers=read_image_layers, encoding=encoding)
 
+@FileHandler.register_reader(suffix=('.vk6', '.vk7'), magic=(b'VK6_', b'VK7_'))
 def read_vk6_vk7(filepath, read_image_layers=False, encoding='utf-8'):
     with zipfile.ZipFile(filepath) as archive:
         with archive.open('Vk4File') as filehandle:

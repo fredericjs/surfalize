@@ -4,7 +4,7 @@ from enum import IntEnum
 import dateutil
 import numpy as np
 from ..exceptions import CorruptedFileError, CorruptedFileError
-from .common import RawSurface, get_unit_conversion
+from .common import RawSurface, get_unit_conversion, FileHandler
 
 # This code was only tested on .opd files with an itemsize of 2
 
@@ -81,6 +81,7 @@ def read_block_definition(filehandle, encoding='utf-8'):
     return name, Block(BlockType(type_), size, flags)
 
 
+@FileHandler.register_reader(suffix='.opd')
 def read_opd(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as filehandle:
         magic = filehandle.read(2)  # skipping header

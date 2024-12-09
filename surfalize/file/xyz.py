@@ -1,8 +1,10 @@
 # This code assumes units of meters for xyz data
 import numpy as np
 from ..exceptions import UnsupportedFileFormatError, CorruptedFileError
-from .common import RawSurface
+from .common import RawSurface, FileHandler
 
+
+@FileHandler.register_reader(suffix='.xyz')
 def read_xyz(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath) as file:
         try:

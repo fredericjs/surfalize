@@ -1,7 +1,7 @@
 import struct
 import numpy as np
 import dateutil
-from .common import RawSurface
+from .common import RawSurface, FileHandler
 from datetime import datetime
 
 
@@ -14,7 +14,7 @@ OFFSET_SPACING = 1376
 DTYPE_HEIGHT = np.uint16
 DTYPE_IMG = np.uint8
 
-
+@FileHandler.register_reader(suffix='.nms')
 def read_nms(filepath, read_image_layers=False, encoding='utf-8'):
     with open(filepath, 'rb') as file:
         file.seek(OFFSET_Z, 0)
