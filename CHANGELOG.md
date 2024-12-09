@@ -4,7 +4,7 @@
 - Readers and writers now work directly with file-like objects
 - If the designated reader for a file determined from the file path suffix raises an Exception, if no suffix is provided
   or if no reader exists for that suffix, surfalize now tries to infer the correct reader from the file magic. This 
-  helps in cases where the file format is unkown or the file is labeled with the wrong file extension.
+  helps in cases where the file format is unknown or the file is labeled with the wrong file extension.
 - Added tests for reading from and writing to file-like objects
 ## v0.13.2
 - Ensured compatibility of trapezoid function with numpy versions (trapz for np < 2.X, trapezoid for > 2.X) 
