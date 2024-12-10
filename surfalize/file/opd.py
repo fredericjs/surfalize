@@ -4,9 +4,10 @@ from enum import IntEnum
 import dateutil
 import numpy as np
 from ..exceptions import CorruptedFileError, CorruptedFileError
-from .common import RawSurface, get_unit_conversion
+from .common import RawSurface, get_unit_conversion, FileHandler, np_from_any
 
 # This code was only tested on .opd files with an itemsize of 2
+MAGIC = b'\x01\x00Directory'
 
 FIXED_UNIT_Z = 'nm'
 FIXED_UNIT_XY = 'mm'
@@ -50,7 +51,7 @@ class Block:
         data_length = nx * ny
         if data_length * itemsize != self.size - 6:
             raise CorruptedFileError(f'Size of data ({data_length}) does not match expected size ({self.size - 6}).')
-        data = np.fromfile(filehandle, dtype=dtypes[BlockType.ARRAY][itemsize], count=data_length)
+        data = np_from_any(filehandle, dtype=dtypes[BlockType.ARRAY][itemsize], count=data_length)
         data = np.rot90(data.reshape(nx, ny))
         return data
 
@@ -81,58 +82,63 @@ def read_block_definition(filehandle, encoding='utf-8'):
     return name, Block(BlockType(type_), size, flags)
 
 
-def read_opd(filepath, read_image_layers=False, encoding='utf-8'):
-    with open(filepath, 'rb') as filehandle:
-        magic = filehandle.read(2)  # skipping header
-        name, directory_block = read_block_definition(filehandle, encoding=encoding)
-        if name != 'Directory':
-            raise CorruptedFileError('Directory block not found.')
-        n_blocks = int(directory_block.size / BLOCK_SIZE)
-        blocks = dict()
-        for _ in range(n_blocks - 1):
-            name, block = read_block_definition(filehandle, encoding=encoding)
-            blocks[name] = block
-        offset = filehandle.tell()
-        for block in blocks.values():
-            block.offset = offset
-            offset += block.size
+@FileHandler.register_reader(suffix='.opd', magic=MAGIC)
+def read_opd(filehandle, read_image_layers=False, encoding='utf-8'):
+    magic = filehandle.read(len(MAGIC))
+    if magic != MAGIC:
+        raise CorruptedFileError('Magic was not recognized.')
+    # We need to jump back because we use the name of the directory block as part of the file magic
+    filehandle.seek(2, 0)
 
-        data = blocks['RAW_DATA'].read_contents(filehandle, encoding=encoding)
-        image_layers = {}
-        if read_image_layers and 'Image' in blocks:
-            image_layers['Grayscale'] = blocks['Image'].read_contents(filehandle, encoding=encoding)
+    name, directory_block = read_block_definition(filehandle, encoding=encoding)
+    if name != 'Directory':
+        raise CorruptedFileError('Directory block not found.')
+    n_blocks = int(directory_block.size / BLOCK_SIZE)
+    blocks = dict()
+    for _ in range(n_blocks - 1):
+        name, block = read_block_definition(filehandle, encoding=encoding)
+        blocks[name] = block
+    offset = filehandle.tell()
+    for block in blocks.values():
+        block.offset = offset
+        offset += block.size
 
-        metadata = dict()
-        for name, block in blocks.items():
-            if block.type in [BlockType.TEXT, BlockType.SHORT, BlockType.FLOAT, BlockType.DOUBLE, BlockType.LONG]:
-                contents = block.read_contents(filehandle, encoding=encoding)
-                if block.type == BlockType.TEXT and not contents:
-                    # Skip empty strings
-                    continue
-                metadata[name] = contents
-        try:
-            metadata['timestamp'] = dateutil.parser.parse(metadata['Date'] + ' ' + metadata['Time'])
-            del metadata['Date']
-            del metadata['Time']
-        except KeyError:
-            pass
+    data = blocks['RAW_DATA'].read_contents(filehandle, encoding=encoding)
+    image_layers = {}
+    if read_image_layers and 'Image' in blocks:
+        image_layers['Grayscale'] = blocks['Image'].read_contents(filehandle, encoding=encoding)
 
-        for label in ['Wavelength', 'Mult', 'Aspect', 'Pixel_size']:
-            if label not in metadata:
-                metadata[label] = 1.0
+    metadata = dict()
+    for name, block in blocks.items():
+        if block.type in [BlockType.TEXT, BlockType.SHORT, BlockType.FLOAT, BlockType.DOUBLE, BlockType.LONG]:
+            contents = block.read_contents(filehandle, encoding=encoding)
+            if block.type == BlockType.TEXT and not contents:
+                # Skip empty strings
+                continue
+            metadata[name] = contents
+    try:
+        metadata['timestamp'] = dateutil.parser.parse(metadata['Date'] + ' ' + metadata['Time'])
+        del metadata['Date']
+        del metadata['Time']
+    except KeyError:
+        pass
 
-        nan_mask = None
-        # Mask invalid datapoints
-        if data.dtype in ['int16', 'float32']:
-            nan_mask = (data == invalid_value[data.dtype.name])
+    for label in ['Wavelength', 'Mult', 'Aspect', 'Pixel_size']:
+        if label not in metadata:
+            metadata[label] = 1.0
 
-        metadata['Wavelength'] *= get_unit_conversion(FIXED_UNIT_Z, 'um')
-        scale_z = metadata['Wavelength'] / metadata['Mult']
+    nan_mask = None
+    # Mask invalid datapoints
+    if data.dtype in ['int16', 'float32']:
+        nan_mask = (data == invalid_value[data.dtype.name])
 
-        data = data.astype('float64') * scale_z
-        if nan_mask is not None:
-            data[nan_mask] = np.nan
+    metadata['Wavelength'] *= get_unit_conversion(FIXED_UNIT_Z, 'um')
+    scale_z = metadata['Wavelength'] / metadata['Mult']
 
-        step_x = metadata['Pixel_size'] * get_unit_conversion(FIXED_UNIT_XY, 'um')
-        step_y = step_x * metadata['Aspect']
-        return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=image_layers)
+    data = data.astype('float64') * scale_z
+    if nan_mask is not None:
+        data[nan_mask] = np.nan
+
+    step_x = metadata['Pixel_size'] * get_unit_conversion(FIXED_UNIT_XY, 'um')
+    step_y = step_x * metadata['Aspect']
+    return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=image_layers)

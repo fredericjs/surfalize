@@ -1,7 +1,7 @@
 import struct
 import numpy as np
 from ..exceptions import CorruptedFileError
-from .common import RawSurface
+from .common import RawSurface, FileHandler, np_from_any, np_to_any
 
 MAGIC = b'AliconaImaging\x00\r\n'
 TAG_LAYOUT = '20s30s2s'
@@ -20,7 +20,8 @@ def write_tag(filehandle, key, value, encoding='utf-8'):
                              '\r\n'.encode(encoding))
     filehandle.write(binary_tag)
 
-def write_al3d(filepath, surface, encoding='utf-8'):
+@FileHandler.register_writer(suffix='.al3d')
+def write_al3d(filehandle, surface, encoding='utf-8'):
     header = dict()
     header['Version'] = 1
     header['TagCount'] = 9
@@ -34,43 +35,42 @@ def write_al3d(filepath, surface, encoding='utf-8'):
     header['Rows'] = surface.size.y
     header['TextureImageOffset'] = 0
 
-    with open(filepath, 'wb') as file:
-        file.write(MAGIC)
-        for key, value in header.items():
-            write_tag(file, key, value, encoding=encoding)
-        pos = file.tell()
-        n_padding = header['DepthImageOffset'] - pos - 2
-        file.write(b'\x00' * n_padding + b'\r\n')
-        data = surface.data.astype(DTYPE) * 1e-6
-        data.tofile(file)
+    filehandle.write(MAGIC)
+    for key, value in header.items():
+        write_tag(filehandle, key, value, encoding=encoding)
+    pos = filehandle.tell()
+    n_padding = header['DepthImageOffset'] - pos - 2
+    filehandle.write(b'\x00' * n_padding + b'\r\n')
+    data = surface.data.astype(DTYPE) * 1e-6
+    np_to_any(data, filehandle)
 
-def read_al3d(filepath, read_image_layers=False, encoding='utf-8'):
-    with open(filepath, 'rb') as file:
-        magic = file.read(17)
-        if magic != MAGIC:
-            raise CorruptedFileError('Incompatible file magic detected.')
-        header = dict()
-        key, value = read_tag(file)
-        if key != 'Version':
-            raise CorruptedFileError('Version tag expected but not found.')
+@FileHandler.register_reader(suffix='.al3d', magic=MAGIC)
+def read_al3d(filehandle, read_image_layers=False, encoding='utf-8'):
+    magic = filehandle.read(17)
+    if magic != MAGIC:
+        raise CorruptedFileError('Incompatible file magic detected.')
+    header = dict()
+    key, value = read_tag(filehandle)
+    if key != 'Version':
+        raise CorruptedFileError('Version tag expected but not found.')
+    header[key] = value
+
+    key, value = read_tag(filehandle)
+    if key != 'TagCount':
+        raise CorruptedFileError('TagCount tag expected but not found.')
+    header[key] = value
+
+    for _ in range(int(header['TagCount'])):
+        key, value = read_tag(filehandle)
         header[key] = value
 
-        key, value = read_tag(file)
-        if key != 'TagCount':
-            raise CorruptedFileError('TagCount tag expected but not found.')
-        header[key] = value
-
-        for _ in range(int(header['TagCount'])):
-            key, value = read_tag(file)
-            header[key] = value
-
-        nx = int(header['Cols'])
-        ny = int(header['Rows'])
-        step_x = float(header['PixelSizeXMeter']) * 1e6
-        step_y = float(header['PixelSizeYMeter']) * 1e6
-        offset = int(header['DepthImageOffset'])
-        file.seek(offset)
-        data = np.fromfile(file, dtype=np.float32, count=nx * ny, offset=0).reshape(ny, nx)
+    nx = int(header['Cols'])
+    ny = int(header['Rows'])
+    step_x = float(header['PixelSizeXMeter']) * 1e6
+    step_y = float(header['PixelSizeYMeter']) * 1e6
+    offset = int(header['DepthImageOffset'])
+    filehandle.seek(offset)
+    data = np_from_any(filehandle, dtype=np.float32, count=nx * ny, offset=0).reshape(ny, nx)
 
     invalidValue = float(header['InvalidPixelValue'])
     data[data == invalidValue] = np.nan

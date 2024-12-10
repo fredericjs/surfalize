@@ -2,7 +2,7 @@ import struct
 import re
 from datetime import datetime
 import numpy as np
-from .common import RawSurface, get_unit_conversion, Entry, Layout
+from .common import RawSurface, get_unit_conversion, Entry, Layout, FileHandler, np_to_any
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # File format specifications taken from ISO 25178-71
@@ -125,17 +125,18 @@ def read_binary_sdf(filehandle, encoding="utf-8"):
     step_y = header["Yscale"] * CONVERSION_FACTOR
     return RawSurface(data, step_x, step_y, metadata=header)
 
-def read_sdf(file_path, read_image_layers=False, encoding="utf-8"):
-    with open(file_path, "rb") as filehandle:
-        magic = filehandle.read(8)
-        if magic == MAGIC_ASCII:
-            return read_ascii_sdf(filehandle, encoding=encoding)
-        elif magic == MAGIC_BINARY:
-            return read_binary_sdf(filehandle, encoding=encoding)
-        else:
-            raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
+@FileHandler.register_reader(suffix='.sdf', magic=(MAGIC_ASCII, MAGIC_BINARY))
+def read_sdf(filehandle, read_image_layers=False, encoding="utf-8"):
+    magic = filehandle.read(8)
+    if magic == MAGIC_ASCII:
+        return read_ascii_sdf(filehandle, encoding=encoding)
+    elif magic == MAGIC_BINARY:
+        return read_binary_sdf(filehandle, encoding=encoding)
+    else:
+        raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
 
-def write_sdf(filepath, surface, encoding='utf-8', binary=True):
+@FileHandler.register_writer(suffix='.sdf')
+def write_sdf(filehandle, surface, encoding='utf-8', binary=True):
     now = datetime.now()
     mod_date = now.strftime(ASCII_DATE_FORMAT)
     # if the surface contains a timestamp in the metadata, we use this one, otherwise we set the create date to the same
@@ -177,28 +178,26 @@ def write_sdf(filepath, surface, encoding='utf-8', binary=True):
 
     # Write in binary mode
     if binary:
-        with open(filepath, 'wb') as filehandle:
-            filehandle.write(MAGIC_BINARY) # write magic identifier
-            LAYOUT_HEADER.write(filehandle, header)
-            data.tofile(filehandle)
+        filehandle.write(MAGIC_BINARY) # write magic identifier
+        LAYOUT_HEADER.write(filehandle, header)
+        np_to_any(data, filehandle)
     # Write in ascii mode
     else:
-        CRLF = '\n'
-        with open(filepath, 'w') as filehandle:
-            filehandle.write(MAGIC_ASCII.decode() + CRLF)
-            for k, v in header.items():
-                filehandle.write(f'{k} = {v}{CRLF}')
-            filehandle.write('*' + CRLF)
-            line_values = []
-            for i, value in enumerate(data.flatten()):
-                if np.isnan(value):
-                    line_values.append('BAD'.ljust(ASCII_FLOAT_PRECISION + 2))
-                else:
-                    line_values.append(f'{value:.{ASCII_FLOAT_PRECISION}f}')
-                if i % 10 == 0 or i == data.size - 1:
-                    filehandle.write(' '.join(line_values) + CRLF)
-                    line_values = []
+        CRLF = '\n'.encode('ascii')
+        filehandle.write(MAGIC_ASCII + CRLF)
+        for k, v in header.items():
+            filehandle.write(f'{k} = {v}{CRLF}'.encode('ascii'))
+        filehandle.write('*'.encode('ascii') + CRLF)
+        line_values = []
+        for i, value in enumerate(data.flatten()):
+            if np.isnan(value):
+                line_values.append('BAD'.ljust(ASCII_FLOAT_PRECISION + 2))
+            else:
+                line_values.append(f'{value:.{ASCII_FLOAT_PRECISION}f}')
+            if i % 10 == 0 or i == data.size - 1:
+                filehandle.write(' '.join(line_values).encode('ascii') + CRLF)
+                line_values = []
 
-            filehandle.write('*' + CRLF)
-            filehandle.write('<ExportedBy>Surfalize</ExportedBy>' + CRLF)
-            filehandle.write('*' + CRLF)
+        filehandle.write('*'.encode('ascii') + CRLF)
+        filehandle.write('<ExportedBy>Surfalize</ExportedBy>'.encode('ascii') + CRLF)
+        filehandle.write('*'.encode('ascii') + CRLF)

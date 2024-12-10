@@ -1,6 +1,8 @@
 # Standard imports
 import logging
 logger = logging.getLogger(__name__)
+import warnings
+warnings.formatwarning = lambda msg, *args, **kwargs: f'Warning: {msg}\n'
 from functools import wraps
 from collections import namedtuple
 
@@ -17,10 +19,10 @@ import scipy.ndimage as ndimage
 from sklearn.cluster import KMeans
 
 # Custom imports
-from .file import load_file, write_file
-from .utils import is_list_like, register_returnlabels
+from .file import FileHandler
+from .utils import is_list_like, register_returnlabels, approximately_equal
 from .cache import CachedInstance, cache
-from .mathutils import Sinusoid, argclosest, interp1d
+from .mathutils import Sinusoid, argclosest, trapezoid
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -130,9 +132,15 @@ class Surface(CachedInstance):
     
     def __init__(self, height_data, step_x, step_y, metadata=None, image_layers=None):
         super().__init__() # Initialize cached instance
+        if not approximately_equal(step_x, step_y):
+            warnings.warn(
+                'The surface has different pixel size in x and y. Some methods might result in incorrect values.'
+            )
+
         self.data = height_data
         self.step_x = step_x
         self.step_y = step_y
+
         self.metadata = metadata if metadata is not None else {}
         self.image_layers = image_layers if image_layers is not None else {}
 
@@ -265,14 +273,18 @@ class Surface(CachedInstance):
         return np.any(np.isnan(self.data))
 
     @classmethod
-    def load(cls, filepath, encoding='utf-8', read_image_layers=False):
+    def load(cls, path_or_buffer, format=None, encoding='utf-8', read_image_layers=False):
         """
         Classmethod to load a topography from a file.
 
         Parameters
         ----------
-        filepath : str | pathlib.Path
-            Filepath pointing to the topography file.
+        path_or_buffer : str | pathlib.Path | buffer
+            Filepath pointing to the topography file or buffer.
+        format : str | None
+            File format in which file should be read. If the file is provided as a path and does not contain a suffix,
+            the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
+            If the surface is read from a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
         read_image_layers : bool, Default False
@@ -282,7 +294,8 @@ class Surface(CachedInstance):
         -------
         surface : surfalize.Surface
         """
-        raw_surface = load_file(filepath, encoding=encoding, read_image_layers=read_image_layers)
+        raw_surface = FileHandler(path_or_buffer, format_=format).read(encoding=encoding,
+                                                                      read_image_layers=read_image_layers)
         return cls.from_raw_surface(raw_surface)
 
     @classmethod
@@ -291,14 +304,18 @@ class Surface(CachedInstance):
         return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
                    image_layers=image_layers)
 
-    def save(self, filepath, encoding='utf-8', **kwargs):
+    def save(self, path_or_buffer, format=None, encoding='utf-8', **kwargs):
         """
         Saves the surface to a supported file format. The kwargs are specific to individual file formats.
 
         Parameters
         ----------
-        filepath : str | pathlib.Path
-            Filepath pointing to the topography file.
+        path_or_buffer : str | pathlib.Path | buffer
+            Filepath pointing to the topography file or buffer.
+        format : str | None
+            File format in which file should be saved. If the file is provided as a path and does not contain a suffix,
+            the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
+            If the surface is saved to a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
 
@@ -311,7 +328,7 @@ class Surface(CachedInstance):
         -------
         None
         """
-        write_file(filepath, self, encoding=encoding, **kwargs)
+        FileHandler(path_or_buffer, format_=format).write(self, encoding=encoding, **kwargs)
 
     def get_image_layer_names(self):
         """
@@ -1648,7 +1665,7 @@ class Surface(CachedInstance):
             lorenz[1:] = np.cumsum(results[i]) / np.sum(results[i])
             x, step = np.linspace(0, 1, lorenz.size, retstep=True)
             y = lorenz.min() + (lorenz.max() - lorenz.min()) * x
-            B = np.trapz(lorenz, dx=step)
+            B = trapezoid(lorenz, dx=step)
             A = 0.5 - B
             gini = A / 0.5
             h.append(1 - gini)

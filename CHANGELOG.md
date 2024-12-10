@@ -1,5 +1,16 @@
-## v0.13.2
+## v0.14.0
+- Refactored the file reading and writing system
+- Readers and writers now register in a FileHandler class with their suffix and file magic
+- Readers and writers now work directly with file-like objects
+- If the designated reader for a file determined from the file path suffix raises an Exception, if no suffix is provided
+  or if no reader exists for that suffix, surfalize now tries to infer the correct reader from the file magic. This 
+  helps in cases where the file format is unknown or the file is labeled with the wrong file extension.
+- Added tests for reading from and writing to file-like objects
 - File loader now issues warning if step_x and step_y are not equal
+## v0.13.2
+- Ensured compatibility of trapezoid function with numpy versions (trapz for np < 2.X, trapezoid for > 2.X) 
+- Added hook to batch execution that is called after each processed file. This hook can be used for instance to display
+  a custom progress bar.
 ## v0.13.1
 - Updated minimum Python version requirement to 3.9
 - Fixed bug with OPD file reader that occurs when no date is present in the metadata

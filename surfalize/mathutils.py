@@ -3,6 +3,11 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from .exceptions import FittingError
 
+# Ensure compatibility with differnt numpy versions
+if int(np.__version__.split('.')[0]) < 2:
+    trapezoid = np.trapz
+else:
+    trapezoid = np.trapezoid
 
 def interp1d(xdata, ydata, assume_sorted=False):
     """
