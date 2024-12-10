@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from .cache import CachedInstance, cache
+from .mathutils import interpolate_line_on_2d_array
 
 
 class AutocorrelationFunction(CachedInstance):
@@ -24,7 +25,8 @@ class AutocorrelationFunction(CachedInstance):
         # to avoid double computation
         self._surface = surface
         self._current_threshold = None
-        self.acf_data = self.calculate_autocorrelation()
+        self.data = self.calculate_autocorrelation()
+        self._center = np.array(self.data.shape) // 2
 
     def calculate_autocorrelation(self):
         data = self._surface.center().data
@@ -33,7 +35,7 @@ class AutocorrelationFunction(CachedInstance):
         acf_data = np.fft.fftshift(np.fft.ifft2(data_fft * np.conj(data_fft)).real / data.size)
         return acf_data
 
-    def _calculate_distances(self, s=0.2):
+    def old_calculate_distances(self, s=0.2):
         """
         Calculates the distances of the 2d autocorrelation function of the surface height data and
         extracts the indices of the points of minimum and maximum decay.
@@ -76,6 +78,38 @@ class AutocorrelationFunction(CachedInstance):
         # Calculate the Euclidean distance from each index to the center
         distances = np.linalg.norm(indices - self.center, axis=1)
         self._idx_max = indices[np.argmax(distances)]
+
+    def _calculate_distances(self, s):
+        self.clear_cache()
+        self._current_threshold = s
+        self._absolute_threshold = s * self.data.max()
+        mask = (self.data < self._absolute_threshold)
+
+        # Invert mask because the function considers all 0 values to be background
+        # Use image segementation to identify contiguous regions in the data
+        labels = label(~mask)
+        feature_center_id = labels[self.center[0], self.center[1]]
+        # Remove all but the central region
+        mask = (labels == feature_center_id)
+        # Currently, the outer pixels of the center region are just above the threshold
+        # So we expand the mask by one pixel to obtain the pixels that are just below the threshold
+        expanded_mask = expand_labels(mask, distance=1)
+        # Using xor we obtain the edge of the region with values just below the threshold
+        edge = expanded_mask ^ mask
+
+        # Calculate the Euclidean distance from each edge pixel to the center
+        indices = np.argwhere(edge)
+
+        # We need to calculate the distances in units for this to work for surfaces with unequal spacing
+        # in x and y (looking at you OPD files, why???)
+        distances_xy_px = indices - self.center
+        distances_xy_units = distances_xy_px * np.array([self._surface.step_y, self._surface.step_x])
+        distances = np.linalg.norm(distances_xy_units, axis=1)
+
+        # Find the index with the smallest and largest distance
+        self.idx_min = indices[np.argmin(distances)]
+        self.idx_max = indices[np.argmax(distances)]
+
 
     @cache
     def Sal(self, s=0.2):

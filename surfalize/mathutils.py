@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
+import scipy.ndimage as ndimage
 from .exceptions import FittingError
 
 # Ensure compatibility with differnt numpy versions
@@ -8,6 +9,33 @@ if int(np.__version__.split('.')[0]) < 2:
     trapezoid = np.trapz
 else:
     trapezoid = np.trapezoid
+
+def interpolate_line_on_2d_array(array, start, end, order=3, num_points=100):
+    """
+    Interpolates a line between two points on a 2d array using spline interpolation.
+
+    Parameters
+    ----------
+    array : 2d array-like
+    start : tuple[int, int]
+        Index of the start point.
+    end : tuple[int, int]
+        Index of the end point.
+    order : int
+        Order of spline interpolation. Defaults to 3.
+    num_points : int
+        Number of points of the interpolated line. Defaults to 100.
+
+    Returns
+    -------
+    np.ndarray
+    """
+    coords = np.array([
+        np.linspace(start[0], end[0], num_points),
+        np.linspace(start[1], end[1], num_points)
+    ])
+    return ndimage.map_coordinates(array, coords, order=order)
+
 
 def interp1d(xdata, ydata, assume_sorted=False):
     """
@@ -80,6 +108,42 @@ def closest(x, data):
         Value in xdata that is closest to x.
     """
     return data.ravel()[argclosest(x, data.ravel())]
+
+
+def argmax_all(arr):
+    """
+    Returns all indices where the array reaches its maximum value.
+
+    Parameters:
+    -----------
+    arr : array-like
+        Input array
+
+    Returns:
+    --------
+    numpy.ndarray
+        Array of indices where the maximum value occurs
+    """
+    max_val = np.max(arr)
+    return np.where(arr == max_val)[0]
+
+
+def argmin_all(arr):
+    """
+    Returns all indices where the array reaches its minimum value.
+
+    Parameters:
+    -----------
+    arr : array-like
+        Input array
+
+    Returns:
+    --------
+    numpy.ndarray
+        Array of indices where the minimum value occurs
+    """
+    min_val = np.min(arr)
+    return np.where(arr == min_val)[0]
 
 def get_period_fft_1d(xdata, ydata):
     """
