@@ -1,3 +1,8 @@
+## v0.14.1
+- Fixed roughness parameter calculation based on ACF (Sal, Str)
+- Added interpolation to the calculation ACF roughness parameters, now matching values obtained by MountainsMap more
+  closely
+- Fixed broken link to logo for PyPi
 ## v0.14.0
 - Refactored the file reading and writing system
 - Readers and writers now register in a FileHandler class with their suffix and file magic
