@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="logo.svg" width="600">
+<img src="https://raw.githubusercontent.com/fredericjs/surfalize/refs/heads/main/logo.svg" width="600">
 </h1><br>
 
 [![PyPI version](https://badge.fury.io/py/surfalize.svg)](https://badge.fury.io/py/surfalize)
