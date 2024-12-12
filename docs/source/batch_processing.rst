@@ -26,6 +26,28 @@ formats will be loaded. Alternatively, a list of specific formats can also be su
 
     batch = Batch.from_dir('path/to/folder/', extension='.vk4')
 
+To pass file-like objects to a Batch object, they must first be wrapped in an instance of the `FileInput` class to
+provide a name and optionally a file format specifier.
+
+.. code:: python
+
+    import io
+    from surfalize import Batch, FileInput
+
+    # Here we create a file-like object for the sake of demonstration. In practice, these probably come from a database
+    # or network connections
+
+    with open('example_1.vk4', 'rb') as f:
+        buffer1 = io.BytesIO(f.read())
+
+    with open('example_2.vk4', 'rb') as f:
+        buffer2 = io.BytesIO(f.read())
+
+    fileobj1 = FileInput(name='my_surface_1', data=buffer, format='.vk4')
+    fileobj2 = FileInput(name='my_surface_2', data=buffer, format='.vk4')
+
+    batch = Batch([fileobj1, fileobj2])
+
 Applying operations
 ===================
 

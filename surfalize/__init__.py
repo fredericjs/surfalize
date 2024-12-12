@@ -4,4 +4,4 @@ except ImportError:
     __version__ = 'Unknown'
 from .surface import Surface
 from .profile import Profile
-from .batch import Batch
+from .batch import Batch, FileInput
