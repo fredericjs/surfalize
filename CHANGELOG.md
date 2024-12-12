@@ -7,6 +7,8 @@
   helps in cases where the file format is unknown or the file is labeled with the wrong file extension.
 - Added tests for reading from and writing to file-like objects
 - File loader now issues warning if step_x and step_y are not equal
+- Added support for file-like objects to batch processing
+- Updated docs for working with file-like objects
 ## v0.13.2
 - Ensured compatibility of trapezoid function with numpy versions (trapz for np < 2.X, trapezoid for > 2.X) 
 - Added hook to batch execution that is called after each processed file. This hook can be used for instance to display
