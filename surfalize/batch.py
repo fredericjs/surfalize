@@ -1,11 +1,14 @@
+import io
 from collections import defaultdict
 from multiprocessing.pool import ThreadPool
 from functools import partial
+from dataclasses import dataclass
 from pathlib import Path
 import logging
 logger = logging.getLogger(__name__)
 import numpy as np
 import pandas as pd
+
 from tqdm.auto import tqdm
 from .surface import Surface
 from .utils import is_list_like
@@ -17,6 +20,16 @@ class ParsingError(Exception):
     Is raised when an error occurs during filename parsing.
     """
     pass
+
+
+@dataclass
+class FileInput:
+    """
+    Class that wraps a file-like object, adding a name and an optional format specifier for use in batch processing.
+    """
+    name: str
+    data: io.IOBase
+    format: str | None = None
 
 
 class _Token:
@@ -335,15 +348,15 @@ class _Parameter:
             return {f'{self.name}_{label}': value for value, label in zip(result, labels)}
         return {self.name: result}
 
-def _task(filepath, operations, parameters, ignore_errors):
+def _task(file, operations, parameters, ignore_errors):
     """
     Task that loads a surface from file, executes a list of operations and calculates a list of parameters.
     This function is used to split the processing load of a Batch between CPU cores.
 
     Parameters
     ----------
-    filepath : str | pathlib.Path
-        Filepath pointing to the measurement file.
+    file : str | pathlib.Path
+        Filepath pointing to the measurement file or FileInput object.
     operations : list[_Operation]
         List of operations to execute on the surface.
     parameters : list[_Parameter]
@@ -355,10 +368,13 @@ def _task(filepath, operations, parameters, ignore_errors):
         Dictionary containing the values for each invokes parameter, with the parameter's method identifier as
         key.
     """
-    surface = Surface.load(filepath)
+    if isinstance(file, FileInput):
+        surface = Surface.load(file.data, format=file.format)
+    else:
+        surface = Surface.load(file)
     for operation in operations:
         operation.execute_on(surface)
-    results = dict(file=filepath.name)
+    results = dict(file=file.name)
     for parameter in parameters:
         result = parameter.calculate_from(surface, ignore_errors=ignore_errors)
         results.update(result)
@@ -367,41 +383,42 @@ def _task(filepath, operations, parameters, ignore_errors):
 #TODO batch image export
 class Batch:
     """
-   The batch class is used to perform operations and calculate quantitative surface parameters for a batch of
-   topography files. The implementation allows to register operations and parameters for lazy calculation by invoking
-   methods defined by this class. Every operation method that is defined by Surface can be invoked on the batch class,
-   which then registers the method and the passed arguments for later execution. Similarly, every roughness parameter
-   can be called on the Batch class. The __getattr__ method is responsible for checking if an invoked method constitutes
-   a roughness parameter and if so, automatically wraps the method in a Parameter class, which is registered for later
-   calculation. This means that roughness parameters can be invoked on the Batch object despite not being explicitly
-   defined in the code.
+    The batch class is used to perform operations and calculate quantitative surface parameters for a batch of
+    topography files. The implementation allows to register operations and parameters for lazy calculation by invoking
+    methods defined by this class. Every operation method that is defined by Surface can be invoked on the batch class,
+    which then registers the method and the passed arguments for later execution. Similarly, every roughness parameter
+    can be called on the Batch class. The __getattr__ method is responsible for checking if an invoked method constitutes
+    a roughness parameter and if so, automatically wraps the method in a Parameter class, which is registered for later
+    calculation. This means that roughness parameters can be invoked on the Batch object despite not being explicitly
+    defined in the code.
 
-   All methods can be chained, since they implement the builder design pattern, where every method returns the object
-   itself. For exmaple, the operations levelling, filtering and aligning as well as the calculation of roughness
-   parameters Sa, Sq and Sz can be registered for later calculation in the following manner:
+    All methods can be chained, since they implement the builder design pattern, where every method returns the object
+    itself. For exmaple, the operations levelling, filtering and aligning as well as the calculation of roughness
+    parameters Sa, Sq and Sz can be registered for later calculation in the following manner:
 
-   >>> batch = Batch(filespaths)
-   >>> batch.level().filter(filter_type='lowpass', cutoff=10).align().Sa().Sq().Sz()
+    >>> batch = Batch(filespaths)
+    >>> batch.level().filter(filter_type='lowpass', cutoff=10).align().Sa().Sq().Sz()
 
-   Or on separate lines:
-   >>> batch.level().filter(filter_type='lowpass', cutoff=10).align()
-   >>> batch.Sa()
-   >>> batch.Sq()
-   >>> batch.Sz()
+    Or on separate lines:
+    >>> batch.level().filter(filter_type='lowpass', cutoff=10).align()
+    >>> batch.Sa()
+    >>> batch.Sq()
+    >>> batch.Sz()
 
-   Upon invoking the execute method, all registered operations and parameters are performed.
-   >>> batch.execute()
+    Upon invoking the execute method, all registered operations and parameters are performed.
+    >>> batch.execute()
 
-   If the caller wants to supply additional parameters for each file, such as fabrication data, they can specify the
-   path to an Excel file containing that data using the 'additional_data' keyword argument. The excel file should
-   contain a column 'filename' of the format 'name.extension'. Otherwise, an arbitrary number of additional columns can
-   be supplied.
+    If the caller wants to supply additional parameters for each file, such as fabrication data, they can specify the
+    path to an Excel file containing that data using the 'additional_data' keyword argument. The excel file should
+    contain a column 'filename' of the format 'name.extension'. Otherwise, an arbitrary number of additional columns can
+    be supplied.
 
-   Parameters
-   ----------
-   filepaths : list[pathlib.Path | str]
-       List of filepaths of topography files
-   additional_data : str, pathlib.Path
+    Parameters
+    ----------
+    files : list[pathlib.Path | str | FileInput]
+       List of filepaths or FileInput objects. For file-like objects, a FileInput object must be constructed that holds
+       a name and the file-like object.
+    additional_data : str, pathlib.Path
        Path to an Excel file containing additional parameters, such as
        input parameters. Excel file must contain a column 'file' with
        the filename including the file extension. Otherwise, an arbitrary
@@ -413,10 +430,15 @@ class Batch:
     >>> files = Path().cwd().glob('*.vk4')
     >>> batch = Batch(filespaths, addition_data='additional_data.xlsx')
     >>> batch.level().filter('lowpass', 10).Sa().Sq().Sdr()
-   """
+    """
     
-    def __init__(self, filepaths, additional_data=None):
-        self._filepaths = [Path(file) for file in filepaths]
+    def __init__(self, files, additional_data=None):
+        self._files = []
+        for file in files:
+            if isinstance(file, FileInput):
+                self._files.append(file)
+            else:
+                self._files.append(Path(file))
         if additional_data is None:
             self._additional_data = None
         else:
@@ -428,7 +450,7 @@ class Batch:
         self._filename_pattern = None
 
     def __len__(self):
-        return len(self._filepaths)
+        return len(self._files)
 
     @classmethod
     def from_dir(cls, dir_path, file_extensions=None, additional_data=None):
@@ -469,7 +491,6 @@ class Batch:
             filepaths.extend(list(dir_path.glob(f'*{extension}')))
         return cls(filepaths, additional_data=additional_data)
 
-
     def _disptach_tasks(self, multiprocessing=True, ignore_errors=True, on_file_complete=None):
         """
         Dispatches the individual tasks between CPU cores if multiprocessing is True, otherwise executes them
@@ -498,8 +519,8 @@ class Batch:
         if multiprocessing:
             with ThreadPool() as pool:
                 task = partial(_task, operations=self._operations, parameters=self._parameters, ignore_errors=ignore_errors)
-                with tqdm(total=len(self._filepaths), desc='Processing files') as progress_bar:
-                    for result in pool.imap_unordered(task, self._filepaths):
+                with tqdm(total=len(self._files), desc='Processing files') as progress_bar:
+                    for result in pool.imap_unordered(task, self._files):
                         results.append(result)
                         if on_file_complete is not None:
                             on_file_complete(result)
@@ -508,7 +529,7 @@ class Batch:
                 pool.join()
             return results
 
-        for filepath in tqdm(self._filepaths, desc='Processing'):
+        for filepath in tqdm(self._files, desc='Processing'):
             results.append(_task(filepath, self._operations, self._parameters))
         return results
 
