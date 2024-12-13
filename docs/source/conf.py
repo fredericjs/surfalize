@@ -44,4 +44,8 @@ autodoc_mock_imports = [
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'furo'
+html_theme_options = {
+    "sidebar_hide_name": False,
+    "navigation_with_keys": True,
+}
 html_static_path = ['_static']
