@@ -1,3 +1,5 @@
+## v0.14.2
+- Fixed issues with Python < 3.10 and on linux
 ## v0.14.1
 - Fixed roughness parameter calculation based on ACF (Sal, Str)
 - Added interpolation to the calculation ACF roughness parameters, now matching values obtained by MountainsMap more
