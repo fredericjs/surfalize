@@ -32,7 +32,7 @@ numpydoc_class_members_toctree = False
 autodoc_member_order = 'bysource'
 
 autodoc_mock_imports = [
-    'numpy',
+    #'numpy',
     'matplotlib',
     'pandas',
     'scipy',

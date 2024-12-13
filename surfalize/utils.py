@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 import numpy as np
 
 def approximately_equal(a, b, epsilon=1e-6):
@@ -22,23 +23,26 @@ def approximately_equal(a, b, epsilon=1e-6):
         return True
     return False
 
+#
+# def is_list_like(obj):
+#     """
+#     Determines whether an object is list-like. For now, lists, tuples and numpy arrays are considered list-like.
+#
+#     Parameters
+#     ----------
+#     obj : object
+#
+#     Returns
+#     -------
+#     bool
+#         True if object is list-like, False if is is not.
+#     """
+#     if isinstance(obj, (list, tuple, np.ndarray)):
+#         return True
+#     return False
 
 def is_list_like(obj):
-    """
-    Determines whether an object is list-like. For now, lists, tuples and numpy arrays are considered list-like.
-
-    Parameters
-    ----------
-    obj : object
-
-    Returns
-    -------
-    bool
-        True if object is list-like, False if is is not.
-    """
-    if isinstance(obj, (list, tuple, np.ndarray)):
-        return True
-    return False
+    return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes))
 
 def register_returnlabels(labels):
     """
