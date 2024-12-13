@@ -1,5 +1,8 @@
 from collections.abc import Sequence
 
+import numpy as np
+
+
 def approximately_equal(a, b, epsilon=1e-6):
     """
     Check if two floating point values are approximately equal.
@@ -35,7 +38,7 @@ def is_list_like(obj):
     bool
         True if object is list-like, False if is is not.
     """
-    return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes))
+    return isinstance(obj, (Sequence, np.ndarray)) and not isinstance(obj, (str, bytes))
 
 def register_returnlabels(labels):
     """
