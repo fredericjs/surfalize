@@ -4,6 +4,7 @@ from multiprocessing.pool import ThreadPool
 from functools import partial
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 import logging
 logger = logging.getLogger(__name__)
 import numpy as np
@@ -29,7 +30,7 @@ class FileInput:
     """
     name: str
     data: io.IOBase
-    format: str | None = None
+    format: Optional[str] = None
 
 
 class _Token:

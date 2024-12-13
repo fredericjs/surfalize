@@ -33,7 +33,7 @@ dtypes = {
     BlockType.SHORT: 'h',
     BlockType.FLOAT: 'f',
     BlockType.DOUBLE: 'd',
-    BlockType.LONG: 'l'
+    BlockType.LONG: 'i'
 }
 
 invalid_value = {'int16': 32767, 'float32': 1e38}

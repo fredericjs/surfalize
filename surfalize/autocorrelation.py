@@ -55,7 +55,7 @@ class AutocorrelationFunction(CachedInstance):
 
         mask = self.data > threshold
         labels, _ = ndimage.label(mask)
-        region = labels == labels[*self.center]
+        region = labels == labels[self.center[0], self.center[1]]
         edge = region ^ ndimage.binary_dilation(region, iterations=1)
 
         idx_edge = np.argwhere(edge)
