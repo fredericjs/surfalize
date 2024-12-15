@@ -4,6 +4,7 @@
 
 [![PyPI version](https://badge.fury.io/py/surfalize.svg)](https://badge.fury.io/py/surfalize)
 [![Documentation Status](https://readthedocs.org/projects/surfalize/badge/?version=latest)](https://surfalize.readthedocs.io/en/latest/?badge=latest)
+[![Python Package Tests](https://github.com/fredericjs/surfalize/actions/workflows/test.yml/badge.svg)](https://github.com/fredericjs/surfalize/actions/workflows/test.yml)
 [![Publication](https://img.shields.io/badge/Publication%20-%2010.3390%2Fnano14131076%20-%20%20%2385c1e9%20
 )](https://doi.org/10.3390/nano14131076)
 
