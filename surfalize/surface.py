@@ -147,6 +147,9 @@ class Surface(CachedInstance):
         self.width_um = (height_data.shape[1] - 1) * step_x
         self.height_um = (height_data.shape[0] - 1) * step_y
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.width_um:.2f} x {self.height_um:.2f} µm²)'
+
     @property
     def size(self):
         """
@@ -198,10 +201,7 @@ class Surface(CachedInstance):
         self.width_um = (self.size.x - 1) * self.step_x
         self.height_um = (self.size.y - 1) * self.step_y
         self.clear_cache() # Calls method from parent class
-        
-    def __repr__(self):
-        return f'{self.__class__.__name__}({self.width_um:.2f} x {self.height_um:.2f} µm²)'
-    
+
     def _repr_png_(self):
         """
         Repr method for Jupyter notebooks. When Jupyter makes a call to repr, it checks first if a _repr_png_ is
