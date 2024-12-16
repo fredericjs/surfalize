@@ -1990,7 +1990,48 @@ class Surface(CachedInstance):
         return ax
 
     def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
-                light=0.3, light_position=None, crop_white=True, cbar_pad=50, level_of_detail=100):
+                light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
+                level_of_detail=100):
+        """
+        Renders a surface object in 3d using pyvista.
+
+        Parameters
+        ----------
+        surface: surfalize.Surface
+            Surface object.
+        vertical_angle : float
+            Angle of the camera in the vertical plane in degree. Defaults to 50.
+        horizontal_angle : float
+            Angle of the camera in the horizontal plane in degree. Defaults to 0.
+        zoom : float
+            Zoom factor of the surface render. Defaults to 1. Decreasing the value will zoom out the render.
+        cmap : str
+            Matplotlib colormap name. Defaults to jet.
+        colorbar : bool
+            Whether to show a colorbar. Defaults to True.
+        show_grid : bool
+            Whether to show a grid. Defaults to True.
+        light : float
+            Intensity of the light from 0 to 1. Defaults to 1.
+        light_position : tuple[float, float, float]
+            Position of the light source. Defaults to the position of the camera.
+        crop_white : bool
+            Whether to crop out white image borders in the horizontal axis. Defaults to True.
+        cbar_pad : int
+            Additional padding of the colorbar from the 3d render in pixels. Defaults to 50.
+        cbar_height : float
+            Height of the colorbar as a fraction of the image height.
+        scale : float
+            Vertical scaling factor of the topography. Defaults to 1. Currently, there are issues with the grid rendering
+            for scale values other than 1 due to the current pyvista implementation.
+        level_of_detail : float
+            Level of detail in % by which the topography is downsampled for the 3d plot. A value of 50 will downsample the
+            number of points in each axis by a factor of 2. Defaults to 100.
+
+        Returns
+        -------
+        PIL.Image
+        """
         return plot_3d(
             self,
             vertical_angle=vertical_angle,
@@ -2003,9 +2044,11 @@ class Surface(CachedInstance):
             light_position=light_position,
             crop_white=crop_white,
             cbar_pad=cbar_pad,
+            cbar_height=cbar_height,
+            scale=scale,
             level_of_detail=level_of_detail
         )
-    
+
     def show(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
         """
         Shows a 2D-plot of the surface using matplotlib.
