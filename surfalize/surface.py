@@ -1,5 +1,8 @@
 # Standard imports
 import logging
+
+from .plotting import plot_3d
+
 logger = logging.getLogger(__name__)
 import warnings
 warnings.formatwarning = lambda msg, *args, **kwargs: f'Warning: {msg}\n'
@@ -1985,6 +1988,23 @@ class Surface(CachedInstance):
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         return ax
+
+    def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
+                light=0.3, light_position=None, crop_white=True, cbar_pad=50, level_of_detail=100):
+        return plot_3d(
+            self,
+            vertical_angle=vertical_angle,
+            horizontal_angle=horizontal_angle,
+            zoom=zoom,
+            cmap=cmap,
+            colorbar=colorbar,
+            show_grid=show_grid,
+            light=light,
+            light_position=light_position,
+            crop_white=crop_white,
+            cbar_pad=cbar_pad,
+            level_of_detail=level_of_detail
+        )
     
     def show(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
         """

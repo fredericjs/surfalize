@@ -37,6 +37,9 @@ dependencies = [
     "pillow"
 ]
 
+[project.optional-dependencies]
+3d = ["pyvista"]
+
 [tool.setuptools]
 include-package-data = false
 
