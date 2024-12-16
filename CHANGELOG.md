@@ -1,3 +1,7 @@
+## v0.15.0
+- Added 3d plotting cababilities based on pyvista
+- Added pyvista as optional dependency for 3d plotting
+- Fixed bug in AutocorrelationFunction plotting
 ## v0.14.2
 - Fixed issues with Python < 3.10 and on linux
 ## v0.14.1
