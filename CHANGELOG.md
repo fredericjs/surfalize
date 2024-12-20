@@ -1,5 +1,5 @@
 ## v0.15.0
-- Added 3d plotting cababilities based on pyvista
+- Added 3d plotting capabilities based on pyvista
 - Added pyvista as optional dependency for 3d plotting
 - Fixed bug in AutocorrelationFunction plotting
 - Added Zygo Metropro .dat format reader
