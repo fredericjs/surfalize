@@ -3,7 +3,7 @@ import struct
 from datetime import datetime
 
 import numpy as np
-from .common import get_unit_conversion, RawSurface, np_from_any, Entry, Reserved, Layout, FileHandler
+from .common import get_unit_conversion, RawSurface, read_array, Entry, Reserved, Layout, FileHandler
 from ..exceptions import CorruptedFileError
 
 HEADER_SIZE = 12
@@ -127,7 +127,7 @@ def read_rgb_layer(filehandle, offset):
     channel_length = channel_table['width'] * channel_table['height'] * 3
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / (8 * 3):
         raise CorruptedFileError(f'Size of channel () does not correspond to expected size.')
-    channel_data = np_from_any(filehandle, dtype=np.uint8, count=channel_length)
+    channel_data = read_array(filehandle, dtype=np.uint8, count=channel_length)
     # It seems like vk4 encodes the color channels in the order GRB, therefore we flip the last axis to convert to RGB format
     channel_data = np.flip(channel_data.reshape(channel_table['height'], channel_table['width'], 3), axis=2)
     return channel_data
@@ -139,7 +139,7 @@ def read_height_layer(filehandle, offset):
     if channel_table['data_byte_size'] != channel_length * channel_table['bit_depth'] / 8:
         raise CorruptedFileError('Size of channel does not correspond to expected size.')
     dtype = DTYPE_MAP[channel_table['bit_depth']]
-    channel_data = np_from_any(filehandle, dtype=dtype, count=channel_length)
+    channel_data = read_array(filehandle, dtype=dtype, count=channel_length)
     channel_data = channel_data.reshape(channel_table['height'], channel_table['width'])
     return channel_data
 

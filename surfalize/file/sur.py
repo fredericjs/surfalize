@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface, Entry, Reserved, Layout, FileHandler, np_from_any, np_to_any
+from .common import get_unit_conversion, RawSurface, Entry, Reserved, Layout, FileHandler, read_array, write_array
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # This is not fully implemented! Won't work with all SUR files.
@@ -182,7 +182,7 @@ def read_directory(filehandle):
 
 
 def read_uncompressed_data(filehandle, dtype, num_points):
-    return np_from_any(filehandle, count=num_points, dtype=dtype)
+    return read_array(filehandle, count=num_points, dtype=dtype)
 
 
 def read_compressed_data(filehandle, dtype, expected_compressed_size):
@@ -438,7 +438,7 @@ def write_sur(filehandle, surface, encoding='utf-8', compressed=False):
 
     LAYOUT_HEADER.write(filehandle, header)
     if not compressed:
-        np_to_any(data, filehandle)
+        write_array(data, filehandle)
         return
     else:
         uncompressed_data = data.tobytes()

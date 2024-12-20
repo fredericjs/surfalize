@@ -1,5 +1,5 @@
 import numpy as np
-from .common import RawSurface, get_unit_conversion, FileHandler, np_from_any
+from .common import RawSurface, get_unit_conversion, FileHandler, read_array
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'SIMPLE'
@@ -88,8 +88,8 @@ def read_fits(filehandle, read_image_layers=False, encoding='utf-8'):
             if hdu_header['NAXIS'] != 2:
                 raise UnsupportedFileFormatError("Array with number of dimensions not equal to 2 detected.")
             datasize = hdu_header['NAXIS1'] * hdu_header['NAXIS2'] * int(abs(hdu_header['BITPIX'] / 8))
-            data = np_from_any(filehandle, dtype=dtype_map[hdu_header['BITPIX']],
-                               count=hdu_header['NAXIS1'] * hdu_header['NAXIS2']).reshape(hdu_header['NAXIS2'],
+            data = read_array(filehandle, dtype=dtype_map[hdu_header['BITPIX']],
+                              count=hdu_header['NAXIS1'] * hdu_header['NAXIS2']).reshape(hdu_header['NAXIS2'],
                                                                                           hdu_header['NAXIS1'])
             # Skip the remaining blocksize
             filehandle.seek(BLOCKSIZE - (datasize % BLOCKSIZE), 1)

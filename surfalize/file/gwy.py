@@ -2,7 +2,7 @@ import re
 import struct
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT, FileHandler, np_from_any
+from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT, FileHandler, read_array
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'GWYP'
@@ -174,7 +174,7 @@ class Component:
             return [Container(filehandle).read_contents() for _ in range(array_size)]
         elif self.datatype == 's':
             return [read_null_terminated_string(filehandle) for _ in range(array_size)]
-        return np_from_any(filehandle, count=array_size, dtype=self.datatype)
+        return read_array(filehandle, count=array_size, dtype=self.datatype)
 
     def _read_atomic(self, filehandle):
         if self.datatype == 'o':

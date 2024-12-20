@@ -2,7 +2,7 @@ import struct
 import re
 from datetime import datetime
 import numpy as np
-from .common import RawSurface, get_unit_conversion, Entry, Layout, FileHandler, np_to_any
+from .common import RawSurface, get_unit_conversion, Entry, Layout, FileHandler, write_array
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # File format specifications taken from ISO 25178-71
@@ -180,7 +180,7 @@ def write_sdf(filehandle, surface, encoding='utf-8', binary=True):
     if binary:
         filehandle.write(MAGIC_BINARY) # write magic identifier
         LAYOUT_HEADER.write(filehandle, header)
-        np_to_any(data, filehandle)
+        write_array(data, filehandle)
     # Write in ascii mode
     else:
         CRLF = '\n'.encode('ascii')

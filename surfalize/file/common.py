@@ -242,7 +242,7 @@ class Layout:
             entry.read(filehandle, data, encoding)
         return data
 
-def np_from_any(fileobject, dtype, count=-1, offset=0):
+def read_array(fileobject, dtype, count=-1, offset=0):
     """
     Function that invokes either np.frombuffer or np.fromfile depending on whether the object is a file-like object
     or a buffer.
@@ -262,19 +262,16 @@ def np_from_any(fileobject, dtype, count=-1, offset=0):
     -------
     np.ndarray
     """
-    try :
-        result = np.fromfile(fileobject, dtype, count=count, offset=offset)
-    except Exception:
-        if offset > 0:
-            fileobject.seek(offset, 1)
-        if count == -1:
-            buffer = fileobject.read()
-        else:
-            buffer = fileobject.read(count * np.dtype(dtype).itemsize)
-        result = np.frombuffer(buffer, dtype).copy()
+    if offset > 0:
+        fileobject.seek(offset, 1)
+    if count == -1:
+        buffer = fileobject.read()
+    else:
+        buffer = fileobject.read(count * np.dtype(dtype).itemsize)
+    result = np.frombuffer(buffer, dtype).copy()
     return result
 
-def np_to_any(data, fileobject):
+def write_array(data, fileobject):
     try:
         data.tofile(fileobject)
     except io.UnsupportedOperation:

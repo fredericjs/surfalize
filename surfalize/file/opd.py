@@ -4,7 +4,7 @@ from enum import IntEnum
 import dateutil
 import numpy as np
 from ..exceptions import CorruptedFileError, CorruptedFileError
-from .common import RawSurface, get_unit_conversion, FileHandler, np_from_any
+from .common import RawSurface, get_unit_conversion, FileHandler, read_array
 
 # This code was only tested on .opd files with an itemsize of 2
 MAGIC = b'\x01\x00Directory'
@@ -51,7 +51,7 @@ class Block:
         data_length = nx * ny
         if data_length * itemsize != self.size - 6:
             raise CorruptedFileError(f'Size of data ({data_length}) does not match expected size ({self.size - 6}).')
-        data = np_from_any(filehandle, dtype=dtypes[BlockType.ARRAY][itemsize], count=data_length)
+        data = read_array(filehandle, dtype=dtypes[BlockType.ARRAY][itemsize], count=data_length)
         data = np.rot90(data.reshape(nx, ny))
         return data
 

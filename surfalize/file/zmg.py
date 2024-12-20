@@ -1,5 +1,5 @@
 import numpy as np
-from .common import RawSurface, Layout, Entry, Reserved, FileHandler, np_from_any
+from .common import RawSurface, Layout, Entry, Reserved, FileHandler, read_array
 from ..exceptions import CorruptedFileError
 
 MAGIC = b'Zeta-Instruments'
@@ -26,7 +26,7 @@ def read_zmg(filehandle, read_image_layers=False, encoding='utf-8'):
     header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
     filehandle.seek(header['comment_size'], 1)
     data_length = header['res_x'] * header['res_y']
-    data = np_from_any(filehandle, dtype=np.int16, count=data_length) * header['step_z']
+    data = read_array(filehandle, dtype=np.int16, count=data_length) * header['step_z']
     data = data.reshape((header['res_y'], header['res_x']))
 
     step_x = header['step_x']
