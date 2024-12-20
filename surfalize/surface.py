@@ -1814,7 +1814,7 @@ class Surface(CachedInstance):
         return results
 
     # Plotting #########################################################################################################
-    def plot_abbott_curve(self, nbars: int = 20):
+    def plot_abbott_curve(self, nbars: int = 20, save_to=None):
         """
         Plots the Abbott-Firestone curve.
 
@@ -1822,15 +1822,20 @@ class Surface(CachedInstance):
         ----------
         nbars : int
             Number of bars to display for the material density
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        None
+        plt.Figure, tuple[plt.Axes]
         """
         abbott_curve = self.get_abbott_firestone_curve()
-        return abbott_curve.plot(nbars=nbars)
+        fig, axs = abbott_curve.plot(nbars=nbars)
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, axs
 
-    def plot_functional_parameter_study(self):
+    def plot_functional_parameter_study(self, save_to=None):
         """
         Plots the Abbott-Firestone curve.
 
@@ -1838,20 +1843,47 @@ class Surface(CachedInstance):
         ----------
         nbars : int
             Number of bars to display for the material density
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        None
+        plt.Figure, plt.Axes
         """
         abbott_curve = self.get_abbott_firestone_curve()
-        return abbott_curve.visual_parameter_study()
+        fig, ax = abbott_curve.visual_parameter_study()
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
 
-    def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True):
+    def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True, save_to=None):
+        """
+        Plots the Autocorrelation function.
+
+        Parameters
+        ----------
+        ax : matplotlib axis, default None
+            If specified, the plot will be drawn the specified axis.
+        cmap : str | mpl.cmap, default 'jet'
+            Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
+        show_cbar : bool | None, default None
+            Determines whether to show a colorbar. If the value is None, the colorbar is shown only for topographies
+            and omitted for image data.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
+
+        Returns
+        -------
+        plt.Figure, plt.Axes
+        """
         acf = self.get_autocorrelation_function()
-        return acf.plot_autocorrelation(ax=ax, cmap=cmap, show_cbar=show_cbar)
+        fig, ax = acf.plot_autocorrelation(ax=ax, cmap=cmap, show_cbar=show_cbar)
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
         
     def plot_fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
-                               cmap='inferno', adjust_colormap=True):
+                               cmap='inferno', adjust_colormap=True, save_to=None):
         """
         Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral
         leakage effects that occur when analyzing a signal of finite sample length.
@@ -1873,10 +1905,12 @@ class Surface(CachedInstance):
         adjust_colormap : bool, Default True
             If True, the colormap starts at the mean and ends at 0.7 time the maximum of the data
             to increase peak visibility.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        ax: matplotlib.axes
+        plt.Figure, plt.Axes
         """
         N, M = self.size
         data = self.data
@@ -1925,10 +1959,12 @@ class Surface(CachedInstance):
         extent = (freq_x[ixmin], freq_x[ixmax], freq_y[iymax], freq_y[iymin])
 
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
-        return ax
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
 
     def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, vmin=None, vmax=None,
-                show_cbar=None):
+                show_cbar=None, save_to=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1950,10 +1986,12 @@ class Surface(CachedInstance):
         show_cbar : bool | None, default None
             Determines whether to show a colorbar. If the value is None, the colorbar is shown only for topographies
             and omitted for image data.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        ax.
+        plt.Figure, plt.Axes
         """
         cmap = plt.get_cmap(cmap).copy()
         cmap.set_bad(maskcolor)
@@ -1987,11 +2025,13 @@ class Surface(CachedInstance):
         if layer == 'Topography' and self.has_missing_points:
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
-        return ax
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
 
     def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
                 light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
-                level_of_detail=100):
+                level_of_detail=100, save_to=None):
         """
         Renders a surface object in 3d using pyvista.
 
@@ -2027,12 +2067,14 @@ class Surface(CachedInstance):
         level_of_detail : float
             Level of detail in % by which the topography is downsampled for the 3d plot. A value of 50 will downsample the
             number of points in each axis by a factor of 2. Defaults to 100.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
         PIL.Image
         """
-        return plot_3d(
+        image = plot_3d(
             self,
             vertical_angle=vertical_angle,
             horizontal_angle=horizontal_angle,
@@ -2048,6 +2090,9 @@ class Surface(CachedInstance):
             scale=scale,
             level_of_detail=level_of_detail
         )
+        if save_to:
+            image.save(save_to)
+        return image
 
     def show(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
         """
