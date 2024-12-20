@@ -349,7 +349,7 @@ class _Parameter:
             return {f'{self.name}_{label}': value for value, label in zip(result, labels)}
         return {self.name: result}
 
-def _task(file, operations, parameters, ignore_errors):
+def _task(file, steps, ignore_errors, preserve_chaining_order):
     """
     Task that loads a surface from file, executes a list of operations and calculates a list of parameters.
     This function is used to split the processing load of a Batch between CPU cores.
@@ -358,10 +358,14 @@ def _task(file, operations, parameters, ignore_errors):
     ----------
     file : str | pathlib.Path
         Filepath pointing to the measurement file or FileInput object.
-    operations : list[_Operation]
-        List of operations to execute on the surface.
-    parameters : list[_Parameter]
-        List of parameters to calculate from the surface.
+    operations : list[_Operation, _Parameter, _CustomParameter]
+        List of steps to execute on the surface.
+    preserve_chaining_order : bool
+        Whether to preserve the order the different operations and parameter calculations are called on the batch
+        obeject. If True, operations and parameters can be applied in arbitrary order
+        (e.g batch.operation().parameter().operation()). If False, all operations will be performed before the
+        parameter calculations, irrespective of the order they were called on the batch. The order within the
+        operations and parameters themselves will be preserved nonetheless.
 
     Returns
     -------
@@ -373,12 +377,22 @@ def _task(file, operations, parameters, ignore_errors):
         surface = Surface.load(file.data, format=file.format)
     else:
         surface = Surface.load(file)
-    for operation in operations:
-        operation.execute_on(surface)
     results = dict(file=file.name)
-    for parameter in parameters:
-        result = parameter.calculate_from(surface, ignore_errors=ignore_errors)
-        results.update(result)
+    if preserve_chaining_order:
+        for step in steps:
+            if isinstance(step, _Operation):
+                step.execute_on(surface)
+            elif isinstance(step, (_Parameter, _CustomParameter)):
+                result = step.calculate_from(surface, ignore_errors=ignore_errors)
+                results.update(result)
+    else:
+        operations = [step for step in steps if isinstance(step, _Operation)]
+        parameters = [step for step in steps if isinstance(step, (_Parameter, _CustomParameter))]
+        for operation in operations:
+            operation.execute_on(surface)
+        for parameter in parameters:
+            result = parameter.calculate_from(surface, ignore_errors=ignore_errors)
+            results.update(result)
     return results
 
 #TODO batch image export
@@ -446,8 +460,7 @@ class Batch:
             self._additional_data = pd.read_excel(additional_data)
             if 'file' not in self._additional_data.columns:
                 raise ValueError("File specified by 'additional_data' does not contain column named 'file'.")
-        self._operations = []
-        self._parameters = []
+        self._steps = []
         self._filename_pattern = None
 
     def __len__(self):
@@ -492,7 +505,8 @@ class Batch:
             filepaths.extend(list(dir_path.glob(f'*{extension}')))
         return cls(filepaths, additional_data=additional_data)
 
-    def _disptach_tasks(self, multiprocessing=True, ignore_errors=True, on_file_complete=None):
+    def _disptach_tasks(self, multiprocessing=True, ignore_errors=True, on_file_complete=None,
+                        preserve_chaining_order=True):
         """
         Dispatches the individual tasks between CPU cores if multiprocessing is True, otherwise executes them
         sequentially.
@@ -509,6 +523,19 @@ class Batch:
         ----------
         multiprocessing : bool, default True
             If True, dispatches the task among CPU cores, otherwise sequentially computes the tasks.
+        ignore_errors : bool, default True
+            Errors that are raised during the calculation of parameters are ignored if True. Missing parameter values
+            are filled with nan values. If False, the batch processing is interrupted when an error is raised.
+        on_file_complete: Callable
+            Hook for a Callable that is executed for every surface that has finished processing. The Callable must take
+            a results parameter that is passed a dictionary of the results of the surface calculation. The dictionary
+            will at least hold a key 'file' with the respective filename.
+        preserve_chaining_order : bool
+            Whether to preserve the order the different operations and parameter calculations are called on the batch
+            obeject. If True, operations and parameters can be applied in arbitrary order
+            (e.g batch.operation().parameter().operation()). If False, all operations will be performed before the
+            parameter calculations, irrespective of the order they were called on the batch. The order within the
+            operations and parameters themselves will be preserved nonetheless.
 
         Returns
         -------
@@ -519,7 +546,8 @@ class Batch:
         results = []
         if multiprocessing:
             with ThreadPool() as pool:
-                task = partial(_task, operations=self._operations, parameters=self._parameters, ignore_errors=ignore_errors)
+                task = partial(_task, steps=self._steps, ignore_errors=ignore_errors,
+                               preserve_chaining_order=preserve_chaining_order)
                 with tqdm(total=len(self._files), desc='Processing files') as progress_bar:
                     for result in pool.imap_unordered(task, self._files):
                         results.append(result)
@@ -555,7 +583,16 @@ class Batch:
             df = parser.apply_on(df, 'file')
         return df
 
-    def execute(self, multiprocessing=True, ignore_errors=True, saveto=None, on_file_complete=None):
+    def _add_step(self, step):
+        if isinstance(step, (_Parameter, _CustomParameter)):
+            if step.name in {s.name for s in self._steps if isinstance(s, (_Parameter, _CustomParameter))}:
+                raise BatchError(f'The parameter "{step.identifier}" is already registered. Consider giving it an '
+                                 f'alternate name using the keyword argument "custom_name".')
+        self._steps.append(step)
+
+
+    def execute(self, multiprocessing=True, ignore_errors=True, saveto=None, on_file_complete=None,
+                preserve_chaining_order=True):
         """
         Executes the Batch processing and returns the obtained data as a pandas DataFrame. The dataframe can be saved
         as an Excel file.
@@ -575,22 +612,27 @@ class Batch:
         saveto : str | pathlib.Path, default None
             Path to an Excel file where the data is saved to. If the Excel file does already exist, it will be
             overwritten.
+        on_file_complete: Callable
+            Hook for a Callable that is executed for every surface that has finished processing. The Callable must take
+            a results parameter that is passed a dictionary of the results of the surface calculation. The dictionary
+            will at least hold a key 'file' with the respective filename.
+        preserve_chaining_order : bool
+            Whether to preserve the order the different operations and parameter calculations are called on the batch
+            obeject. If True, operations and parameters can be applied in arbitrary order
+            (e.g batch.operation().parameter().operation()). If False, all operations will be performed before the
+            parameter calculations, irrespective of the order they were called on the batch. The order within the
+            operations and parameters themselves will be preserved nonetheless.
 
         Returns
         -------
         pd.DataFrame
         """
-        if not self._parameters and not self._operations:
+        if not self._steps:
             raise BatchError('No operations of parameters defined.')
-        # Check for duplicate parameters without custom names and raise an error.
-        parameter_dict = defaultdict(int)
-        for parameter in self._parameters:
-            if parameter_dict[parameter.name] > 0:
-                raise BatchError(f'The parameter "{parameter.identifier}" is computed twice. If this was not a mistake,'
-                                 f' consider giving it an alternate name using the keyword argument "custom_name".')
-            parameter_dict[parameter.name] += 1
-        results = self._disptach_tasks(multiprocessing=multiprocessing, ignore_errors=ignore_errors,
-                                       on_file_complete=on_file_complete)
+        results = self._disptach_tasks(multiprocessing=multiprocessing,
+                                       ignore_errors=ignore_errors,
+                                       on_file_complete=on_file_complete,
+                                       preserve_chaining_order=preserve_chaining_order)
         df = self._construct_dataframe(results)
         if saveto is not None:
             df.to_excel(saveto)
@@ -638,7 +680,7 @@ class Batch:
         self
         """
         operation = _Operation('zero', kwargs=dict(inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
 
     def center(self):
@@ -650,7 +692,7 @@ class Batch:
         self
         """
         operation = _Operation('center', kwargs=dict(inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
 
     def threshold(self, threshold=0.5):
@@ -667,7 +709,7 @@ class Batch:
         self
         """
         operation = _Operation('threshold', kwargs=dict(threshold=threshold, inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
 
     def remove_outliers(self, n=3, method='mean'):
@@ -686,7 +728,7 @@ class Batch:
         self
         """
         operation = _Operation('remove_outliers', kwargs = dict(n=n, method=method, inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
             
     def fill_nonmeasured(self, method='nearest'):
@@ -703,7 +745,7 @@ class Batch:
         self
         """
         operation = _Operation('fill_nonmeasured', kwargs=dict(method=method, inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
 
     def crop(self, box):
@@ -720,7 +762,7 @@ class Batch:
         self
         """
         operation = _Operation('crop', args=(box,), kwargs=dict(inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
             
     def level(self):
@@ -732,7 +774,7 @@ class Batch:
         self
         """
         operation = _Operation('level', kwargs=dict(inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
             
     def filter(self, filter_type, cutoff, cutoff2=None):
@@ -757,7 +799,7 @@ class Batch:
         """
         operation = _Operation('filter', args=(filter_type, cutoff),
                                kwargs=dict(cutoff2=cutoff2, inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
     
     def rotate(self, angle):
@@ -774,7 +816,7 @@ class Batch:
         self
         """
         operation = _Operation('rotate', args=(angle,), kwargs=dict(inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
     
     def align(self, axis='y'):
@@ -791,7 +833,7 @@ class Batch:
         self
         """
         operation = _Operation('align', kwargs=dict(inplace=True, axis=axis))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
 
     def zoom(self, factor):
@@ -808,7 +850,7 @@ class Batch:
         self
         """
         operation = _Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
 
     def stepheight_level(self):
@@ -820,7 +862,7 @@ class Batch:
         self
         """
         operation = _Operation('stepheight_level', kwargs=dict(inplace=True))
-        self._operations.append(operation)
+        self._add_step(operation)
         return self
 
     def custom_parameter(self, func):
@@ -852,7 +894,7 @@ class Batch:
         -------
         self
         """
-        self._parameters.append(_CustomParameter(func))
+        self._add_step(_CustomParameter(func))
         return self
 
     def __getattr__(self, attr):
@@ -869,7 +911,7 @@ class Batch:
                 raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{attr}'")
         def parameter_dummy_method(*args, custom_name=None, **kwargs):
             parameter = _Parameter(attr, args=args, kwargs=kwargs, custom_name=custom_name)
-            self._parameters.append(parameter)
+            self._add_step(parameter)
             return self
 
         return parameter_dummy_method
@@ -918,5 +960,5 @@ class Batch:
         for parameter in parameters:
             if isinstance(parameter, str):
                 parameter = _Parameter(parameter)
-            self._parameters.append(parameter)
+            self._add_step(parameter)
         return self
