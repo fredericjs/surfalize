@@ -99,6 +99,58 @@ If arguments need to be supplied, the parameter must be constructed as a `Parame
     Vmc = Parameter('Vmc', kwargs=dict(p=10, q=80))
     batch.roughness_parameters(['Sa', 'Sq', 'Sz', Vmc])
 
+Execution order
+===============
+
+Before version `v0.15.0` all operations were executed before parameter calculations. For versions `>=v0.15.0`,
+Operations and parameters can be called in an interlaced manner and their order will be executed in that order. This
+allows for cases where the user wants to calculate some parameters before and others after a specific operation.
+The legacy behavior of performing all operations first can be activated by specifying `presever_chaining_order=False`
+in `Batch.execute`.
+
+In this example, `Sdr` will be calculated before the filtering and `Sq` after the filtering:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.Sdr().filter('lowpass', 1).Sq()
+    result = batch.execute()
+
+In this example, `Sdr` and `Sq` will be calculated after the filtering:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.Sdr().filter('lowpass', 1).Sq()
+    result = batch.execute(preserve_chaining_order=False)
+
+Duplicate Parameters
+====================
+
+In some cases, one might want to calculate the same parameter multiple times, for instance before and after an operation
+or with different arguments. If a parameter is called more than once on the `Batch` object, an exception is raised to
+prevent the column in the dataframe being overwritten by the second call. However, each parameter can be given a custom
+name for its column in the dataframe to enable duplicate calculation of the same parameter:
+
+In this example, we calculate `Sdr` before and after filtering the surface with a highpass filter to investigate, how
+strongly the high frequency noise affects the parameter's value:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.Sdr().filter('lowpass', 1).Sdr(custom_name='Sdr_after_filtering')
+    result = batch.execute()
+
+In this example, we calculate the homogeneity with different unit cell evaluation parameters:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.homogeneity(parameters=['Sa'], custom_name='H_Sa')
+    batch.homogeneity(parameters=['Sa', 'Sk', 'Sdr'], custom_name='H_Sa_Sk_Sdr')
+    result = batch.execute()
+
+
 Executing the batch process
 ===========================
 
