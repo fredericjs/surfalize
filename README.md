@@ -64,6 +64,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Gwyddion               | *.gwy*                 | Yes             | No      | 
 | Digital Metrology      | *.os3d*                | Yes             | No      |
 | IAU FITS Working Group | *.fits*                | Yes             | No      |
+| Zygo                   | *.dat*                 | Yes             | No      |
 | General                | *.xyz*                 | Yes             | No      |
 
 ## Supported roughness parameters
