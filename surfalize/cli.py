@@ -165,10 +165,10 @@ def report(input_path, open_after, level, center, zero, highpass, lowpass, bandp
         surface.filter('lowpass', cutoff=lowpass, inplace=True)
     if bandpass is not None:
         surface.filter('bandpass', cutoff=bandpass[0], cutoff2=bandpass[1], inplace=True)
-    ax = surface.plot_2d()
+    surface.plot_2d()
 
     buf = io.BytesIO()
-    ax.figure.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
 
     # Create an FPDF instance
