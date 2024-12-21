@@ -1,9 +1,10 @@
 <h1 align="center">
-<img src="logo.svg" width="600">
+<img src="https://raw.githubusercontent.com/fredericjs/surfalize/refs/heads/main/logo.svg" width="600">
 </h1><br>
 
 [![PyPI version](https://badge.fury.io/py/surfalize.svg)](https://badge.fury.io/py/surfalize)
 [![Documentation Status](https://readthedocs.org/projects/surfalize/badge/?version=latest)](https://surfalize.readthedocs.io/en/latest/?badge=latest)
+[![Python Package Tests](https://github.com/fredericjs/surfalize/actions/workflows/test.yml/badge.svg)](https://github.com/fredericjs/surfalize/actions/workflows/test.yml)
 [![Publication](https://img.shields.io/badge/Publication%20-%2010.3390%2Fnano14131076%20-%20%20%2385c1e9%20
 )](https://doi.org/10.3390/nano14131076)
 
@@ -18,9 +19,8 @@ The authors make no guarantees for the correctness of any results obtained using
 and may introduce changes to both implementation details and public API at any point in time. Any results should be validated against established 
 software to verify their correctness, especially when they are intended to be used for scientific publications. 
 
-Some parts of the package are more mature and some are in early development stage. Currently, Gaussian filtering and Profile parameters might 
-suffer from some implementation errors and might not be entirely compliant with ISO standards. Care should be taken when relying on these
-specific functionalities.
+Some parts of the package are more mature and some are in early development stage. Currently, Profile roughness evaluation
+is undocumented and not conforming to ISO standards.
 
 ## Cite this library
 
@@ -48,21 +48,23 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 
 ## Currently supported file formats
 
-| Manufacturer           | Format                  | Reading | Writing |
-|------------------------|-------------------------|---------|---------|
-| Keyence                | *.vk4*, *.vk6*, *.vk7*  | Yes     | No      | 
-| Leica                  | *.plu*                  | Yes     | No      | 
-| Sensofar               | *.plu*, *.plux*         | Yes     | No      | 
-| Digital Surf           | *.sur*                  | Yes     | Yes     | 
-| KLA Zeta               | *.zmg*                  | Yes     | No      | 
-| Wyko                   | *.opd*                  | Yes     | No      | 
-| Nanofocus              | *.nms*                  | Yes     | No      | 
-| Alicona                | *.al3d*                 | Yes     | Yes     | 
-| Digital Surf           | *.sdf*                  | Yes     | Yes     | 
-| Gwyddion               | *.gwy*                  | Yes     | No      | 
-| Digital Metrology      | *.os3d*                 | Yes     | No      |
-| IAU FITS Working Group | *.fits*                 | Yes     | No      |
-| General                | *.xyz*                  | Yes     | No      |
+| Manufacturer           | Format                 | Reading         | Writing |
+|------------------------|------------------------|-----------------|---------|
+| Keyence                | *.vk4*, *.vk6*, *.vk7* | Yes             | No      | 
+| Keyence                | *.cag*                 | Only extraction | No      | 
+| Leica                  | *.plu*                 | Yes             | No      | 
+| Sensofar               | *.plu*, *.plux*        | Yes             | No      | 
+| Digital Surf           | *.sur*                 | Yes             | Yes     | 
+| KLA Zeta               | *.zmg*                 | Yes             | No      | 
+| Wyko                   | *.opd*                 | Yes             | No      | 
+| Nanofocus              | *.nms*                 | Yes             | No      | 
+| Alicona                | *.al3d*                | Yes             | Yes     | 
+| Digital Surf           | *.sdf*                 | Yes             | Yes     | 
+| Gwyddion               | *.gwy*                 | Yes             | No      | 
+| Digital Metrology      | *.os3d*                | Yes             | No      |
+| IAU FITS Working Group | *.fits*                | Yes             | No      |
+| Zygo                   | *.dat*                 | Yes             | No      |
+| General                | *.xyz*                 | Yes             | No      |
 
 ## Supported roughness parameters
 

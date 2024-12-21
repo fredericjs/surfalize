@@ -4,6 +4,11 @@
 Basic usage
 ===========
 
+All 2d topographies in surfalize are represented by instances of the `Surface` class. To instantiate a surface object
+from a file, simply use its `.load` classmethod and pass it a filepath. Use the `.show()` method to plot a colorcoded
+topographical representation of it's data. In Jupyter Notebooks, the surface object can simply be stated in the last
+line of a cell to invoke its repr method, displaying the topography without the need for calling the `.show()` method.
+
 .. code:: python
 
     from surfalize import Surface
@@ -11,6 +16,33 @@ Basic usage
     filepath = 'example.vk4'
     surface = Surface.load(filepath)
     surface.show()
+
+Surface objects can also be instantiated from file-like objects that live in memory. This can be useful for instance
+when the objects are obtained directly from a database connection. In this example, we read the file from disk into a
+buffer allocated by an `io.BytesIO` object. We then pass the buffer the load `.load()` method instead of a filepath.
+
+.. code:: python
+
+    import io
+    from surfalize import Surface
+
+    filepath = 'example.vk4'
+    with open(filepath, 'rb') as f:
+        buffer = io.BytesIO(f.read())
+    surface = Surface.load(buffer)
+    surface.show()
+
+If the filepath has a suffix (as it should), surfalize determines the file format from the filepath suffix. If, however,
+the file path has no suffix, if a buffer object is passed instead of a filepath or the filepath has a wrong suffix and
+the file reading operation raises an error, surfalize tries to infer the correct file format from the file magic.
+For reading from file-like objects or for overriding the fileformat determined by the file extension, the `format`
+argument of the `load()` method can be specified:
+
+.. code:: python
+
+    surface = Surface.load(buffer, format='.vk4')
+
+
 
 
 Extracting roughness and topographic parameters

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from .cache import CachedInstance, cache
+from .mathutils import interpolate_line_on_2d_array, argmin_all, argmax_all, argclosest
 
 
 class AutocorrelationFunction(CachedInstance):
@@ -22,7 +23,8 @@ class AutocorrelationFunction(CachedInstance):
         # to avoid double computation
         self._surface = surface
         self._current_threshold = None
-        self.acf_data = self.calculate_autocorrelation()
+        self.data = self.calculate_autocorrelation()
+        self.center = np.array(self.data.shape) // 2
 
     def calculate_autocorrelation(self):
         data = self._surface.center().data
@@ -31,9 +33,10 @@ class AutocorrelationFunction(CachedInstance):
         acf_data = np.fft.fftshift(np.fft.ifft2(data_fft * np.conj(data_fft)).real / data.size)
         return acf_data
 
-    def _calculate_distances(self, s=0.2):
+    @cache
+    def _calculate_decay_lengths(self, s):
         """
-        Calculates the distances of the 2d autocorrelation function of the surface height data and
+        Calculates the decay lengths of the 2d autocorrelation function of the surface height data and
         extracts the indices of the points of minimum and maximum decay.
 
         Parameters
@@ -48,32 +51,38 @@ class AutocorrelationFunction(CachedInstance):
         -------
         None
         """
-        self.clear_cache()
-        self._current_threshold = s
+        threshold = s * self.data.max()
 
-        threshold = s * self.acf_data.max()
-        mask = (self.acf_data < threshold)
+        mask = self.data > threshold
+        labels, _ = ndimage.label(mask)
+        region = labels == labels[self.center[0], self.center[1]]
+        edge = region ^ ndimage.binary_dilation(region, iterations=1)
 
-        # Find the center point of the array
-        self.center = np.array(self.acf_data.shape) // 2
+        idx_edge = np.argwhere(edge)
+        distances_xy_px = idx_edge - self.center
+        step_array = np.array([self._surface.step_y, self._surface.step_x])
+        distances_xy_units = distances_xy_px * step_array
+        distances = np.linalg.norm(distances_xy_units, axis=1)
+        all_idx_min = idx_edge[argmin_all(distances)]
+        all_idx_max = idx_edge[argmax_all(distances)]
 
-        # Invert mask because the function considers all 0 values to be background
-        labels, _ = ndimage.label(~mask)
-        feature_center_id = labels[self.center[0], self.center[1]]
-        mask = (labels != feature_center_id)
+        idx_min = all_idx_min[np.argmin(self.data[all_idx_min[:, 0], all_idx_min[:, 1]])]
+        idx_max = all_idx_max[np.argmin(self.data[all_idx_max[:, 0], all_idx_max[:, 1]])]
 
-        # Find the indices of the True values in the mask
-        indices = np.argwhere(mask)
-        # Calculate the Euclidean distance from each index to the center
-        distances = np.linalg.norm(indices - self.center, axis=1)
-        # Find the index with the smallest distance
-        self._idx_min = indices[np.argmin(distances)]
+        length_min = np.hypot(*((idx_min - self.center) * step_array))
+        length_max = np.hypot(*((idx_max - self.center) * step_array))
 
-        # Find the indices of the True values in the mask
-        indices = np.argwhere(~mask)
-        # Calculate the Euclidean distance from each index to the center
-        distances = np.linalg.norm(indices - self.center, axis=1)
-        self._idx_max = indices[np.argmax(distances)]
+        n_points = 1000
+        interpolated_line_x = np.linspace(0, length_min, n_points)
+        interpolated_line_y = interpolate_line_on_2d_array(self.data, self.center, idx_min, num_points=n_points)
+        shortest_decay_length = interpolated_line_x[argclosest(threshold, interpolated_line_y)]
+
+        interpolated_line_x = np.linspace(0, length_max, n_points)
+        interpolated_line_y = interpolate_line_on_2d_array(self.data, self.center, idx_max, num_points=n_points)
+        longest_decay_length = interpolated_line_x[argclosest(threshold, interpolated_line_y)]
+
+        return shortest_decay_length, longest_decay_length
+
 
     @cache
     def Sal(self, s=0.2):
@@ -95,10 +104,7 @@ class AutocorrelationFunction(CachedInstance):
         Sal : float
             autocorrelation length.
         """
-        if self._current_threshold != s:
-            self._calculate_distances(s)
-        dy, dx = np.abs(self._idx_min[0] - self.center[0]), np.abs(self._idx_min[1] - self.center[1])
-        Sal = np.hypot(dx * self._surface.step_x, dy * self._surface.step_y) - self._surface.step_x/2
+        Sal, _ = self._calculate_decay_lengths(s)
         return Sal
 
     @cache
@@ -122,10 +128,8 @@ class AutocorrelationFunction(CachedInstance):
         Str : float
             texture aspect ratio.
         """
-        if self._current_threshold != s:
-            self._calculate_distances(s)
-        dy, dx = np.abs(self._idx_max[0] - self.center[0]), np.abs(self._idx_max[1] - self.center[1])
-        Str = self.Sal() / (np.hypot(dx * self._surface.step_x, dy * self._surface.step_y) - self._surface.step_x/2)
+        shortest_decay_length, longest_decay_length = self._calculate_decay_lengths(s)
+        Str = shortest_decay_length / longest_decay_length
         return Str
 
     def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True):
@@ -135,7 +139,7 @@ class AutocorrelationFunction(CachedInstance):
             fig = ax.figure
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        im = ax.imshow(self.acf_data, cmap=cmap, extent=(0, self._surface.width_um, 0, self._surface.height_um))
+        im = ax.imshow(self.data, cmap=cmap, extent=(0, self._surface.width_um, 0, self._surface.height_um))
         if show_cbar:
             fig.colorbar(im, cax=cax, label='z [µm²]')
         else:

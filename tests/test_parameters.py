@@ -41,11 +41,11 @@ def test_Sdq(surface):
 
 
 def test_Sal(surface):
-    assert surface.Sal() == pytest.approx(4.25, abs=EPSILON)
+    assert surface.Sal() == pytest.approx(4.274174, abs=EPSILON)
 
 
 def test_Str(surface):
-    assert surface.Str() == pytest.approx(0.120735, abs=EPSILON)
+    assert surface.Str() == pytest.approx(0.121940, abs=EPSILON)
 
 
 def test_Sk(surface):

@@ -1,13 +1,11 @@
 import pytest
 from pathlib import Path
+import io
 import numpy as np
 from surfalize import Surface
-from surfalize.file import supported_formats_read
-from surfalize.file.loader import dispatcher
+from surfalize.file import supported_formats_read, supported_formats_write
 
 module_path = Path(__file__).parent
-
-supported_write_formats = [fmt for fmt, val in dispatcher.items() if 'write' in val]
 
 def almost_equal(surface1, surface2):
     if surface1.size != surface2.size:
@@ -25,7 +23,7 @@ def testfile_dir():
     return module_path / 'test_files'
 
 @pytest.mark.parametrize('fileformat', supported_formats_read)
-def test_fileformat_loading(testfile_dir, fileformat):
+def test_fileformat_reading_from_path(testfile_dir, fileformat):
     files = list(testfile_dir.glob(f'*{fileformat}'))
     if not files:
         pytest.skip('No testfiles found.')
@@ -33,8 +31,24 @@ def test_fileformat_loading(testfile_dir, fileformat):
         Surface.load(file, read_image_layers=False)
         Surface.load(file, read_image_layers=True)
 
-@pytest.mark.parametrize('fileformat', supported_write_formats)
-def test_fileformat_writing(surface, tmpdir, fileformat):
+@pytest.mark.parametrize('fileformat', supported_formats_read)
+def test_fileformat_reading_from_buffer(testfile_dir, fileformat):
+    files = list(testfile_dir.glob(f'*{fileformat}'))
+    if not files:
+        pytest.skip('No testfiles found.')
+    for file in files:
+        with open(file, 'rb') as f:
+            buffer = io.BytesIO(f.read())
+        Surface.load(buffer, format=file.suffix, read_image_layers=True)
+
+@pytest.mark.parametrize('fileformat', supported_formats_write)
+def test_fileformat_writing_to_path(surface, tmpdir, fileformat):
     path = tmpdir / ('test' + fileformat)
     surface.save(path)
     assert almost_equal(Surface.load(path), surface)
+
+@pytest.mark.parametrize('fileformat', supported_formats_write)
+def test_fileformat_writing_to_buffer(surface, fileformat):
+    buffer = io.BytesIO()
+    surface.save(buffer, format=fileformat)
+    assert almost_equal(Surface.load(buffer), surface)

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import click
 
 from .surface import Surface
-from .file.loader import supported_formats_read, supported_formats_write
+from .file import supported_formats_read, supported_formats_write
 
 PARAMETER_UNITS = {
     'Sa': 'µm',

@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from surfalize.batch import Batch, FilenameParser, Parameter, Operation, _Token
+from surfalize.batch import Batch, FilenameParser, _Parameter, _Operation, _Token
 
 TOKENS = [
     _Token('power|float|P'),

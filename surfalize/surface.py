@@ -1,6 +1,12 @@
 # Standard imports
+import inspect
 import logging
+
+from .plotting import plot_3d
+
 logger = logging.getLogger(__name__)
+import warnings
+warnings.formatwarning = lambda msg, *args, **kwargs: f'Warning: {msg}\n'
 from functools import wraps
 from collections import namedtuple
 
@@ -17,10 +23,10 @@ import scipy.ndimage as ndimage
 from sklearn.cluster import KMeans
 
 # Custom imports
-from .file import load_file, write_file
-from .utils import is_list_like, register_returnlabels
+from .file import FileHandler
+from .utils import is_list_like, approximately_equal
 from .cache import CachedInstance, cache
-from .mathutils import Sinusoid, argclosest, interp1d
+from .mathutils import Sinusoid, argclosest, trapezoid
 from .autocorrelation import AutocorrelationFunction
 from .abbottfirestone import AbbottFirestoneCurve
 from .profile import Profile
@@ -51,6 +57,59 @@ def no_nonmeasured_points(function):
         return function(self, *args, **kwargs)
     return wrapper_function
 
+# Mutable default arg should be no issue here since we don't mutate it. Hopefully I won't change implementation in the
+# future and forget about this^^
+def batch_method(type_, return_labels=None, batch_doc=None, fixed={'inplace': True}):
+    """
+    Decorator to mark Surface methods for batch processing.
+
+    Parameters
+    ----------
+    type_ : str
+        Type of batch method ('operation' or 'parameter')
+    return_labels : tuple, optional
+        Labels for multiple return values (only used for parameters)
+    batch_doc : str, optional
+        Additional batch-specific documentation.
+    fixed : dict[str: Any]
+        Keyword arguments that must have a specific value when calling the method from the Batch class. By default, the
+        inplace argument is set to True for the Batch method, since returning a copy of the surface object does not make
+        sense. Parameters with fixed values are removed from the function signature and docstring of the Batch method.
+
+    Returns
+    -------
+    Wrapped function
+    """
+
+    def decorator(method):
+        sig = inspect.signature(method)
+        param_names = set(sig.parameters.keys())
+
+        # Filter fixed parameters to only include those in the method signature
+        valid_fixed = {k: v for k, v in fixed.items() if k in param_names}
+
+        method._batch_type = type_
+        method._fixed = valid_fixed
+        if return_labels is not None:
+            method.return_labels = return_labels
+        if batch_doc is not None:
+            method._batch_doc = batch_doc
+
+        # Create the batch availability note
+        fixed_params = ', '.join(f'`{param}`' for param in fixed.keys())
+        batch_note = '\n.. note:: \n\n\tThis method is available in the Batch class.'
+        if valid_fixed:
+            batch_note += f' The following parameters are removed in the batch version: {fixed_params}.'
+
+        # Append the note to the method's docstring
+        if method.__doc__ is None:
+            method.__doc__ = batch_note
+        else:
+            method.__doc__ = method.__doc__ + batch_note
+
+        return method
+
+    return decorator
 
 class Surface(CachedInstance):
     """
@@ -130,14 +189,23 @@ class Surface(CachedInstance):
     
     def __init__(self, height_data, step_x, step_y, metadata=None, image_layers=None):
         super().__init__() # Initialize cached instance
+        if not approximately_equal(step_x, step_y):
+            warnings.warn(
+                'The surface has different pixel size in x and y. Some methods might result in incorrect values.'
+            )
+
         self.data = height_data
         self.step_x = step_x
         self.step_y = step_y
+
         self.metadata = metadata if metadata is not None else {}
         self.image_layers = image_layers if image_layers is not None else {}
 
         self.width_um = (height_data.shape[1] - 1) * step_x
         self.height_um = (height_data.shape[0] - 1) * step_y
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.width_um:.2f} x {self.height_um:.2f} µm²)'
 
     @property
     def size(self):
@@ -190,10 +258,7 @@ class Surface(CachedInstance):
         self.width_um = (self.size.x - 1) * self.step_x
         self.height_um = (self.size.y - 1) * self.step_y
         self.clear_cache() # Calls method from parent class
-        
-    def __repr__(self):
-        return f'{self.__class__.__name__}({self.width_um:.2f} x {self.height_um:.2f} µm²)'
-    
+
     def _repr_png_(self):
         """
         Repr method for Jupyter notebooks. When Jupyter makes a call to repr, it checks first if a _repr_png_ is
@@ -265,14 +330,18 @@ class Surface(CachedInstance):
         return np.any(np.isnan(self.data))
 
     @classmethod
-    def load(cls, filepath, encoding='utf-8', read_image_layers=False):
+    def load(cls, path_or_buffer, format=None, encoding='utf-8', read_image_layers=False):
         """
         Classmethod to load a topography from a file.
 
         Parameters
         ----------
-        filepath : str | pathlib.Path
-            Filepath pointing to the topography file.
+        path_or_buffer : str | pathlib.Path | buffer
+            Filepath pointing to the topography file or buffer.
+        format : str | None
+            File format in which file should be read. If the file is provided as a path and does not contain a suffix,
+            the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
+            If the surface is read from a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
         read_image_layers : bool, Default False
@@ -282,36 +351,60 @@ class Surface(CachedInstance):
         -------
         surface : surfalize.Surface
         """
-        raw_surface = load_file(filepath, encoding=encoding, read_image_layers=read_image_layers)
+        raw_surface = FileHandler(path_or_buffer, format_=format).read(encoding=encoding,
+                                                                      read_image_layers=read_image_layers)
         return cls.from_raw_surface(raw_surface)
 
     @classmethod
     def from_raw_surface(cls, raw_surface):
+        """
+        Classmethod that instantiates a `Surface` object from a `RawSurface` object returned by the file readers.
+
+        Parameters
+        ----------
+        raw_surface: surfalize.file.common.RawSurface
+            Raw surface object.
+
+        Returns
+        -------
+        surfalize.Surface
+        """
         image_layers = {k: Image(v) for k, v in raw_surface.image_layers.items()}
         return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
                    image_layers=image_layers)
 
-    def save(self, filepath, encoding='utf-8', **kwargs):
+    def save(self, path_or_buffer, format=None, encoding='utf-8', **kwargs):
         """
         Saves the surface to a supported file format. The kwargs are specific to individual file formats.
 
         Parameters
         ----------
-        filepath : str | pathlib.Path
-            Filepath pointing to the topography file.
+        path_or_buffer : str | pathlib.Path | buffer
+            Filepath pointing to the topography file or buffer.
+        format : str | None
+            File format in which file should be saved. If the file is provided as a path and does not contain a suffix,
+            the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
+            If the surface is saved to a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
-
-        Optional Parameters
-        -------------------
-        binary : bool
-            Specifies whether to save in the binary version of the format of the ascii version.
+        **kwargs
+            binary : bool
+                Only for SDF format. Specifies whether to save in the binary version of the format of the ascii version.
+                Default is True.
+            compressed : bool
+                Only for SUR format. Specifies whether to save in the compressed version of the format. Defaults to
+                False.
+            compression : bool
+                Only for SFLZ format. Specifies the type of compression algorithm ('none', 'zlib', 'lzma'). Default
+                is 'zlib'.
+            dtype : str
+                Only for SFLZ format. Specifies the numpy dtype in which to save the array data.
 
         Returns
         -------
         None
         """
-        write_file(filepath, self, encoding=encoding, **kwargs)
+        FileHandler(path_or_buffer, format_=format).write(self, encoding=encoding, **kwargs)
 
     def get_image_layer_names(self):
         """
@@ -453,7 +546,7 @@ class Surface(CachedInstance):
         return Profile(data, step, length_um)
 
     # Operations #######################################################################################################
-    
+    @batch_method('operation')
     def center(self, inplace=False):
         """
         Centers the data around its mean value. The height of the surface will be distributed equally around 0.
@@ -474,7 +567,8 @@ class Surface(CachedInstance):
             self._set_data(data=data)
             return self
         return Surface(data, self.step_x, self.step_y)
-    
+
+    @batch_method('operation')
     def zero(self, inplace=False):
         """
         Sets the minimum height of the surface to zero.
@@ -496,6 +590,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def remove_outliers(self, n=3, method='mean', inplace=False):
         """
         Removes outliers based on the n-sigma criterion. All values that fall outside n-standard deviations of the mean
@@ -533,6 +628,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def threshold(self, threshold=0.5, inplace=False):
         """
         Removes data outside of threshold percentage of the material ratio curve.
@@ -572,6 +668,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def fill_nonmeasured(self, method='nearest', inplace=False):
         """
         Fills the non-measured points by interpolation.
@@ -604,6 +701,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data_interpolated, self.step_x, self.step_y)
 
+    @batch_method('operation', fixed={'inplace': True, 'return_trend': False})
     def level(self, return_trend=False, inplace=False):
         """
         Levels the surface by subtraction of a least squares fit plane.
@@ -622,9 +720,10 @@ class Surface(CachedInstance):
         """
         return self.detrend_polynomial(degree=1, inplace=inplace, return_trend=return_trend)
 
+    @batch_method('operation', fixed={'inplace': True, 'return_trend': False})
     def detrend_polynomial(self, degree=1, inplace=False, return_trend=False):
         """
-        Detrend a 2d array of height data using a polynomial surface
+        Detrend a 2d array of height data using a polynomial surface, handling NaN values
 
         Parameters
         ----------
@@ -651,20 +750,30 @@ class Surface(CachedInstance):
         y_flat = y.flatten()
         z_flat = self.data.flatten()
 
+        # Create mask for non-NaN values
+        mask = ~np.isnan(z_flat)
+        x_valid = x_flat[mask]
+        y_valid = y_flat[mask]
+        z_valid = z_flat[mask]
+
         # Create design matrix with cross-terms
-        A = np.ones((len(x_flat), 1))
+        A = np.ones((len(x_valid), 1))
         for i in range(1, degree + 1):
             for j in range(i + 1):
-                A = np.column_stack((A, (x_flat ** (i - j)) * (y_flat ** j)))
+                A = np.column_stack((A, (x_valid ** (i - j)) * (y_valid ** j)))
 
         # Fit polynomial using SVD for improved numerical stability
-        coeffs, _, _, _ = np.linalg.lstsq(A, z_flat, rcond=None)
+        coeffs, _, _, _ = np.linalg.lstsq(A, z_valid, rcond=None)
 
-        # Calculate trend
-        trend = np.dot(A, coeffs).reshape(self.size)
+        # Calculate trend for all points
+        A_full = np.ones((len(x_flat), 1))
+        for i in range(1, degree + 1):
+            for j in range(i + 1):
+                A_full = np.column_stack((A_full, (x_flat ** (i - j)) * (y_flat ** j)))
+        trend = np.dot(A_full, coeffs).reshape(self.size)
 
-        # Subtract trend from data
-        detrended = self.data - trend
+        # Subtract trend from data, preserving NaN values
+        detrended = np.where(np.isnan(self.data), np.nan, self.data - trend)
 
         if inplace:
             self._set_data(data=detrended)
@@ -676,7 +785,7 @@ class Surface(CachedInstance):
             return return_surface, Surface(trend, self.step_x, self.step_y)
         return return_surface
 
-    
+    @batch_method('operation')
     @no_nonmeasured_points
     def rotate(self, angle, inplace=False):
         """
@@ -729,7 +838,8 @@ class Surface(CachedInstance):
             return self
 
         return Surface(rotated_cropped, step_x, step_y)
-    
+
+    @batch_method('operation')
     @no_nonmeasured_points
     def filter(self, filter_type, cutoff, cutoff2=None, inplace=False, endeffect_mode='reflect'):
         """
@@ -798,6 +908,7 @@ class Surface(CachedInstance):
         lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
         return highpass_filter(self, inplace=False), lowpass_filter(self, inplace=False)
 
+    @batch_method('operation')
     def zoom(self, factor, inplace=False):
         """
         Magnifies the surface by the specified factor.
@@ -823,6 +934,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def crop(self, box, in_units=True, inplace=False):
         """
         Crop the surface to the area specified by the box parameter.
@@ -856,7 +968,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
-    
+    @batch_method('operation')
     def align(self, axis='y', method='fft_refined', inplace=False):
         """
         Computes the dominant orientation of the surface pattern and alignes the orientation with the horizontal
@@ -944,6 +1056,7 @@ class Surface(CachedInstance):
             mask = ~mask
         return mask
 
+    @batch_method('operation')
     @cache
     def stepheight_level(self, inplace=False):
         """
@@ -1001,6 +1114,7 @@ class Surface(CachedInstance):
         lower_median = np.median(self.data[~mask])
         return upper_median, lower_median
 
+    @batch_method('operation')
     @cache
     def stepheight(self):
         """
@@ -1014,6 +1128,7 @@ class Surface(CachedInstance):
         step_height = upper_median - lower_median
         return step_height
 
+    @batch_method('operation')
     def cavity_volume(self, threshold=0.50):
         """
         Calculates the cavity volume of a flat surface containing an ablation crater with a leveled bottom plane.
@@ -1064,6 +1179,7 @@ class Surface(CachedInstance):
         sku = np.sum(centered_data_sq ** 2) / size / sq ** 4
         return {'Sa': sa, 'Sq': sq, 'Sv': sv, 'Sp': sp, 'Sz': sz, 'Ssk': ssk, 'Sku': sku}
 
+    @batch_method('parameter')
     def Sa(self):
         """
         Calcualtes the arithmetic mean height Sa according to ISO 25178-2.
@@ -1074,6 +1190,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sa']
 
+    @batch_method('parameter')
     def Sq(self):
         """
         Calcualtes the root mean square height Sq according to ISO 25178-2.
@@ -1084,6 +1201,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sq']
 
+    @batch_method('parameter')
     def Sp(self):
         """
         Calcualtes the maximum peak height Sp according to ISO 25178-2.
@@ -1094,6 +1212,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sp']
 
+    @batch_method('parameter')
     def Sv(self):
         """
         Calcualtes the maximum pit height Sv according to ISO 25178-2.
@@ -1104,6 +1223,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sv']
 
+    @batch_method('parameter')
     def Sz(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2.
@@ -1114,6 +1234,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sz']
 
+    @batch_method('parameter')
     def Ssk(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2. It is the quotient of the mean cube value of the ordinate
@@ -1125,6 +1246,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Ssk']
 
+    @batch_method('parameter')
     def Sku(self):
         """
         Calcualtes the kurtosis Sku  according to ISO 25178-2. It is the quotient of the mean quartic value of the
@@ -1137,7 +1259,7 @@ class Surface(CachedInstance):
         return self.height_parameters()['Sku']
     
     # Hybrid parameters ################################################################################################
-
+    @batch_method('parameter')
     @cache
     def projected_area(self):
         """
@@ -1148,7 +1270,8 @@ class Surface(CachedInstance):
         projected area : float
         """
         return (self.width_um - self.step_x) * (self.height_um - self.step_y)
-    
+
+    @batch_method('parameter')
     @no_nonmeasured_points
     @cache
     def surface_area(self):
@@ -1177,6 +1300,7 @@ class Surface(CachedInstance):
 
         return total_area
 
+    @batch_method('parameter')
     def Sdr(self):
         """
         Calculates the developed interfacial area ratio according to ISO 25178-2.
@@ -1186,7 +1310,8 @@ class Surface(CachedInstance):
         area : float
         """
         return (self.surface_area() / self.projected_area() -1) * 100
-    
+
+    @batch_method('parameter')
     @no_nonmeasured_points
     @cache
     def Sdq(self):
@@ -1203,7 +1328,7 @@ class Surface(CachedInstance):
         return np.sqrt((np.sum(diff_x**2) + np.sum(diff_y**2)) / A)
 
     # Spatial parameters ###############################################################################################
-
+    @batch_method('parameter')
     @cache
     def get_autocorrelation_function(self):
         """
@@ -1216,6 +1341,7 @@ class Surface(CachedInstance):
         """
         return AutocorrelationFunction(self)
 
+    @batch_method('parameter')
     @cache
     def Sal(self, s=0.2):
         """
@@ -1238,6 +1364,7 @@ class Surface(CachedInstance):
         """
         return self.get_autocorrelation_function().Sal(s=s)
 
+    @batch_method('parameter')
     @cache
     def Str(self, s=0.2):
         """
@@ -1262,7 +1389,8 @@ class Surface(CachedInstance):
         return self.get_autocorrelation_function().Str(s=s)
     
     # Functional parameters ############################################################################################
-    
+
+    @batch_method('parameter')
     @cache
     def get_abbott_firestone_curve(self):
         """
@@ -1275,6 +1403,7 @@ class Surface(CachedInstance):
         """
         return AbbottFirestoneCurve(self)
 
+    @batch_method('parameter')
     def Sk(self):
         """
         Calculates Sk in µm.
@@ -1285,6 +1414,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Sk()
 
+    @batch_method('parameter')
     def Spk(self):
         """
         Calculates Spk in µm.
@@ -1295,6 +1425,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Spk()
 
+    @batch_method('parameter')
     def Svk(self):
         """
         Calculates Svk in µm.
@@ -1305,6 +1436,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Svk()
 
+    @batch_method('parameter')
     def Smr1(self):
         """
         Calculates Smr1 in %.
@@ -1315,6 +1447,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smr1()
 
+    @batch_method('parameter')
     def Smr2(self):
         """
         Calculates Smr2 in %.
@@ -1325,6 +1458,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smr2()
 
+    @batch_method('parameter')
     def Smr(self, c):
         """
         Calculates the ratio of the area of the material at a specified height c (in µm) to the evaluation area.
@@ -1340,6 +1474,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smr(c)
 
+    @batch_method('parameter')
     def Smc(self, mr):
         """
         Calculates the height (c) in µm for a given areal material ratio (mr).
@@ -1355,6 +1490,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smc(mr)
 
+    @batch_method('parameter')
     def Sxp(self, p=2.5, q=50):
         """
         Calculates the difference in height between the p and q material ratio. For Sxp, p and q are defined by the
@@ -1374,7 +1510,7 @@ class Surface(CachedInstance):
         return self.Smc(p) - self.Smc(q)
 
     # Functional volume parameters ######################################################################################
-
+    @batch_method('parameter')
     def Vmp(self, p=10):
         """
         Calculates the peak material volume at p. The default value of p is 10% according to ISO-25178-3.
@@ -1390,6 +1526,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Vmp(p=p)
 
+    @batch_method('parameter')
     def Vmc(self, p=10, q=80):
         """
         Calculates the difference in material volume between the p and q material ratio. The default value of p and q
@@ -1408,6 +1545,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Vmc(p=p, q=q)
 
+    @batch_method('parameter')
     def Vvv(self, q=80):
         """
         Calculates the dale volume at p material ratio. The default value of p is 80% according to ISO-25178-3.
@@ -1423,6 +1561,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Vvv(q=q)
 
+    @batch_method('parameter')
     def Vvc(self, p=10, q=80):
         """
         Calculates the difference in void volume between p and q material ratio. The default value of p and q
@@ -1442,7 +1581,8 @@ class Surface(CachedInstance):
         return self.get_abbott_firestone_curve().Vvc(p=p, q=q)
 
     # Non-standard parameters ##########################################################################################
-    
+
+    @batch_method('parameter')
     @cache
     @no_nonmeasured_points
     def period(self) -> float:
@@ -1544,7 +1684,8 @@ class Surface(CachedInstance):
         if period_x > period_y:
             angle = np.sign(angle) * 90 - angle
         return angle
-    
+
+    @batch_method('parameter')
     @cache
     @no_nonmeasured_points
     def orientation(self, method: str = 'fft_refined') -> float:
@@ -1571,7 +1712,8 @@ class Surface(CachedInstance):
         elif method == 'fft':
             return self._orientation_fft()
         raise ValueError('Invalid method specified.')
-    
+
+    @batch_method('parameter')
     @no_nonmeasured_points
     @cache
     def homogeneity(self, parameters: tuple[str] = ('Sa', 'Sku', 'Sdr'), period: float = None) -> float:
@@ -1639,13 +1781,13 @@ class Surface(CachedInstance):
             lorenz[1:] = np.cumsum(results[i]) / np.sum(results[i])
             x, step = np.linspace(0, 1, lorenz.size, retstep=True)
             y = lorenz.min() + (lorenz.max() - lorenz.min()) * x
-            B = np.trapz(lorenz, dx=step)
+            B = trapezoid(lorenz, dx=step)
             A = 0.5 - B
             gini = A / 0.5
             h.append(1 - gini)
         return np.mean(h).round(4)
 
-    @register_returnlabels(('mean', 'std'))
+    @batch_method('parameter', return_labels=('mean', 'std'))
     @cache
     @no_nonmeasured_points
     def depth(self, nprofiles: int = 30, sampling_width: float = 0.2, plot: int = None) -> tuple[float, float]:
@@ -1744,6 +1886,7 @@ class Surface(CachedInstance):
 
         return np.nanmean(depths), np.nanstd(depths)
 
+    @batch_method('parameter')
     @cache
     def aspect_ratio(self) -> float:
         """
@@ -1785,7 +1928,7 @@ class Surface(CachedInstance):
         return results
 
     # Plotting #########################################################################################################
-    def plot_abbott_curve(self, nbars: int = 20):
+    def plot_abbott_curve(self, nbars: int = 20, save_to=None):
         """
         Plots the Abbott-Firestone curve.
 
@@ -1793,15 +1936,20 @@ class Surface(CachedInstance):
         ----------
         nbars : int
             Number of bars to display for the material density
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        None
+        plt.Figure, tuple[plt.Axes]
         """
         abbott_curve = self.get_abbott_firestone_curve()
-        return abbott_curve.plot(nbars=nbars)
+        fig, axs = abbott_curve.plot(nbars=nbars)
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, axs
 
-    def plot_functional_parameter_study(self):
+    def plot_functional_parameter_study(self, save_to=None):
         """
         Plots the Abbott-Firestone curve.
 
@@ -1809,20 +1957,47 @@ class Surface(CachedInstance):
         ----------
         nbars : int
             Number of bars to display for the material density
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        None
+        plt.Figure, plt.Axes
         """
         abbott_curve = self.get_abbott_firestone_curve()
-        return abbott_curve.visual_parameter_study()
+        fig, ax = abbott_curve.visual_parameter_study()
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
 
-    def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True):
+    def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True, save_to=None):
+        """
+        Plots the Autocorrelation function.
+
+        Parameters
+        ----------
+        ax : matplotlib axis, default None
+            If specified, the plot will be drawn the specified axis.
+        cmap : str | mpl.cmap, default 'jet'
+            Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
+        show_cbar : bool | None, default None
+            Determines whether to show a colorbar. If the value is None, the colorbar is shown only for topographies
+            and omitted for image data.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
+
+        Returns
+        -------
+        plt.Figure, plt.Axes
+        """
         acf = self.get_autocorrelation_function()
-        return acf.plot_autocorrelation(ax=ax, cmap=cmap, show_cbar=show_cbar)
+        fig, ax = acf.plot_autocorrelation(ax=ax, cmap=cmap, show_cbar=show_cbar)
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
         
     def plot_fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
-                               cmap='inferno', adjust_colormap=True):
+                               cmap='inferno', adjust_colormap=True, save_to=None):
         """
         Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral
         leakage effects that occur when analyzing a signal of finite sample length.
@@ -1844,10 +2019,12 @@ class Surface(CachedInstance):
         adjust_colormap : bool, Default True
             If True, the colormap starts at the mean and ends at 0.7 time the maximum of the data
             to increase peak visibility.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        ax: matplotlib.axes
+        plt.Figure, plt.Axes
         """
         N, M = self.size
         data = self.data
@@ -1896,10 +2073,12 @@ class Surface(CachedInstance):
         extent = (freq_x[ixmin], freq_x[ixmax], freq_y[iymax], freq_y[iymin])
 
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
-        return ax
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
 
     def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, vmin=None, vmax=None,
-                show_cbar=None):
+                show_cbar=None, save_to=None):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1921,10 +2100,12 @@ class Surface(CachedInstance):
         show_cbar : bool | None, default None
             Determines whether to show a colorbar. If the value is None, the colorbar is shown only for topographies
             and omitted for image data.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
 
         Returns
         -------
-        ax.
+        plt.Figure, plt.Axes
         """
         cmap = plt.get_cmap(cmap).copy()
         cmap.set_bad(maskcolor)
@@ -1958,8 +2139,75 @@ class Surface(CachedInstance):
         if layer == 'Topography' and self.has_missing_points:
             handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
             ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
-        return ax
-    
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
+
+    def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
+                light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
+                level_of_detail=100, save_to=None):
+        """
+        Renders a surface object in 3d using pyvista.
+
+        Parameters
+        ----------
+        surface: surfalize.Surface
+            Surface object.
+        vertical_angle : float
+            Angle of the camera in the vertical plane in degree. Defaults to 50.
+        horizontal_angle : float
+            Angle of the camera in the horizontal plane in degree. Defaults to 0.
+        zoom : float
+            Zoom factor of the surface render. Defaults to 1. Decreasing the value will zoom out the render.
+        cmap : str
+            Matplotlib colormap name. Defaults to jet.
+        colorbar : bool
+            Whether to show a colorbar. Defaults to True.
+        show_grid : bool
+            Whether to show a grid. Defaults to True.
+        light : float
+            Intensity of the light from 0 to 1. Defaults to 1.
+        light_position : tuple[float, float, float]
+            Position of the light source. Defaults to the position of the camera.
+        crop_white : bool
+            Whether to crop out white image borders in the horizontal axis. Defaults to True.
+        cbar_pad : int
+            Additional padding of the colorbar from the 3d render in pixels. Defaults to 50.
+        cbar_height : float
+            Height of the colorbar as a fraction of the image height.
+        scale : float
+            Vertical scaling factor of the topography. Defaults to 1. Currently, there are issues with the grid rendering
+            for scale values other than 1 due to the current pyvista implementation.
+        level_of_detail : float
+            Level of detail in % by which the topography is downsampled for the 3d plot. A value of 50 will downsample the
+            number of points in each axis by a factor of 2. Defaults to 100.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
+
+        Returns
+        -------
+        PIL.Image
+        """
+        image = plot_3d(
+            self,
+            vertical_angle=vertical_angle,
+            horizontal_angle=horizontal_angle,
+            zoom=zoom,
+            cmap=cmap,
+            colorbar=colorbar,
+            show_grid=show_grid,
+            light=light,
+            light_position=light_position,
+            crop_white=crop_white,
+            cbar_pad=cbar_pad,
+            cbar_height=cbar_height,
+            scale=scale,
+            level_of_detail=level_of_detail
+        )
+        if save_to:
+            image.save(save_to)
+        return image
+
     def show(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
         """
         Shows a 2D-plot of the surface using matplotlib.

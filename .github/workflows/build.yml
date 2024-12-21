@@ -6,7 +6,12 @@ on:
       - 'v*'  # Trigger on tags starting with 'v'
 
 jobs:
+  
+  test:
+      uses: ./.github/workflows/test.yml
+
   build-and-upload:
+    needs: test
     runs-on: ubuntu-latest
     
     steps:

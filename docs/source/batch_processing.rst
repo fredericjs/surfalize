@@ -26,6 +26,28 @@ formats will be loaded. Alternatively, a list of specific formats can also be su
 
     batch = Batch.from_dir('path/to/folder/', extension='.vk4')
 
+To pass file-like objects to a Batch object, they must first be wrapped in an instance of the `FileInput` class to
+provide a name and optionally a file format specifier.
+
+.. code:: python
+
+    import io
+    from surfalize import Batch, FileInput
+
+    # Here we create a file-like object for the sake of demonstration. In practice, these probably come from a database
+    # or network connections
+
+    with open('example_1.vk4', 'rb') as f:
+        buffer1 = io.BytesIO(f.read())
+
+    with open('example_2.vk4', 'rb') as f:
+        buffer2 = io.BytesIO(f.read())
+
+    fileobj1 = FileInput(name='my_surface_1', data=buffer, format='.vk4')
+    fileobj2 = FileInput(name='my_surface_2', data=buffer, format='.vk4')
+
+    batch = Batch([fileobj1, fileobj2])
+
 Applying operations
 ===================
 
@@ -76,6 +98,58 @@ If arguments need to be supplied, the parameter must be constructed as a `Parame
     from surfalize.batch import Parameter
     Vmc = Parameter('Vmc', kwargs=dict(p=10, q=80))
     batch.roughness_parameters(['Sa', 'Sq', 'Sz', Vmc])
+
+Execution order
+===============
+
+Before version `v0.15.0` all operations were executed before parameter calculations. For versions `>=v0.15.0`,
+Operations and parameters can be called in an interlaced manner and their order will be executed in that order. This
+allows for cases where the user wants to calculate some parameters before and others after a specific operation.
+The legacy behavior of performing all operations first can be activated by specifying `presever_chaining_order=False`
+in `Batch.execute`.
+
+In this example, `Sdr` will be calculated before the filtering and `Sq` after the filtering:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.Sdr().filter('lowpass', 1).Sq()
+    result = batch.execute()
+
+In this example, `Sdr` and `Sq` will be calculated after the filtering:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.Sdr().filter('lowpass', 1).Sq()
+    result = batch.execute(preserve_chaining_order=False)
+
+Duplicate Parameters
+====================
+
+In some cases, one might want to calculate the same parameter multiple times, for instance before and after an operation
+or with different arguments. If a parameter is called more than once on the `Batch` object, an exception is raised to
+prevent the column in the dataframe being overwritten by the second call. However, each parameter can be given a custom
+name for its column in the dataframe to enable duplicate calculation of the same parameter:
+
+In this example, we calculate `Sdr` before and after filtering the surface with a highpass filter to investigate, how
+strongly the high frequency noise affects the parameter's value:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.Sdr().filter('lowpass', 1).Sdr(custom_name='Sdr_after_filtering')
+    result = batch.execute()
+
+In this example, we calculate the homogeneity with different unit cell evaluation parameters:
+
+.. code:: python
+
+    batch = Batch.from_dir('.')
+    batch.homogeneity(parameters=['Sa'], custom_name='H_Sa')
+    batch.homogeneity(parameters=['Sa', 'Sk', 'Sdr'], custom_name='H_Sa_Sk_Sdr')
+    result = batch.execute()
+
 
 Executing the batch process
 ===========================
@@ -170,6 +244,31 @@ template string was constructed wrong. The method `BatchResult.extract_from_file
     result = batch.execute()
     pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float|V>_<hatch_distance|float|HD>_<overscans|int|OS>'
     result.extract_from_filename(pattern)
+
+Adding custom parameters
+========================
+
+Custom parameters can be added to the batch calculation by passing a user defined function to `Batch.custom_parameter`.
+This function must take only one argument, which is the surface object. It must return a dictionary, where the key
+represents the name of the parameter that is used for the column name in the DataFrame and the value is the result of
+the calculation. If multiple return values are needed, each must be inserted with a different key into the dictionary.
+
+.. code:: python
+
+    # With one return value
+    def median(surface):
+        median = np.median(surface.data)
+        return {'height_median': median}
+
+    # With multiple return values
+    def mean_std(surface):
+        mean = np.mean(surface.data)
+        std = np.std(surface.data)
+        return {'mean_value': mean, 'std_value': std}
+
+    # Register the functions for batch execution
+    batch.custom_parameter(median)
+    batch.custom_parameter(mean_std)
 
 Full example
 ============

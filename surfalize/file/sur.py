@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .common import read_binary_layout, write_binary_layout, get_unit_conversion, RawSurface
+from .common import get_unit_conversion, RawSurface, Entry, Reserved, Layout, FileHandler, read_array, write_array
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # This is not fully implemented! Won't work with all SUR files.
@@ -70,66 +70,66 @@ class AcquisitionType(IntEnum):
     STRUCTURED_LIGHT_PROJECTION = 10
 
 
-LAYOUT_HEADER = (
-    ('code', '12s'),  # DIGITIAL SURF / DSCOMPRESSED
-    ('format', 'h'),  # 0 for PC format
-    ('n_objects', 'h'),
-    ('version_number', 'h'),
-    ('studiable_type', 'h'),
-    ('name_object', '30s'),
-    ('name_operator', '30s'),
-    ('p_size', 'h'),
-    ('acquisition_type', 'h'),
-    ('range_type', 'h'),
-    ('non_measured_points', 'h'),
-    ('absolute_z_axis', 'h'),
-    ('gauge_resolution', 'f'),
-    (None, 4),  # Reserved
-    ('bits_per_point', 'h'),
-    ('min_point', 'i'),
-    ('max_point', 'i'),
-    ('n_points_per_line', 'i'),
-    ('n_lines', 'i'),
-    ('n_total_points', 'i'),
-    ('spacing_x', 'f'),
-    ('spacing_y', 'f'),
-    ('spacing_z', 'f'),
-    ('name_x', '16s'),
-    ('name_y', '16s'),
-    ('name_z', '16s'),
-    ('unit_step_x', '16s'),
-    ('unit_step_y', '16s'),
-    ('unit_step_z', '16s'),
-    ('unit_x', '16s'),
-    ('unit_y', '16s'),
-    ('unit_z', '16s'),
-    ('unit_ratio_x', 'f'),
-    ('unit_ratio_y', 'f'),
-    ('unit_ratio_z', 'f'),
-    ('replica', 'h'),
-    ('inverted', 'h'),
-    ('leveled', 'h'),
-    (None, 12),  # Reserved
-    ('seconds', 'h'),
-    ('minutes', 'h'),
-    ('hours', 'h'),
-    ('day', 'h'),
-    ('month', 'h'),
-    ('year', 'h'),
-    ('week_day', 'h'),
-    ('measurement_duration', 'f'),
-    ('compressed_data_size', 'I'),
-    (None, 6),  # Reserved
-    ('length_comment', 'h'),
-    ('length_private', 'h'),
-    ('client_zone', '128s'),
-    ('offset_x', 'f'),
-    ('offset_y', 'f'),
-    ('offset_z', 'f'),
-    ('spacing_t', 'f'),
-    ('offset_t', 'f'),
-    ('name_t', '13s'),
-    ('unit_step_t', '13s')
+LAYOUT_HEADER = Layout(
+    Entry('code', '12s'),  # DIGITIAL SURF / DSCOMPRESSED
+    Entry('format', 'h'),  # 0 for PC format
+    Entry('n_objects', 'h'),
+    Entry('version_number', 'h'),
+    Entry('studiable_type', 'h'),
+    Entry('name_object', '30s'),
+    Entry('name_operator', '30s'),
+    Entry('p_size', 'h'),
+    Entry('acquisition_type', 'h'),
+    Entry('range_type', 'h'),
+    Entry('non_measured_points', 'h'),
+    Entry('absolute_z_axis', 'h'),
+    Entry('gauge_resolution', 'f'),
+    Reserved(4),
+    Entry('bits_per_point', 'h'),
+    Entry('min_point', 'i'),
+    Entry('max_point', 'i'),
+    Entry('n_points_per_line', 'i'),
+    Entry('n_lines', 'i'),
+    Entry('n_total_points', 'i'),
+    Entry('spacing_x', 'f'),
+    Entry('spacing_y', 'f'),
+    Entry('spacing_z', 'f'),
+    Entry('name_x', '16s'),
+    Entry('name_y', '16s'),
+    Entry('name_z', '16s'),
+    Entry('unit_step_x', '16s'),
+    Entry('unit_step_y', '16s'),
+    Entry('unit_step_z', '16s'),
+    Entry('unit_x', '16s'),
+    Entry('unit_y', '16s'),
+    Entry('unit_z', '16s'),
+    Entry('unit_ratio_x', 'f'),
+    Entry('unit_ratio_y', 'f'),
+    Entry('unit_ratio_z', 'f'),
+    Entry('replica', 'h'),
+    Entry('inverted', 'h'),
+    Entry('leveled', 'h'),
+    Reserved(12),
+    Entry('seconds', 'h'),
+    Entry('minutes', 'h'),
+    Entry('hours', 'h'),
+    Entry('day', 'h'),
+    Entry('month', 'h'),
+    Entry('year', 'h'),
+    Entry('week_day', 'h'),
+    Entry('measurement_duration', 'f'),
+    Entry('compressed_data_size', 'I'),
+    Reserved(6),
+    Entry('length_comment', 'h'),
+    Entry('length_private', 'h'),
+    Entry('client_zone', '128s'),
+    Entry('offset_x', 'f'),
+    Entry('offset_y', 'f'),
+    Entry('offset_z', 'f'),
+    Entry('spacing_t', 'f'),
+    Entry('offset_t', 'f'),
+    Entry('name_t', '13s'),
+    Entry('unit_step_t', '13s')
 )
 
 DTYPE_MAP = {16: 'int16', 32: 'int32'}
@@ -137,7 +137,7 @@ DTYPE_MAP = {16: 'int16', 32: 'int32'}
 
 def read_sur_header(filehandle, encoding='utf-8'):
     fp_start = filehandle.tell()
-    header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
+    header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
 
     if header['code'] not in (MAGIC_CLASSIC, MAGIC_COMPRESSED) or header['version_number'] != 1:
         raise CorruptedFileError('Unknown header format')
@@ -182,7 +182,7 @@ def read_directory(filehandle):
 
 
 def read_uncompressed_data(filehandle, dtype, num_points):
-    return np.fromfile(filehandle, count=num_points, dtype=dtype)
+    return read_array(filehandle, count=num_points, dtype=dtype)
 
 
 def read_compressed_data(filehandle, dtype, expected_compressed_size):
@@ -326,42 +326,40 @@ def get_surface(sur_obj):
     # timestamp = datetime.datetime(year=header['year'], month=header['month'], day=header['day'])
     return (data, step_x, step_y)
 
+@FileHandler.register_reader(suffix='.sur', magic=(MAGIC_CLASSIC.encode(), MAGIC_COMPRESSED.encode()))
+def read_sur(filehandle, read_image_layers=False, encoding='utf-8'):
+    top_level_sur_obj = read_sur_object(filehandle)
+    if top_level_sur_obj.header['n_objects'] > 1:
+        raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
+    image_layers = {}
+    if top_level_sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(top_level_sur_obj):
+        data, step_x, step_y = get_surface(top_level_sur_obj)
+    elif top_level_sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
+        # after the surface, the r,g,b channels and the intensity image follow.
+        data, step_x, step_y = get_surface(top_level_sur_obj)
 
-def read_sur(filepath, read_image_layers=False, encoding='utf-8'):
-    filesize = filepath.stat().st_size
-    with (open(filepath, 'rb') as filehandle):
-        top_level_sur_obj = read_sur_object(filehandle)
-        if top_level_sur_obj.header['n_objects'] > 1:
-            raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
-        image_layers = {}
-        if top_level_sur_obj.header['studiable_type'] == StudiableType.SURFACE or is_gwyddion_export(top_level_sur_obj):
-            data, step_x, step_y = get_surface(top_level_sur_obj)
-        elif top_level_sur_obj.header['studiable_type'] == StudiableType.RGB_INTENSITY_SURFACE:
-            # after the surface, the r,g,b channels and the intensity image follow.
-            data, step_x, step_y = get_surface(top_level_sur_obj)
+        if read_image_layers:
+            # read rgb layers
+            rgb_layers = []
+            for i in range(3):
+                rgb_layers.append(read_sur_object(filehandle).data)
+            # image is grayscale
+            if np.all(rgb_layers[0] == rgb_layers[1]) and np.all(rgb_layers[0] == rgb_layers[2]):
+                image_layers['Grayscale'] = rgb_layers[0]
+            # image is rgb
+            else:
+                image_layers['RGB'] = np.stack(rgb_layers, axis=-1)
 
-            if read_image_layers:
-                # read rgb layers
-                rgb_layers = []
-                for i in range(3):
-                    rgb_layers.append(read_sur_object(filehandle).data)
-                # image is grayscale
-                if np.all(rgb_layers[0] == rgb_layers[1]) and np.all(rgb_layers[0] == rgb_layers[2]):
-                    image_layers['Grayscale'] = rgb_layers[0]
-                # image is rgb
-                else:
-                    image_layers['RGB'] = np.stack(rgb_layers, axis=-1)
+            # read intensity layer
+            image_layers['Intensity'] = read_sur_object(filehandle).data
+    else:
+        raise UnsupportedFileFormatError(
+            f'Studiables of type {top_level_sur_obj.header["studiable_type"].name} are not supported.'
+        )
+    return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=top_level_sur_obj.header)
 
-                # read intensity layer
-                image_layers['Intensity'] = read_sur_object(filehandle).data
-        else:
-            raise UnsupportedFileFormatError(
-                f'Studiables of type {top_level_sur_obj.header["studiable_type"].name} are not supported.'
-            )
-        return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=top_level_sur_obj.header)
-
-
-def write_sur(filepath, surface, encoding='utf-8', compressed=False):
+@FileHandler.register_writer(suffix='.sur')
+def write_sur(filehandle, surface, encoding='utf-8', compressed=False):
     INT32_MAX = int(2 ** 32 / 2) - 1
     INT32_MIN = -int(2 ** 32 / 2)
 
@@ -438,23 +436,15 @@ def write_sur(filepath, surface, encoding='utf-8', compressed=False):
         'unit_step_t': ''
     }
 
-    # Pad all strings with spaces
-    for name, format_ in LAYOUT_HEADER:
-        if name is None or not format_.endswith('s'):
-            continue
-        length = struct.calcsize(format_)
-        header[name] = header[name].ljust(length)
-
-    with open(filepath, 'wb') as file:
-        write_binary_layout(file, LAYOUT_HEADER, header)
-        if not compressed:
-            data.tofile(file)
-            return
-        else:
-            uncompressed_data = data.tobytes()
-            compressed_data = zlib.compress(uncompressed_data)
-            # Write directory count = 1 and the length of a single data stream containing all the compressed data
-            file.write(struct.pack('<3I', 1, len(uncompressed_data), len(compressed_data)))
-            file.write(compressed_data)
-            return
+    LAYOUT_HEADER.write(filehandle, header)
+    if not compressed:
+        write_array(data, filehandle)
+        return
+    else:
+        uncompressed_data = data.tobytes()
+        compressed_data = zlib.compress(uncompressed_data)
+        # Write directory count = 1 and the length of a single data stream containing all the compressed data
+        filehandle.write(struct.pack('<3I', 1, len(uncompressed_data), len(compressed_data)))
+        filehandle.write(compressed_data)
+        return
 

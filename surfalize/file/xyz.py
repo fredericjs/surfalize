@@ -1,16 +1,17 @@
 # This code assumes units of meters for xyz data
 import numpy as np
 from ..exceptions import UnsupportedFileFormatError, CorruptedFileError
-from .common import RawSurface
+from .common import RawSurface, FileHandler
 
-def read_xyz(filepath, read_image_layers=False, encoding='utf-8'):
-    with open(filepath) as file:
-        try:
-            raw_data = np.loadtxt(file)
-        except UnicodeDecodeError:
-            raise UnsupportedFileFormatError('The xyz file contains binary data. Only ASCII xyz files are supported.')
-        except ValueError:
-            raise UnsupportedFileFormatError('The xyz file format type is not supported.')
+
+@FileHandler.register_reader(suffix='.xyz')
+def read_xyz(filehandle, read_image_layers=False, encoding='utf-8'):
+    try:
+        raw_data = np.loadtxt(filehandle)
+    except UnicodeDecodeError:
+        raise UnsupportedFileFormatError('The xyz file contains binary data. Only ASCII xyz files are supported.')
+    except ValueError:
+        raise UnsupportedFileFormatError('The xyz file format type is not supported.')
     x = np.unique(raw_data[:,0])
     y = np.unique(raw_data[:,1])
     nx = x.size

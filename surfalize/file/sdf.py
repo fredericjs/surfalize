@@ -2,7 +2,7 @@ import struct
 import re
 from datetime import datetime
 import numpy as np
-from .common import read_binary_layout, RawSurface, get_unit_conversion, write_binary_layout
+from .common import RawSurface, get_unit_conversion, Entry, Layout, FileHandler, write_array
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
 # File format specifications taken from ISO 25178-71
@@ -14,19 +14,19 @@ CONVERSION_FACTOR = get_unit_conversion(FIXED_UNIT, 'um')
 ASCII_DATE_FORMAT = "%d%m%Y%H%M"
 ASCII_FLOAT_PRECISION = 10
 
-LAYOUT_HEADER = (
-    ("ManufacID", "10s"),
-    ("CreateDate", "12s"),
-    ("ModDate", "12s"),
-    ("NumPoints", "H"),
-    ("NumProfiles", "H"),
-    ("Xscale", "d"),
-    ("Yscale", "d"),
-    ("Zscale", "d"),
-    ("Zresolution", "d"),
-    ("Compression", "B"),
-    ("DataType", "B"),
-    ("CheckType", "B"),
+LAYOUT_HEADER = Layout(
+    Entry("ManufacID", "10s"),
+    Entry("CreateDate", "12s"),
+    Entry("ModDate", "12s"),
+    Entry("NumPoints", "H"),
+    Entry("NumProfiles", "H"),
+    Entry("Xscale", "d"),
+    Entry("Yscale", "d"),
+    Entry("Zscale", "d"),
+    Entry("Zresolution", "d"),
+    Entry("Compression", "B"),
+    Entry("DataType", "B"),
+    Entry("CheckType", "B"),
 )
 
 ASCII_HEADER_TYPES = {
@@ -96,7 +96,7 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
     return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=None)
 
 def read_binary_sdf(filehandle, encoding="utf-8"):
-    header = read_binary_layout(filehandle, LAYOUT_HEADER, encoding=encoding)
+    header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
     num_points = header["NumPoints"]
     num_profiles = header["NumProfiles"]
     data_type = header["DataType"]
@@ -125,17 +125,18 @@ def read_binary_sdf(filehandle, encoding="utf-8"):
     step_y = header["Yscale"] * CONVERSION_FACTOR
     return RawSurface(data, step_x, step_y, metadata=header)
 
-def read_sdf(file_path, read_image_layers=False, encoding="utf-8"):
-    with open(file_path, "rb") as filehandle:
-        magic = filehandle.read(8)
-        if magic == MAGIC_ASCII:
-            return read_ascii_sdf(filehandle, encoding=encoding)
-        elif magic == MAGIC_BINARY:
-            return read_binary_sdf(filehandle, encoding=encoding)
-        else:
-            raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
+@FileHandler.register_reader(suffix='.sdf', magic=(MAGIC_ASCII, MAGIC_BINARY))
+def read_sdf(filehandle, read_image_layers=False, encoding="utf-8"):
+    magic = filehandle.read(8)
+    if magic == MAGIC_ASCII:
+        return read_ascii_sdf(filehandle, encoding=encoding)
+    elif magic == MAGIC_BINARY:
+        return read_binary_sdf(filehandle, encoding=encoding)
+    else:
+        raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
 
-def write_sdf(filepath, surface, encoding='utf-8', binary=True):
+@FileHandler.register_writer(suffix='.sdf')
+def write_sdf(filehandle, surface, encoding='utf-8', binary=True):
     now = datetime.now()
     mod_date = now.strftime(ASCII_DATE_FORMAT)
     # if the surface contains a timestamp in the metadata, we use this one, otherwise we set the create date to the same
@@ -177,28 +178,26 @@ def write_sdf(filepath, surface, encoding='utf-8', binary=True):
 
     # Write in binary mode
     if binary:
-        with open(filepath, 'wb') as filehandle:
-            filehandle.write(MAGIC_BINARY) # write magic identifier
-            write_binary_layout(filehandle, LAYOUT_HEADER, header)
-            data.tofile(filehandle)
+        filehandle.write(MAGIC_BINARY) # write magic identifier
+        LAYOUT_HEADER.write(filehandle, header)
+        write_array(data, filehandle)
     # Write in ascii mode
     else:
-        CRLF = '\n'
-        with open(filepath, 'w') as filehandle:
-            filehandle.write(MAGIC_ASCII.decode() + CRLF)
-            for k, v in header.items():
-                filehandle.write(f'{k} = {v}{CRLF}')
-            filehandle.write('*' + CRLF)
-            line_values = []
-            for i, value in enumerate(data.flatten()):
-                if np.isnan(value):
-                    line_values.append('BAD'.ljust(ASCII_FLOAT_PRECISION + 2))
-                else:
-                    line_values.append(f'{value:.{ASCII_FLOAT_PRECISION}f}')
-                if i % 10 == 0 or i == data.size - 1:
-                    filehandle.write(' '.join(line_values) + CRLF)
-                    line_values = []
+        CRLF = '\n'.encode('ascii')
+        filehandle.write(MAGIC_ASCII + CRLF)
+        for k, v in header.items():
+            filehandle.write(f'{k} = {v}{CRLF}'.encode('ascii'))
+        filehandle.write('*'.encode('ascii') + CRLF)
+        line_values = []
+        for i, value in enumerate(data.flatten()):
+            if np.isnan(value):
+                line_values.append('BAD'.ljust(ASCII_FLOAT_PRECISION + 2))
+            else:
+                line_values.append(f'{value:.{ASCII_FLOAT_PRECISION}f}')
+            if i % 10 == 0 or i == data.size - 1:
+                filehandle.write(' '.join(line_values).encode('ascii') + CRLF)
+                line_values = []
 
-            filehandle.write('*' + CRLF)
-            filehandle.write('<ExportedBy>Surfalize</ExportedBy>' + CRLF)
-            filehandle.write('*' + CRLF)
+        filehandle.write('*'.encode('ascii') + CRLF)
+        filehandle.write('<ExportedBy>Surfalize</ExportedBy>'.encode('ascii') + CRLF)
+        filehandle.write('*'.encode('ascii') + CRLF)

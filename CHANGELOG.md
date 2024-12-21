@@ -1,10 +1,68 @@
-## [unreleased changes]
+## v0.15.0
+- Added 3d plotting capabilities based on pyvista
+- Added pyvista as optional dependency for 3d plotting
+- Fixed bug in AutocorrelationFunction plotting
+- Added Zygo Metropro DAT format reader
+- Reworked Batch to preserve the order of parameters and operations by default. Before, all operations were executed 
+  before parameter calculations. Now operations and parameters can be called in an interlaced manner and their order 
+  will be executed in that order. This allows for cases where the user wants to calculate some parameters before and 
+  others after a specific operation. The legacy behavior of performing all operations first can be activated by 
+  specifying `presever_chaining_order=False` in `Batch.execute`
+- Added docs for Batch processing changes
+- Unified return values of plotting functions. Now all functions return either matplotlib figure and axes or a PIL image
+  depending on the type of plot
+- Refactored `Batch` implementation. `Batch` class now obtains the methods from the `Surface` class that are decorated
+  with the `batch_method` decorator. The decorater specifies the type (parameter, operation) as well as possible return
+  value names (replacing the previous decorator) and fixed keyword arguments such as `inplace = True` that must have
+  a specific value for the Batch version of the method. A note is added to decorated methods of the `Surface` class, 
+  indicating that it is suitable for Batch usage. The `Batch` class dynamically adds these methods to itself upon 
+  instantiation (might change to a metaclass in the future) and adjusts the docstring, removing references to the fixed
+  parameters.
+## v0.14.2
+- Fixed issues with Python < 3.10 and on linux
+## v0.14.1
+- Fixed roughness parameter calculation based on ACF (Sal, Str)
+- Added interpolation to the calculation ACF roughness parameters, now matching values obtained by MountainsMap more
+  closely
+- Fixed broken link to logo for PyPi
+## v0.14.0
+- Refactored the file reading and writing system
+- Readers and writers now register in a FileHandler class with their suffix and file magic
+- Readers and writers now work directly with file-like objects
+- If the designated reader for a file determined from the file path suffix raises an Exception, if no suffix is provided
+  or if no reader exists for that suffix, surfalize now tries to infer the correct reader from the file magic. This 
+  helps in cases where the file format is unknown or the file is labeled with the wrong file extension.
+- Added tests for reading from and writing to file-like objects
+- File loader now issues warning if step_x and step_y are not equal
+- Added support for file-like objects to batch processing
+- Updated docs for working with file-like objects
+## v0.13.2
+- Ensured compatibility of trapezoid function with numpy versions (trapz for np < 2.X, trapezoid for > 2.X) 
+- Added hook to batch execution that is called after each processed file. This hook can be used for instance to display
+  a custom progress bar.
+## v0.13.1
+- Updated minimum Python version requirement to 3.9
+- Fixed bug with OPD file reader that occurs when no date is present in the metadata
+## v0.13.0
+- Added support for extracting cag files by importing extract_cag from surfalize.file.cag (currently undocumented)
+- Added support for adding custom parameters to batch calculation through Batch.custom_parameter 
+## v0.12.1
+- Fixed bug where Surface.level would return only nan if surface has missing points
+## v0.12.0
 - Fixed string match in filename extraction to also include non alphabetic characters
 - Batch.execute now returns BatchResult class instead of DataFrame, which wraps the DataFrame and exposes the same
   methods, but allows for other methods such as filename extraction on the result and potentially other methods in the
   future
 - Fixed bug in orientation_fft
 - Added vmin, vmax and show_cbar keyword to Surface.plot_2d
+- Added SFLZ file format
+- Refactored file layout reading and writing
+- Replaced DataFrame with BatchResult as the return value for Batch.execute. BatchResult wraps the DataFrame but also 
+  exposes additional methods, such as filename parameter extraction.
+- Batch.execute now raises error if parameter is computed twice and overwritten
+- Parameters in Batch can now be given a custom name using the custom_name kwarg to change the name of the column in
+  the DataFrame. This allows for the computation of multiple versions of the same parameter
+- Removed numpy dependency restriction to versions below 2.0
 ## v0.11.1
 - Removed hierarch keyword from fits readers
 - Fixed bug with reshaping of fits arrays
