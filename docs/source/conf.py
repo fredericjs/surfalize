@@ -5,6 +5,7 @@
 
 import os
 import sys
+from sphinx.ext.autodoc import ClassDocumenter
 sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
@@ -29,7 +30,6 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 numpydoc_class_members_toctree = False
-autodoc_member_order = 'bysource'
 
 autodoc_mock_imports = [
     #'numpy',
