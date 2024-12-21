@@ -114,13 +114,13 @@ def argmax_all(arr):
     """
     Returns all indices where the array reaches its maximum value.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     arr : array-like
         Input array
 
-    Returns:
-    --------
+    Returns
+    -------
     numpy.ndarray
         Array of indices where the maximum value occurs
     """
@@ -132,13 +132,13 @@ def argmin_all(arr):
     """
     Returns all indices where the array reaches its minimum value.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     arr : array-like
         Input array
 
-    Returns:
-    --------
+    Returns
+    -------
     numpy.ndarray
         Array of indices where the minimum value occurs
     """
@@ -272,6 +272,7 @@ class Sinusoid:
         ----------
         x : float | ndarray
             x-value at which to evaluate the sinusoid.
+
         Returns
         -------
         y : float
