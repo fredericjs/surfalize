@@ -8,7 +8,12 @@ To install `surfalize` from PyPI run:
 
     pip install surfalize
 
-Currently, wheels on PyPI are only for Windows, in the future the support for manylinux wheels is planned.
+To support 3d plotting, install `surfalize` with optional dependencies:
+
+.. code::
+
+    pip install surfalize[3d]
+
 Alternatively, you can clone the git repository, navigate to the root folder and run:
 
 .. code::
