@@ -531,7 +531,7 @@ class Batch:
         # Create batch docstring
         batch_doc = (f'Batch version of Surface.{name}.\nThis method registers the {name} {method._batch_type} for batch '
                      f'processing. The actual computation occurs when execute() is called.\n\nParameters that cannot be '
-                     f'used on Batch objects are: {', '.join(method._fixed.keys())}.')
+                     f'used on Batch objects are: {", ".join(method._fixed.keys())}.')
 
         if hasattr(method, '_batch_doc'):
             batch_doc += f"\n{method._batch_doc}\n"
