@@ -1,3 +1,5 @@
+import functools
+import inspect
 import io
 from collections import defaultdict
 from multiprocessing.pool import ThreadPool
@@ -12,7 +14,7 @@ import pandas as pd
 
 from tqdm.auto import tqdm
 from .surface import Surface
-from .utils import is_list_like
+from .utils import is_list_like, remove_parameter_from_docstring
 from .file import supported_formats_read
 from .exceptions import BatchError, CalculationError
 
@@ -224,6 +226,16 @@ class _CustomParameter:
 
 class BatchResult:
 
+    """
+    Class that wraps the DataFrame returned by `Batch.execute`. Provides a method to get the underlying DateFrame object
+    and a method to apply filename extraction on the DataFrame.
+
+    Parameters
+    ----------
+    df : pd.DateFrame
+        Pandas DataFrame object.
+    """
+
     def __init__(self, df):
         self.__df = df.copy()
 
@@ -239,9 +251,39 @@ class BatchResult:
         self.__df.__setitem__(item, value)
 
     def get_dataframe(self):
+        """Returns the underlying DataFrame object"""
         return self.__df
 
     def extract_from_filename(self, pattern):
+        """
+        Extracts parameters that are encoded in filenames into their own columns. For instance a filename might encode
+        different fabrication parameters of the measured surface:
+
+        filename: 'Sample1_P50_N12_F1.23_FREP10kHz.vk4'
+
+        The pattern can encode parameters by specifying their name, datatype, prefix (optional) and suffix (optional).
+        The name is used to label the resulting column in the dataframe. The patterns have the general syntax:
+
+        <name|datatype|prefix|suffix>
+
+        Both prefix and suffix can be omitted. If only a suffix is defined, the prefix must be indicated as an empty
+        string. A pattern to match the above filename could look like this:
+
+        pattern: '<power|float|P>_<pulses|int|N>_<fluence|float|F>_<frequency|float|FREP|kHz>'
+
+        This pattern is parsed and constructs a regex that searches the filename for the defined parameters.
+        The parameters are  extracted and converted to their respective datatype. The values are added as new columns
+        to the dataframe.
+
+        Parameters
+        ----------
+        pattern : str | None
+            Pattern with which to extract parameters from filename.
+
+        Returns
+        -------
+        None
+        """
         parser = FilenameParser(pattern)
         self.__df = parser.apply_on(self.__df, 'file')
 
@@ -400,12 +442,11 @@ class Batch:
     """
     The batch class is used to perform operations and calculate quantitative surface parameters for a batch of
     topography files. The implementation allows to register operations and parameters for lazy calculation by invoking
-    methods defined by this class. Every operation method that is defined by Surface can be invoked on the batch class,
-    which then registers the method and the passed arguments for later execution. Similarly, every roughness parameter
-    can be called on the Batch class. The __getattr__ method is responsible for checking if an invoked method constitutes
-    a roughness parameter and if so, automatically wraps the method in a Parameter class, which is registered for later
-    calculation. This means that roughness parameters can be invoked on the Batch object despite not being explicitly
-    defined in the code.
+    methods defined by the `Surface` class. Every operation method that is defined by Surface can be invoked on the
+    batch class, which then registers the method and the passed arguments for later execution. Similarly, every
+    roughness parameter can be called on the Batch class. The methods of the `Surface` class do not appear in the this
+    class's documentation. However, their docstring can be accessed through `help(Batch.method)` or `Batch.method?` in
+    Jupyter.
 
     All methods can be chained, since they implement the builder design pattern, where every method returns the object
     itself. For exmaple, the operations levelling, filtering and aligning as well as the calculation of roughness
@@ -415,12 +456,14 @@ class Batch:
     >>> batch.level().filter(filter_type='lowpass', cutoff=10).align().Sa().Sq().Sz()
 
     Or on separate lines:
+
     >>> batch.level().filter(filter_type='lowpass', cutoff=10).align()
     >>> batch.Sa()
     >>> batch.Sq()
     >>> batch.Sz()
 
     Upon invoking the execute method, all registered operations and parameters are performed.
+
     >>> batch.execute()
 
     If the caller wants to supply additional parameters for each file, such as fabrication data, they can specify the
@@ -463,8 +506,53 @@ class Batch:
         self._steps = []
         self._filename_pattern = None
 
+        for name, method in Surface.__dict__.items():
+            if hasattr(method, '_batch_type'):
+                self._create_batch_method(name, method)
+
     def __len__(self):
         return len(self._files)
+
+    def _create_batch_method(self, name, method):
+        """Create a batch method from a Surface method."""
+
+        def batch_method(*args, **kwargs):
+            for param_name, param_value in method._fixed.items():
+                kwargs[param_name] = param_value
+            if method._batch_type == 'operation':
+                step = _Operation(name, args=args, kwargs=kwargs)
+            elif method._batch_type == 'parameter':
+                custom_name = kwargs.pop('custom_name', None)
+                step = _Parameter(name, args=args, kwargs=kwargs, custom_name=custom_name)
+
+            self._add_step(step)
+            return self
+
+        # Create batch docstring
+        batch_doc = (f'Batch version of Surface.{name}.\nThis method registers the {name} {method._batch_type} for batch '
+                     f'processing. The actual computation occurs when execute() is called.\n\nParameters that cannot be '
+                     f'used on Batch objects are: {', '.join(method._fixed.keys())}.')
+
+        if hasattr(method, '_batch_doc'):
+            batch_doc += f"\n{method._batch_doc}\n"
+
+        remove_parameters = {'self', *method._fixed.keys()}
+        if method.__doc__:
+            # Remove inplace from original docstring
+            filtered_doc = method.__doc__
+            for param in remove_parameters:
+                filtered_doc = remove_parameter_from_docstring(param, filtered_doc)
+            batch_doc += f"\n{filtered_doc}"
+
+        batch_method.__doc__ = inspect.cleandoc(batch_doc)
+
+        sig = inspect.signature(method)
+        params = [p for name, p in list(sig.parameters.items())
+                  if name not in remove_parameters]  # Skip 'self'
+        batch_method.__signature__ = sig.replace(parameters=params)
+
+        # Add method to instance
+        setattr(self, name, batch_method)
 
     @classmethod
     def from_dir(cls, dir_path, file_extensions=None, additional_data=None):
@@ -504,6 +592,55 @@ class Batch:
         for extension in file_extensions:
             filepaths.extend(list(dir_path.glob(f'*{extension}')))
         return cls(filepaths, additional_data=additional_data)
+
+    def add_files(self, files):
+        """
+        Add files to Batch after initialization.
+
+        Parameters
+        ----------
+        files: str | pathlib.Path | FileInput | list-like[str | pathlib.Path | FileInput]
+            Files to add to the Batch.
+
+        Returns
+        -------
+        self
+        """
+        if not is_list_like(files):
+            files = [files]
+        for file in files:
+            if isinstance(file, FileInput):
+                self._files.append(file)
+            else:
+                self._files.append(Path(file))
+        return self
+
+    def add_dir(self, dir_path, file_extensions=None):
+        """
+        Add all files in a directory to Batch after initialization. If
+
+        Parameters
+        ----------
+        dir_path : str | pathlib.Path
+            Path to the directory containing the files
+        file_extensions : str | list-like, optional
+            File extension or list of file extensions to be searched for, eg. '.vk4', '.plu'. The file extension must
+            be prefixed by a dot. If no file extensions are specified, all files are added to the batch that have a file
+            extension that corresponds to a supported file format.
+
+        Returns
+        -------
+        self
+        """
+        dir_path = Path(dir_path)
+        filepaths = []
+        if file_extensions is None:
+            file_extensions = supported_formats_read
+        elif isinstance(file_extensions, str):
+            file_extensions = [file_extensions]
+        for extension in file_extensions:
+            self._files.extend(list(dir_path.glob(f'*{extension}')))
+        return self
 
     def _disptach_tasks(self, multiprocessing=True, ignore_errors=True, on_file_complete=None,
                         preserve_chaining_order=True):
@@ -684,200 +821,6 @@ class Batch:
         self._filename_pattern = pattern
         return self
 
-    def zero(self):
-        """
-        Registers Surface.zero for later execution. Inplace is True by default.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('zero', kwargs=dict(inplace=True))
-        self._add_step(operation)
-        return self
-
-    def center(self):
-        """
-        Registers Surface.center for later execution. Inplace is True by default.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('center', kwargs=dict(inplace=True))
-        self._add_step(operation)
-        return self
-
-    def threshold(self, threshold=0.5):
-        """
-        Registers Surface.thresold for later execution. Inplace is True by default.
-
-        Parameters
-        ----------
-        threshold : float, default 0.5
-            Threshold argument from Surface.threshold
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('threshold', kwargs=dict(threshold=threshold, inplace=True))
-        self._add_step(operation)
-        return self
-
-    def remove_outliers(self, n=3, method='mean'):
-        """
-        Registers Surface.remove_outliers for later execution. Inplace is True by default.
-
-        Parameters
-        ----------
-        n : float, default 3
-            n argument from Surface.remove_outliers
-        method : {'mean', 'median'}, default 'mean'
-            method argument from Surface.remove_outliers
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('remove_outliers', kwargs = dict(n=n, method=method, inplace=True))
-        self._add_step(operation)
-        return self
-            
-    def fill_nonmeasured(self, method='nearest'):
-        """
-        Registers Surface.fill_nonmesured for later execution. Inplace is True by default.
-
-        Parameters
-        ----------
-        method : {'linear', 'nearest', 'cubic'}, default 'nearest'
-            method argument from Surface.fill_nonmeasured
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('fill_nonmeasured', kwargs=dict(method=method, inplace=True))
-        self._add_step(operation)
-        return self
-
-    def crop(self, box):
-        """
-        Registers Surface.crop for later execution. Inplace is True by default.
-
-        Parameters
-        ----------
-        box : tuple[float, float, float, float]
-            The crop rectangle, as a (x0, x1, y0, y1) tuple.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('crop', args=(box,), kwargs=dict(inplace=True))
-        self._add_step(operation)
-        return self
-            
-    def level(self):
-        """
-        Registers Surface.level for later execution. Inplace is True by default.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('level', kwargs=dict(inplace=True))
-        self._add_step(operation)
-        return self
-            
-    def filter(self, filter_type, cutoff, cutoff2=None):
-        """
-        Registers Surface.filter for later execution. Inplace is True by default. The filter_type both cannot be used
-        for batch analysis.
-
-        Parameters
-        ----------
-        filter_type : str
-            Mode of filtering. Possible values: 'highpass', 'lowpass', 'bandpass'.
-        cutoff : float
-            Cutoff frequency in 1/µm at which the high and low spatial frequencies are separated.
-            Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
-        cutoff2 : float | None, default None
-            Used only in mode='bandpass'. Specifies the lower cutoff frequency of the bandpass filter. Must be greater
-            than cutoff.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('filter', args=(filter_type, cutoff),
-                               kwargs=dict(cutoff2=cutoff2, inplace=True))
-        self._add_step(operation)
-        return self
-    
-    def rotate(self, angle):
-        """
-        Registers Surface.rotate for later execution. Inplace is True by default.
-
-        Parameters
-        ----------
-        angle : float
-            Angle in degrees.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('rotate', args=(angle,), kwargs=dict(inplace=True))
-        self._add_step(operation)
-        return self
-    
-    def align(self, axis='y'):
-        """
-        Registers Surface.align for later execution. Inplace is True by default.
-
-        Parameters
-        ----------
-        axis : {'x', 'y'}, default 'y'
-            The axis with which to align the texture with.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('align', kwargs=dict(inplace=True, axis=axis))
-        self._add_step(operation)
-        return self
-
-    def zoom(self, factor):
-        """
-        Registers Surface.zoom for later execution. Inplace is True by default.
-
-        Parameters
-        ----------
-        factor : float
-            Factor by which the surface is magnified
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('zoom', args=(factor,), kwargs=dict(inplace=True))
-        self._add_step(operation)
-        return self
-
-    def stepheight_level(self):
-        """
-        Registers Surface.stepheight_level for later execution. Inplace is True by default.
-
-        Returns
-        -------
-        self
-        """
-        operation = _Operation('stepheight_level', kwargs=dict(inplace=True))
-        self._add_step(operation)
-        return self
-
     def custom_parameter(self, func):
         """
         Add a custom parameter calculation in the form of a simple function to the batch calculation. The function
@@ -885,18 +828,20 @@ class Batch:
         names and parameter values. If the parameter consists of only one value, the dictionary should have only one
         entry. The keys of the returned dictionary will be used as the column names in the resulting DataFrame.
 
+        Examples
+        --------
         An examplary function might look like this:
 
-        def median(surface):
-            median = np.median(surface.data)
-            return {'height_median': median}
+        >>> def median(surface):
+        ...    median = np.median(surface.data)
+        ...    return {'height_median': median}
 
         Or with multiple parameters:
 
-        def mean_std(surface):
-            mean = np.mean(surface.data)
-            std = np.std(surface.data)
-            return {'mean_value': mean, 'std_value': std}
+        >>> def mean_std(surface):
+        ...    mean = np.mean(surface.data)
+        ...    std = np.std(surface.data)
+        ...    return {'mean_value': mean, 'std_value': std}
 
         Parameters
         ----------
@@ -909,25 +854,6 @@ class Batch:
         """
         self._add_step(_CustomParameter(func))
         return self
-
-    def __getattr__(self, attr):
-        # This is probably a questionable implementation
-        # The call to getattr checks if the attribute exists in this class and returns it if True. If not, it checks
-        # whether the attribute is part of the available roughness parameters of the surfalize.Surface class. If it is
-        # not, it raises the original AttributeError again. If it is a parameter of surfalize.Surface class though, it
-        # constructs a dummy method that is returned to the caller which, instead of calling the actual method from the
-        # Surface class, registers the parameter with the corresponding arguments in this class for later execution.
-        try:
-            return self.__dict__[attr]
-        except KeyError:
-            if attr not in Surface.AVAILABLE_PARAMETERS:
-                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{attr}'")
-        def parameter_dummy_method(*args, custom_name=None, **kwargs):
-            parameter = _Parameter(attr, args=args, kwargs=kwargs, custom_name=custom_name)
-            self._add_step(parameter)
-            return self
-
-        return parameter_dummy_method
 
     def roughness_parameters(self, parameters=None):
         """

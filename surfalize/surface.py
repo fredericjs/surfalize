@@ -1,4 +1,5 @@
 # Standard imports
+import inspect
 import logging
 
 from .plotting import plot_3d
@@ -23,7 +24,7 @@ from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import FileHandler
-from .utils import is_list_like, register_returnlabels, approximately_equal
+from .utils import is_list_like, approximately_equal
 from .cache import CachedInstance, cache
 from .mathutils import Sinusoid, argclosest, trapezoid
 from .autocorrelation import AutocorrelationFunction
@@ -56,6 +57,59 @@ def no_nonmeasured_points(function):
         return function(self, *args, **kwargs)
     return wrapper_function
 
+# Mutable default arg should be no issue here since we don't mutate it. Hopefully I won't change implementation in the
+# future and forget about this^^
+def batch_method(type_, return_labels=None, batch_doc=None, fixed={'inplace': True}):
+    """
+    Decorator to mark Surface methods for batch processing.
+
+    Parameters
+    ----------
+    type_ : str
+        Type of batch method ('operation' or 'parameter')
+    return_labels : tuple, optional
+        Labels for multiple return values (only used for parameters)
+    batch_doc : str, optional
+        Additional batch-specific documentation.
+    fixed : dict[str: Any]
+        Keyword arguments that must have a specific value when calling the method from the Batch class. By default, the
+        inplace argument is set to True for the Batch method, since returning a copy of the surface object does not make
+        sense. Parameters with fixed values are removed from the function signature and docstring of the Batch method.
+
+    Returns
+    -------
+    Wrapped function
+    """
+
+    def decorator(method):
+        sig = inspect.signature(method)
+        param_names = set(sig.parameters.keys())
+
+        # Filter fixed parameters to only include those in the method signature
+        valid_fixed = {k: v for k, v in fixed.items() if k in param_names}
+
+        method._batch_type = type_
+        method._fixed = valid_fixed
+        if return_labels is not None:
+            method.return_labels = return_labels
+        if batch_doc is not None:
+            method._batch_doc = batch_doc
+
+        # Create the batch availability note
+        fixed_params = ', '.join(f'`{param}`' for param in fixed.keys())
+        batch_note = '\n.. note:: \n\n\tThis method is available in the Batch class.'
+        if valid_fixed:
+            batch_note += f' The following parameters are removed in the batch version: {fixed_params}.'
+
+        # Append the note to the method's docstring
+        if method.__doc__ is None:
+            method.__doc__ = batch_note
+        else:
+            method.__doc__ = method.__doc__ + batch_note
+
+        return method
+
+    return decorator
 
 class Surface(CachedInstance):
     """
@@ -303,6 +357,18 @@ class Surface(CachedInstance):
 
     @classmethod
     def from_raw_surface(cls, raw_surface):
+        """
+        Classmethod that instantiates a `Surface` object from a `RawSurface` object returned by the file readers.
+
+        Parameters
+        ----------
+        raw_surface: surfalize.file.common.RawSurface
+            Raw surface object.
+
+        Returns
+        -------
+        surfalize.Surface
+        """
         image_layers = {k: Image(v) for k, v in raw_surface.image_layers.items()}
         return cls(raw_surface.data, raw_surface.step_x, raw_surface.step_y, metadata=raw_surface.metadata,
                    image_layers=image_layers)
@@ -321,11 +387,18 @@ class Surface(CachedInstance):
             If the surface is saved to a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
-
-        Optional Parameters
-        -------------------
-        binary : bool
-            Specifies whether to save in the binary version of the format of the ascii version.
+        **kwargs
+            binary : bool
+                Only for SDF format. Specifies whether to save in the binary version of the format of the ascii version.
+                Default is True.
+            compressed : bool
+                Only for SUR format. Specifies whether to save in the compressed version of the format. Defaults to
+                False.
+            compression : bool
+                Only for SFLZ format. Specifies the type of compression algorithm ('none', 'zlib', 'lzma'). Default
+                is 'zlib'.
+            dtype : str
+                Only for SFLZ format. Specifies the numpy dtype in which to save the array data.
 
         Returns
         -------
@@ -473,7 +546,7 @@ class Surface(CachedInstance):
         return Profile(data, step, length_um)
 
     # Operations #######################################################################################################
-    
+    @batch_method('operation')
     def center(self, inplace=False):
         """
         Centers the data around its mean value. The height of the surface will be distributed equally around 0.
@@ -494,7 +567,8 @@ class Surface(CachedInstance):
             self._set_data(data=data)
             return self
         return Surface(data, self.step_x, self.step_y)
-    
+
+    @batch_method('operation')
     def zero(self, inplace=False):
         """
         Sets the minimum height of the surface to zero.
@@ -516,6 +590,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def remove_outliers(self, n=3, method='mean', inplace=False):
         """
         Removes outliers based on the n-sigma criterion. All values that fall outside n-standard deviations of the mean
@@ -553,6 +628,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def threshold(self, threshold=0.5, inplace=False):
         """
         Removes data outside of threshold percentage of the material ratio curve.
@@ -592,6 +668,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def fill_nonmeasured(self, method='nearest', inplace=False):
         """
         Fills the non-measured points by interpolation.
@@ -624,6 +701,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data_interpolated, self.step_x, self.step_y)
 
+    @batch_method('operation', fixed={'inplace': True, 'return_trend': False})
     def level(self, return_trend=False, inplace=False):
         """
         Levels the surface by subtraction of a least squares fit plane.
@@ -642,6 +720,7 @@ class Surface(CachedInstance):
         """
         return self.detrend_polynomial(degree=1, inplace=inplace, return_trend=return_trend)
 
+    @batch_method('operation', fixed={'inplace': True, 'return_trend': False})
     def detrend_polynomial(self, degree=1, inplace=False, return_trend=False):
         """
         Detrend a 2d array of height data using a polynomial surface, handling NaN values
@@ -705,7 +784,8 @@ class Surface(CachedInstance):
         if return_trend:
             return return_surface, Surface(trend, self.step_x, self.step_y)
         return return_surface
-    
+
+    @batch_method('operation')
     @no_nonmeasured_points
     def rotate(self, angle, inplace=False):
         """
@@ -758,7 +838,8 @@ class Surface(CachedInstance):
             return self
 
         return Surface(rotated_cropped, step_x, step_y)
-    
+
+    @batch_method('operation')
     @no_nonmeasured_points
     def filter(self, filter_type, cutoff, cutoff2=None, inplace=False, endeffect_mode='reflect'):
         """
@@ -827,6 +908,7 @@ class Surface(CachedInstance):
         lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
         return highpass_filter(self, inplace=False), lowpass_filter(self, inplace=False)
 
+    @batch_method('operation')
     def zoom(self, factor, inplace=False):
         """
         Magnifies the surface by the specified factor.
@@ -852,6 +934,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
+    @batch_method('operation')
     def crop(self, box, in_units=True, inplace=False):
         """
         Crop the surface to the area specified by the box parameter.
@@ -885,7 +968,7 @@ class Surface(CachedInstance):
             return self
         return Surface(data, self.step_x, self.step_y)
 
-    
+    @batch_method('operation')
     def align(self, axis='y', method='fft_refined', inplace=False):
         """
         Computes the dominant orientation of the surface pattern and alignes the orientation with the horizontal
@@ -973,6 +1056,7 @@ class Surface(CachedInstance):
             mask = ~mask
         return mask
 
+    @batch_method('operation')
     @cache
     def stepheight_level(self, inplace=False):
         """
@@ -1030,6 +1114,7 @@ class Surface(CachedInstance):
         lower_median = np.median(self.data[~mask])
         return upper_median, lower_median
 
+    @batch_method('operation')
     @cache
     def stepheight(self):
         """
@@ -1043,6 +1128,7 @@ class Surface(CachedInstance):
         step_height = upper_median - lower_median
         return step_height
 
+    @batch_method('operation')
     def cavity_volume(self, threshold=0.50):
         """
         Calculates the cavity volume of a flat surface containing an ablation crater with a leveled bottom plane.
@@ -1093,6 +1179,7 @@ class Surface(CachedInstance):
         sku = np.sum(centered_data_sq ** 2) / size / sq ** 4
         return {'Sa': sa, 'Sq': sq, 'Sv': sv, 'Sp': sp, 'Sz': sz, 'Ssk': ssk, 'Sku': sku}
 
+    @batch_method('parameter')
     def Sa(self):
         """
         Calcualtes the arithmetic mean height Sa according to ISO 25178-2.
@@ -1103,6 +1190,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sa']
 
+    @batch_method('parameter')
     def Sq(self):
         """
         Calcualtes the root mean square height Sq according to ISO 25178-2.
@@ -1113,6 +1201,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sq']
 
+    @batch_method('parameter')
     def Sp(self):
         """
         Calcualtes the maximum peak height Sp according to ISO 25178-2.
@@ -1123,6 +1212,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sp']
 
+    @batch_method('parameter')
     def Sv(self):
         """
         Calcualtes the maximum pit height Sv according to ISO 25178-2.
@@ -1133,6 +1223,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sv']
 
+    @batch_method('parameter')
     def Sz(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2.
@@ -1143,6 +1234,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Sz']
 
+    @batch_method('parameter')
     def Ssk(self):
         """
         Calcualtes the skewness Ssk according to ISO 25178-2. It is the quotient of the mean cube value of the ordinate
@@ -1154,6 +1246,7 @@ class Surface(CachedInstance):
         """
         return self.height_parameters()['Ssk']
 
+    @batch_method('parameter')
     def Sku(self):
         """
         Calcualtes the kurtosis Sku  according to ISO 25178-2. It is the quotient of the mean quartic value of the
@@ -1166,7 +1259,7 @@ class Surface(CachedInstance):
         return self.height_parameters()['Sku']
     
     # Hybrid parameters ################################################################################################
-
+    @batch_method('parameter')
     @cache
     def projected_area(self):
         """
@@ -1177,7 +1270,8 @@ class Surface(CachedInstance):
         projected area : float
         """
         return (self.width_um - self.step_x) * (self.height_um - self.step_y)
-    
+
+    @batch_method('parameter')
     @no_nonmeasured_points
     @cache
     def surface_area(self):
@@ -1206,6 +1300,7 @@ class Surface(CachedInstance):
 
         return total_area
 
+    @batch_method('parameter')
     def Sdr(self):
         """
         Calculates the developed interfacial area ratio according to ISO 25178-2.
@@ -1215,7 +1310,8 @@ class Surface(CachedInstance):
         area : float
         """
         return (self.surface_area() / self.projected_area() -1) * 100
-    
+
+    @batch_method('parameter')
     @no_nonmeasured_points
     @cache
     def Sdq(self):
@@ -1232,7 +1328,7 @@ class Surface(CachedInstance):
         return np.sqrt((np.sum(diff_x**2) + np.sum(diff_y**2)) / A)
 
     # Spatial parameters ###############################################################################################
-
+    @batch_method('parameter')
     @cache
     def get_autocorrelation_function(self):
         """
@@ -1245,6 +1341,7 @@ class Surface(CachedInstance):
         """
         return AutocorrelationFunction(self)
 
+    @batch_method('parameter')
     @cache
     def Sal(self, s=0.2):
         """
@@ -1267,6 +1364,7 @@ class Surface(CachedInstance):
         """
         return self.get_autocorrelation_function().Sal(s=s)
 
+    @batch_method('parameter')
     @cache
     def Str(self, s=0.2):
         """
@@ -1291,7 +1389,8 @@ class Surface(CachedInstance):
         return self.get_autocorrelation_function().Str(s=s)
     
     # Functional parameters ############################################################################################
-    
+
+    @batch_method('parameter')
     @cache
     def get_abbott_firestone_curve(self):
         """
@@ -1304,6 +1403,7 @@ class Surface(CachedInstance):
         """
         return AbbottFirestoneCurve(self)
 
+    @batch_method('parameter')
     def Sk(self):
         """
         Calculates Sk in µm.
@@ -1314,6 +1414,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Sk()
 
+    @batch_method('parameter')
     def Spk(self):
         """
         Calculates Spk in µm.
@@ -1324,6 +1425,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Spk()
 
+    @batch_method('parameter')
     def Svk(self):
         """
         Calculates Svk in µm.
@@ -1334,6 +1436,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Svk()
 
+    @batch_method('parameter')
     def Smr1(self):
         """
         Calculates Smr1 in %.
@@ -1344,6 +1447,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smr1()
 
+    @batch_method('parameter')
     def Smr2(self):
         """
         Calculates Smr2 in %.
@@ -1354,6 +1458,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smr2()
 
+    @batch_method('parameter')
     def Smr(self, c):
         """
         Calculates the ratio of the area of the material at a specified height c (in µm) to the evaluation area.
@@ -1369,6 +1474,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smr(c)
 
+    @batch_method('parameter')
     def Smc(self, mr):
         """
         Calculates the height (c) in µm for a given areal material ratio (mr).
@@ -1384,6 +1490,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Smc(mr)
 
+    @batch_method('parameter')
     def Sxp(self, p=2.5, q=50):
         """
         Calculates the difference in height between the p and q material ratio. For Sxp, p and q are defined by the
@@ -1403,7 +1510,7 @@ class Surface(CachedInstance):
         return self.Smc(p) - self.Smc(q)
 
     # Functional volume parameters ######################################################################################
-
+    @batch_method('parameter')
     def Vmp(self, p=10):
         """
         Calculates the peak material volume at p. The default value of p is 10% according to ISO-25178-3.
@@ -1419,6 +1526,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Vmp(p=p)
 
+    @batch_method('parameter')
     def Vmc(self, p=10, q=80):
         """
         Calculates the difference in material volume between the p and q material ratio. The default value of p and q
@@ -1437,6 +1545,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Vmc(p=p, q=q)
 
+    @batch_method('parameter')
     def Vvv(self, q=80):
         """
         Calculates the dale volume at p material ratio. The default value of p is 80% according to ISO-25178-3.
@@ -1452,6 +1561,7 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Vvv(q=q)
 
+    @batch_method('parameter')
     def Vvc(self, p=10, q=80):
         """
         Calculates the difference in void volume between p and q material ratio. The default value of p and q
@@ -1471,7 +1581,8 @@ class Surface(CachedInstance):
         return self.get_abbott_firestone_curve().Vvc(p=p, q=q)
 
     # Non-standard parameters ##########################################################################################
-    
+
+    @batch_method('parameter')
     @cache
     @no_nonmeasured_points
     def period(self) -> float:
@@ -1573,7 +1684,8 @@ class Surface(CachedInstance):
         if period_x > period_y:
             angle = np.sign(angle) * 90 - angle
         return angle
-    
+
+    @batch_method('parameter')
     @cache
     @no_nonmeasured_points
     def orientation(self, method: str = 'fft_refined') -> float:
@@ -1600,7 +1712,8 @@ class Surface(CachedInstance):
         elif method == 'fft':
             return self._orientation_fft()
         raise ValueError('Invalid method specified.')
-    
+
+    @batch_method('parameter')
     @no_nonmeasured_points
     @cache
     def homogeneity(self, parameters: tuple[str] = ('Sa', 'Sku', 'Sdr'), period: float = None) -> float:
@@ -1674,7 +1787,7 @@ class Surface(CachedInstance):
             h.append(1 - gini)
         return np.mean(h).round(4)
 
-    @register_returnlabels(('mean', 'std'))
+    @batch_method('parameter', return_labels=('mean', 'std'))
     @cache
     @no_nonmeasured_points
     def depth(self, nprofiles: int = 30, sampling_width: float = 0.2, plot: int = None) -> tuple[float, float]:
@@ -1773,6 +1886,7 @@ class Surface(CachedInstance):
 
         return np.nanmean(depths), np.nanstd(depths)
 
+    @batch_method('parameter')
     @cache
     def aspect_ratio(self) -> float:
         """

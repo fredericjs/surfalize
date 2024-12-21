@@ -1,7 +1,24 @@
 from collections.abc import Sequence
-
+import re
 import numpy as np
 
+def remove_parameter_from_docstring(parameter, docstring):
+    """
+    Removes the documentation of a parameter from a function's docstring.
+    Returns the processed docstring.
+
+    Parameters
+    ----------
+    parameter : str
+        Name of the parameter to be removed.
+    docstring : str
+        Docstring from which the parameter should be removed.
+    Returns
+    -------
+    str
+    """
+    pattern = parameter + r'.+\n((    |\t).+\n)+'
+    return re.sub(pattern, '', docstring)
 
 def approximately_equal(a, b, epsilon=1e-6):
     """
@@ -39,22 +56,3 @@ def is_list_like(obj):
         True if object is list-like, False if is is not.
     """
     return isinstance(obj, (Sequence, np.ndarray)) and not isinstance(obj, (str, bytes))
-
-def register_returnlabels(labels):
-    """
-    Decorator that registers return labels to be used by surfalize.Batch when evaluating methods with multiple return
-    values.
-
-    Parameters
-    ----------
-    labels : list[str]
-        List of labels with the same length as the number of return values of the method to be decorated.
-
-    Returns
-    -------
-    wrapped_method
-    """
-    def wrapper(function):
-        function.return_labels = labels
-        return function
-    return wrapper
