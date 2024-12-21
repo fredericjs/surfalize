@@ -42,7 +42,7 @@ def _create_colorbar(vmin, vmax, cmap, label='z (µm)', height=0.5):
 
 def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
             light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
-            level_of_detail=100):
+            level_of_detail=100, interactive=False, window_title='surfalize'):
     """
     Renders a surface object in 3d using pyvista.
 
@@ -78,6 +78,11 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
     level_of_detail : float
         Level of detail in % by which the topography is downsampled for the 3d plot. A value of 50 will downsample the
         number of points in each axis by a factor of 2. Defaults to 100.
+    interactive : bool
+        Specifies whether the plot should be shown in an interactive window. Does not currently work for jupyter.
+        Defaults to False.
+    window_title : str
+        The window title to show in interactive mode. Defaults to 'surfalize'.
 
     Returns
     -------
@@ -108,7 +113,7 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
     grid.point_data["height"] = z.T.ravel()
 
     # Initialize the PyVista plotter
-    plotter = pv.Plotter(off_screen=True, window_size=(1920, 1080))
+    plotter = pv.Plotter(off_screen=False, window_size=(1920, 1080))
 
     # Add the surface plot to the plotter
     plotter.add_mesh(grid, cmap=cmap, scalars="height", show_edges=False, show_scalar_bar=False)
@@ -149,29 +154,32 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
             all_edges=True
         )
 
-    # Save the plot to a buffer
-    buffer = io.BytesIO()
-    plotter.screenshot(buffer)
-    buffer.seek(0)
+    if interactive:
+        plotter.show(title=window_title)
+    else:
+        # Save the plot to a buffer
+        buffer = io.BytesIO()
+        plotter.screenshot(buffer)
+        buffer.seek(0)
 
-    # Display the saved plot using PIL
-    img = Image.open(buffer)
-    if crop_white:
-        bg = Image.new(img.mode, img.size, (255, 255, 255))
-        diff = ImageChops.difference(img, bg)
+        # Display the saved plot using PIL
+        img = Image.open(buffer)
+        if crop_white:
+            bg = Image.new(img.mode, img.size, (255, 255, 255))
+            diff = ImageChops.difference(img, bg)
 
-        bbox = diff.getbbox()
+            bbox = diff.getbbox()
 
-        if bbox is not None:
-            img = img.crop((bbox[0], 0, bbox[2], img.height))
+            if bbox is not None:
+                img = img.crop((bbox[0], 0, bbox[2], img.height))
 
-    if colorbar:
-        cb = _create_colorbar(np.nanmin(surface.data), np.nanmax(surface.data), cmap, height=cbar_height)
-        cb = cb.resize((int(cb.width * img.height / cb.height), img.height))
+        if colorbar:
+            cb = _create_colorbar(np.nanmin(surface.data), np.nanmax(surface.data), cmap, height=cbar_height)
+            cb = cb.resize((int(cb.width * img.height / cb.height), img.height))
 
-        composite = Image.new('RGB', (img.width + cb.width + cbar_pad, img.height), (255, 255, 255))
-        composite.paste(img, (0, 0))
-        composite.paste(cb, (img.width + cbar_pad, 0))
-        img = composite
+            composite = Image.new('RGB', (img.width + cb.width + cbar_pad, img.height), (255, 255, 255))
+            composite.paste(img, (0, 0))
+            composite.paste(cb, (img.width + cbar_pad, 0))
+            img = composite
 
-    return img
+        return img

@@ -58,16 +58,41 @@ def cli():
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True))
-@click.option('--level', '-l', is_flag=True, help='Level the surface topography.')
-def show(input_path, level=False):
-    plt.rcParams['toolbar'] = 'None'
+@click.option('--plot3d', is_flag=True, help='Plot the surface in 3d.')
+@click.option('--level', '-l', is_flag=True, help='Level the topography')
+@click.option('--fill_nonmeasured', '-fn', is_flag=True, help='Fill the non-mmeasured points of the topography')
+@click.option('--center', '-c', is_flag=True, help='Center the topography')
+@click.option('--zero', '-z', is_flag=True, help='Zero the topography')
+@click.option('--highpass', '-hp', type=float, help='Highpass filter frequency.')
+@click.option('--lowpass', '-lp', type=float, help='Lowpass filter frequency.')
+@click.option('--bandpass', '-bp', nargs=2, type=float, help='Bandpass filter frequencies (low, high).')
+def show(input_path, fill_nonmeasured=False, level=False, plot3d=False, center=False, zero=False, highpass=False, lowpass=False, bandpass=False):
     input_path = Path(input_path)
     surface = Surface.load(input_path)
+    if fill_nonmeasured:
+        surface.fill_nonmeasured(inplace=True)
     if level:
         surface.level(inplace=True)
-    surface.plot_2d()
-    plt.gcf().canvas.manager.set_window_title(input_path.name)
-    plt.show()
+    if center:
+        surface.center(inplace=True)
+    if zero:
+        surface.zero(inplace=True)
+    if highpass is not None:
+        surface.filter('highpass', cutoff=highpass, inplace=True)
+    if lowpass is not None:
+        surface.filter('lowpass', cutoff=lowpass, inplace=True)
+    if bandpass is not None:
+        surface.filter('bandpass', cutoff=bandpass[0], cutoff2=bandpass[1], inplace=True)
+
+    # the plotting
+    if plot3d:
+        from surfalize.plotting import plot_3d
+        plot_3d(surface, interactive=True, window_title=input_path.name)
+    else:
+        plt.rcParams['toolbar'] = 'None'
+        surface.plot_2d()
+        plt.gcf().canvas.manager.set_window_title(input_path.name)
+        plt.show()
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True, path_type=Path))
