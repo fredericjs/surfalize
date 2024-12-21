@@ -11,6 +11,13 @@
 - Added docs for Batch processing changes
 - Unified return values of plotting functions. Now all functions return either matplotlib figure and axes or a PIL image
   depending on the type of plot
+- Refactored `Batch` implementation. `Batch` class now obtains the methods from the `Surface` class that are decorated
+  with the `batch_method` decorator. The decorater specifies the type (parameter, operation) as well as possible return
+  value names (replacing the previous decorator) and fixed keyword arguments such as `inplace = True` that must be have
+  a specfic value for the Batch version of the method. A note is added to decorated methods of the `Surface` class, 
+  indicating that it is suitable for Batch usage. The `Batch` class dynamically adds these methods to itself upon 
+  instantiation (might change to a metaclass in the future) and adjusts the docstring, removing references to the fixed
+  parameters.
 ## v0.14.2
 - Fixed issues with Python < 3.10 and on linux
 ## v0.14.1
