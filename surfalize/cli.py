@@ -58,10 +58,14 @@ def cli():
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True))
-def show(input_path):
+@click.option('--level', '-l', is_flag=True, help='Level the surface topography.')
+def show(input_path, level=False):
     plt.rcParams['toolbar'] = 'None'
     input_path = Path(input_path)
-    Surface.load(input_path).plot_2d()
+    surface = Surface.load(input_path)
+    if level:
+        surface.level(inplace=True)
+    surface.plot_2d()
     plt.gcf().canvas.manager.set_window_title(input_path.name)
     plt.show()
 
