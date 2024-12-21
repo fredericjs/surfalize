@@ -584,6 +584,19 @@ class Batch:
         return df
 
     def _add_step(self, step):
+        """
+        Adds a step (operation, parameter) to the list of registered steps. For parameters, it checks whether a
+        parameter with the same name is already present in the list and raises an error if this is the case.
+
+        Parameters
+        ----------
+        step: _Operation | _Parameters
+            Step to add to the list of steps.
+
+        Returns
+        -------
+        None
+        """
         if isinstance(step, (_Parameter, _CustomParameter)):
             if step.name in {s.name for s in self._steps if isinstance(s, (_Parameter, _CustomParameter))}:
                 raise BatchError(f'The parameter "{step.identifier}" is already registered. Consider giving it an '
