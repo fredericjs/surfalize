@@ -2,7 +2,15 @@
 - Added 3d plotting capabilities based on pyvista
 - Added pyvista as optional dependency for 3d plotting
 - Fixed bug in AutocorrelationFunction plotting
-- Added Zygo Metropro .dat format reader
+- Added Zygo Metropro DAT format reader
+- Reworked Batch to preserve the order of parameters and operations by default. Before, all operations were executed 
+  before parameter calculations. Now operations and parameters can be called in an interlaced manner and their order 
+  will be executed in that order. This allows for cases where the user wants to calculate some parameters before and 
+  others after a specific operation. The legacy behavior of performing all operations first can be activated by 
+  specifying `presever_chaining_order=False` in `Batch.execute`
+- Added docs for Batch processing changes
+- Unified return values of plotting functions. Now all functions return either matplotlib figure and axes or a PIL image
+  depending on the type of plot
 ## v0.14.2
 - Fixed issues with Python < 3.10 and on linux
 ## v0.14.1
