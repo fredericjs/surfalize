@@ -39,6 +39,9 @@ dependencies = [
 
 [project.optional-dependencies]
 3d = ["pyvista"]
+doc = ["sphinx", "numpydoc", "furo"]
+tests = ["pytest"]
+all = ["pyvista", "sphinx", "furo", "numpydoc", "pytest"]
 
 [tool.setuptools]
 include-package-data = false
