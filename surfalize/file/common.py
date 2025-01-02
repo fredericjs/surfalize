@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import warnings
 import numpy as np
+import chardet
 from abc import abstractmethod, ABC
 
 from surfalize.exceptions import UnsupportedFileFormatError
@@ -177,7 +178,10 @@ class Entry(BaseEntry):
             format = self.format
         size = struct.calcsize(format)
         unpacked_data = struct.unpack(f'{format}', filehandle.read(size))[0]
+        # The data is a string
         if isinstance(unpacked_data, bytes):
+            if encoding == 'auto':
+                encoding = chardet.detect(unpacked_data)['encoding']
             unpacked_data = unpacked_data.decode(encoding).rstrip(' \x00')
         data[self.name] = unpacked_data
 
@@ -313,6 +317,8 @@ class FileHandler:
     @classmethod
     def register_reader(cls, *, suffix, magic=None):
         def decorator(func):
+            func._suffix = suffix
+            func._magic = magic
             if is_list_like(suffix):
                 for s in suffix:
                     cls._readers_by_suffix[s] = func
@@ -325,8 +331,6 @@ class FileHandler:
                     cls._readers_by_magic[m] = func
             else:
                 cls._readers_by_magic[magic] = func
-            func._suffix = suffix
-            func._magic = magic
             return func
         return decorator
 
