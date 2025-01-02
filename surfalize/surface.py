@@ -286,7 +286,9 @@ class Surface(CachedInstance):
             the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
             If the surface is read from a buffer, the format value must be specified.
         encoding : str, Default utf-8
-            Encoding of characters in the file. Defaults to utf-8.
+            Encoding of characters in the file. If set to 'auto', the encoding is inferred automatically. For file
+            formats with fixed encoding (such as ASCII formats), this parameter has no effect. The default value is
+            'utf-8'.
         read_image_layers : bool, Default False
             If true, reads all available image layers in the file and saves them in Surface.image_layers dict
 
@@ -322,7 +324,13 @@ class Surface(CachedInstance):
         Optional Parameters
         -------------------
         binary : bool
-            Specifies whether to save in the binary version of the format of the ascii version.
+            Only for SDF format. Specifies whether to save in the binary version of the format of the ascii version.
+        comment : str
+            Only for SUR format. Specifies a comment to add to the file header.
+        compressed : bool
+            Only for SUR format. Specifies whether to use the compressed format. Default is False.
+        compression: {'none', 'zlib', 'lzma'}
+            Only for SFLZ format. Specifies the type of compression, either none, zlib or lzma.
 
         Returns
         -------
