@@ -1,3 +1,8 @@
+## v0.14.3
+- Fixed bug with SUR format encoding argument having no effect
+- Added 'auto' encoding option to automatically infer the encoding using chardet
+- Updated docstrings of Surface.load and Surface.save
+- Added comment kwarg to SUR reading
 ## v0.14.2
 - Fixed issues with Python < 3.10 and on linux
 ## v0.14.1
