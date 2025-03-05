@@ -591,6 +591,28 @@ class Surface(CachedInstance):
         return Surface(data, self.step_x, self.step_y)
 
     @batch_method('operation')
+    def invert(self, inplace=False):
+        """
+        Inverts the surface topography, creating a negative.
+
+        Parameters
+        ----------
+        inplace : bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        surface : surfalize.Surface
+            Surface object.
+        """
+        data = self.data.min() + self.data.max() - self.data
+        if inplace:
+            self._set_data(data=data)
+            return self
+        return Surface(data, self.step_x, self.step_y)
+
+    @batch_method('operation')
     def remove_outliers(self, n=3, method='mean', inplace=False):
         """
         Removes outliers based on the n-sigma criterion. All values that fall outside n-standard deviations of the mean
