@@ -18,6 +18,7 @@
   indicating that it is suitable for Batch usage. The `Batch` class dynamically adds these methods to itself upon 
   instantiation (might change to a metaclass in the future) and adjusts the docstring, removing references to the fixed
   parameters.
+- Added invert method to Surface class
 ## v0.14.2
 - Fixed issues with Python < 3.10 and on linux
 ## v0.14.1
