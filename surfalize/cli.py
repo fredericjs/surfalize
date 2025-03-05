@@ -1,3 +1,4 @@
+import functools
 import io
 from pathlib import Path
 import subprocess
@@ -51,38 +52,67 @@ def convert_file(input_path, output_path, skip_image_layers, *args, **kwargs):
     surface = Surface.load(input_path, read_image_layers=not skip_image_layers)
     surface.save(output_path, *args, **kwargs)
 
-@click.group()
+def perform_surface_operations(surface, **kwargs):
+    if kwargs['fill_nonmeasured']:
+        surface.fill_nonmeasured(inplace=True)
+    if kwargs['level']:
+        surface.level(inplace=True)
+    if kwargs['center']:
+        surface.center(inplace=True)
+    if kwargs['zero']:
+        surface.zero(inplace=True)
+    if kwargs['threshold'][0] is not None and kwargs['threshold'][1] is not None:
+        surface.threshold(kwargs['threshold'], inplace=True)
+        surface.fill_nonmeasured(inplace=True)
+    if kwargs['remove_outliers']:
+        surface.remove_outliers(n=kwargs['remove_outliers'], inplace=True)
+        surface.fill_nonmeasured(inplace=True)
+    if kwargs['highpass'] is not None:
+        surface.filter('highpass', cutoff=kwargs['highpass'], inplace=True)
+    if kwargs['lowpass'] is not None:
+        surface.filter('lowpass', cutoff=kwargs['lowpass'], inplace=True)
+    if kwargs['bandpass'] is not None:
+        surface.filter('bandpass', cutoff=kwargs['bandpass'][0], cutoff2=kwargs['bandpass'][1], inplace=True)
+
+def common_options(function):
+    @click.option('--level', '-l', is_flag=True, help='Level the topography')
+    @click.option('--fill-nonmeasured', '-fn', 'fill_nonmeasured', is_flag=True,
+                  help='Fill the non-mmeasured points of the topography')
+    @click.option('--center', '-c', is_flag=True, help='Center the topography')
+    @click.option('--zero', '-z', is_flag=True, help='Zero the topography')
+    @click.option('--highpass', '-hp', type=float, help='Highpass filter frequency.')
+    @click.option('--lowpass', '-lp', type=float, help='Lowpass filter frequency.')
+    @click.option('--bandpass', '-bp', nargs=2, type=float, help='Bandpass filter frequencies (low, high).')
+    @click.option('--threshold', '-t', nargs=2, type=click.Tuple([float, float]),
+                  default=(None, None), required=True, help='Threshold surface based on material ratio curve.')
+    @click.option('--remove-outliers', '-ro', 'remove_outliers', type=int, default=None, is_flag=False,
+                  flag_value=3, help='Remove outliers.')
+    @functools.wraps(function)
+    def wrapper(*args, **kwargs):
+        if sum([v is not None for v in [kwargs['highpass'], kwargs['lowpass'], kwargs['bandpass']]]) > 1:
+            raise click.BadParameter(
+                'Only one of the options --highpass, --lowpass, or --bandpass can be used at a time.')
+        if sum([v for v in [kwargs['zero'], kwargs['center']]]) > 1:
+            raise click.BadParameter('Only one of the options --zero, --center can be used at a time.')
+        return function(*args, **kwargs)
+    return wrapper
+
+@click.group(context_settings={'help_option_names': ['-h', '--help']})
 def cli():
     """A command-line tool for surfalize package."""
     pass
 
 @cli.command()
 @click.argument('input_path', type=click.Path(exists=True))
-@click.option('--plot3d', is_flag=True, help='Plot the surface in 3d.')
-@click.option('--level', '-l', is_flag=True, help='Level the topography')
-@click.option('--fill_nonmeasured', '-fn', is_flag=True, help='Fill the non-mmeasured points of the topography')
-@click.option('--center', '-c', is_flag=True, help='Center the topography')
-@click.option('--zero', '-z', is_flag=True, help='Zero the topography')
-@click.option('--highpass', '-hp', type=float, help='Highpass filter frequency.')
-@click.option('--lowpass', '-lp', type=float, help='Lowpass filter frequency.')
-@click.option('--bandpass', '-bp', nargs=2, type=float, help='Bandpass filter frequencies (low, high).')
-def show(input_path, fill_nonmeasured=False, level=False, plot3d=False, center=False, zero=False, highpass=False, lowpass=False, bandpass=False):
+@click.option('--3d', 'plot3d', is_flag=True, help='Plot the surface in 3d.')
+@common_options
+def show(input_path, plot3d=False, **kwargs):
+    """
+    Show a plot of the surface in 2d or 3d.
+    """
     input_path = Path(input_path)
     surface = Surface.load(input_path)
-    if fill_nonmeasured:
-        surface.fill_nonmeasured(inplace=True)
-    if level:
-        surface.level(inplace=True)
-    if center:
-        surface.center(inplace=True)
-    if zero:
-        surface.zero(inplace=True)
-    if highpass is not None:
-        surface.filter('highpass', cutoff=highpass, inplace=True)
-    if lowpass is not None:
-        surface.filter('lowpass', cutoff=lowpass, inplace=True)
-    if bandpass is not None:
-        surface.filter('bandpass', cutoff=bandpass[0], cutoff2=bandpass[1], inplace=True)
+    perform_surface_operations(surface, **kwargs)
 
     # the plotting
     if plot3d:
@@ -135,115 +165,159 @@ def convert(input_path: Path, output_path: Path, format: str, skip_image_layers:
         click.echo("Input path must be a file or directory.")
 
 @cli.command()
-@click.argument('input_path', type=click.Path(exists=True))
+@click.argument('input_path', type=click.Path(exists=True, dir_okay=True, file_okay=True))
 @click.option('--open-after', 'open_after', is_flag=True)
-@click.option('--level', '-l', is_flag=True, help='Level the topography')
-@click.option('--center', '-c', is_flag=True, help='Center the topography')
-@click.option('--zero', '-z', is_flag=True, help='Zero the topography')
-@click.option('--highpass', type=float, help='Highpass filter frequency.')
-@click.option('--lowpass', type=float, help='Lowpass filter frequency.')
-@click.option('--bandpass', nargs=2, type=float, help='Bandpass filter frequencies (low, high).')
-def report(input_path, open_after, level, center, zero, highpass, lowpass, bandpass):
-    if sum([v is not None for v in [highpass, lowpass, bandpass]]) > 1:
-        raise click.BadParameter('Only one of the options --highpass, --lowpass, or --bandpass can be used at a time.')
-    if sum([v for v in [zero, center]]) > 1:
-        raise click.BadParameter('Only one of the options --zero, --center can be used at a time.')
-
-    input_path = Path(input_path)
+@click.option('--periodic-parameters', '-pp', 'periodic_parameters', is_flag=True)
+@common_options
+def report(input_path, open_after, periodic_parameters, **kwargs):
+    """
+    Generate a PDF report for a surface.
+    """
     from fpdf import FPDF
     from fpdf.fonts import FontFace
-    surface = Surface.load(input_path).fill_nonmeasured()
-    if level:
-        surface.level(inplace=True)
-    if center:
-        surface.center(inplace=True)
-    if zero:
-        surface.zero(inplace=True)
-    if highpass is not None:
-        surface.filter('highpass', cutoff=highpass, inplace=True)
-    if lowpass is not None:
-        surface.filter('lowpass', cutoff=lowpass, inplace=True)
-    if bandpass is not None:
-        surface.filter('bandpass', cutoff=bandpass[0], cutoff2=bandpass[1], inplace=True)
-    surface.plot_2d()
+    input_path = Path(input_path).absolute()
+    if input_path.is_dir():
+        files = []
+        for ext in supported_formats_read:
+            files.extend(list(input_path.glob(f'*{ext}')))
+    else:
+        files = [input_path]
+    for file in files:
+        surface = Surface.load(file)
+        perform_surface_operations(surface, **kwargs)
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
-    buf.seek(0)
+        # Create an FPDF instance
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_right_margin(20)
+        pdf.set_font("Arial", size=12)
+        pdf.text(20, 20, f'REPORT: {file.name}')
 
-    # Create an FPDF instance
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_right_margin(20)
-    pdf.set_font("Arial", size=12)
-    pdf.text(20, 20, f'REPORT: {input_path.name}')
+        surface.plot_2d()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+        buf.seek(0)
+        pdf.image(buf, x=20, y=30, w=80, h=0)  # Height is automatically scaled
+        plt.close()
 
-    # Insert the Matplotlib image into the PDF
-    pdf.image(buf, x=20, y=30, w=100, h=0)  # Height is automatically scaled
+        padding = 10
+        pdf.set_y(pdf.get_y() + padding)
 
-    padding = 10
-    pdf.set_y(pdf.get_y() + padding)
+        pdf.set_xy(0, 60)
+        buf = io.BytesIO()
+        im = surface.plot_3d()
+        im.save(buf, format='PNG')
+        buf.seek(0)
+        pdf.image(buf, x=105, y=20, w=90, h=0)  # Height is automatically scaled
 
-    profile = surface.get_horizontal_profile(surface.height_um/2, average=10)
-    profile.plot_2d()
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
-    buf.seek(0)
-    pdf.image(buf, x=24, y=100, w=84, h=0)
+        pdf.set_font("Arial", size=10)
+        pdf.text(25, 95, f'Autocorrelation')
+        surface.plot_autocorrelation()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+        buf.seek(0)
+        pdf.image(buf, x=20, y=100, w=80, h=0)  # Height is automatically scaled
+        plt.close()
 
-    surface.plot_abbott_curve()
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
-    buf.seek(0)
-    pdf.image(buf, x=25, y=130, w=80, h=0)  # Height is automatically scaled
+        #surface.fill_nonmeasured(inplace=True)
+        surface.plot_abbott_curve()
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+        buf.seek(0)
+        pdf.image(buf, x=17, y=160, w=75, h=0)  # Height is automatically scaled
+        plt.close()
 
-    pdf.set_font("Arial", size=8)
-    grey = (128, 128, 128)
-    lightgrey = (200, 200, 200)
-    headings_style = FontFace(emphasis="BOLD", fill_color=grey)
-    subheadings_style = FontFace(emphasis="BOLD", fill_color=lightgrey)
+        pdf.set_font("Arial", size=8)
+        grey = (128, 128, 128)
+        lightgrey = (200, 200, 200)
+        headings_style = FontFace(emphasis="BOLD", fill_color=grey)
+        subheadings_style = FontFace(emphasis="BOLD", fill_color=lightgrey)
 
-    data = surface.roughness_parameters()
-    periodic_data = {
-        'Period': surface.period(),
-        'Depth': surface.depth()[0],
-        'Aspect ratio': surface.aspect_ratio(),
-        'Homogeneity': surface.homogeneity()
-    }
 
-    def create_group(table, params, title):
-        row = table.row()
-        row.cell(title, colspan=3, style=subheadings_style)
-        for param in params:
+        data = surface.roughness_parameters()
+        if periodic_parameters:
+            periodic_data = {
+                'Period': surface.period(),
+                'Depth': surface.depth()[0],
+                'Aspect ratio': surface.aspect_ratio(),
+                'Homogeneity': surface.homogeneity()
+            }
+
+        def create_group(table, params, title):
             row = table.row()
-            row.cell(param)
-            row.cell(f'{data[param]:.3f}')
-            row.cell(PARAMETER_UNITS[param])
+            row.cell(title, colspan=3, style=subheadings_style)
+            for param in params:
+                row = table.row()
+                row.cell(param)
+                row.cell(f'{data[param]:.3f}')
+                row.cell(PARAMETER_UNITS[param])
 
-    pdf.set_y(30)
-    with pdf.table(width=60, line_height=1.5 * pdf.font_size, text_align="LEFT", align='RIGHT', headings_style=headings_style) as table:
-        row = table.row()
-        row.cell('ISO 25178', colspan=3)
-
-        create_group(table, ['Sa', 'Sq', 'Sv', 'Sp', 'Sz', 'Ssk', 'Sku'], 'Spatial parameters')
-        create_group(table, ['Sdr', 'Sdq'], 'Hybrid parameters')
-        create_group(table, ['Sal', 'Str'], 'Height parameters')
-        create_group(table, ['Sk', 'Spk', 'Svk', 'Smr1', 'Smr2', 'Sxp'], 'Functional parameters')
-        create_group(table, ['Vmc', 'Vmp', 'Vvc', 'Vvv'], 'Functional parameters (Volume')
-
-        row = table.row()
-        row.cell('Periodic parameters', colspan=3, style=subheadings_style)
-        for param in periodic_data.keys():
+        pdf.set_y(130)
+        with pdf.table(width=60, line_height=1.5 * pdf.font_size, text_align="LEFT", align="RIGHT",
+                       headings_style=headings_style) as table:
             row = table.row()
-            row.cell(param)
-            row.cell(f'{periodic_data[param]:.3f}')
-            row.cell(PARAMETER_UNITS[param])
+            row.cell('ISO 25178', colspan=3)
 
-    # Output the PDF
-    output_file = Path(input_path).with_suffix('.pdf')
-    pdf.output(output_file)
+            create_group(table, ['Sa', 'Sq', 'Sv', 'Sp', 'Sz', 'Ssk', 'Sku'], 'Spatial parameters')
+            create_group(table, ['Sdr', 'Sdq'], 'Hybrid parameters')
+            create_group(table, ['Sal', 'Str'], 'Height parameters')
+            create_group(table, ['Sk', 'Spk', 'Svk', 'Smr1', 'Smr2', 'Sxp'], 'Functional parameters')
+            create_group(table, ['Vmc', 'Vmp', 'Vvc', 'Vvv'], 'Functional parameters (Volume')
 
-    print("PDF report created successfully.")
+            if periodic_parameters:
+                row = table.row()
+                row.cell('Periodic parameters', colspan=3, style=subheadings_style)
+                for param in periodic_data.keys():
+                    row = table.row()
+                    row.cell(param)
+                    row.cell(f'{periodic_data[param]:.3f}')
+                    row.cell(PARAMETER_UNITS[param])
 
-    if open_after:
-        open_pdf(output_file)
+        pdf.set_y(90)
+        with pdf.table(width=60, line_height=1.5 * pdf.font_size, text_align="LEFT", align='RIGHT',
+                       headings_style=headings_style) as table:
+            row = table.row()
+            row.cell('Operation')
+            row.cell('Info')
+            row = table.row()
+            row.cell('Leveling')
+            row.cell(str(kwargs['level']))
+            row = table.row()
+            row.cell('Highpass')
+            if kwargs['highpass'] is not None:
+                row.cell(f'{kwargs['highpass']:.2f} µm')
+            else:
+                row.cell('-')
+            row = table.row()
+            row.cell('Lowpass')
+            if kwargs['lowpass'] is not None:
+                row.cell(f'{kwargs['lowpass']:.2f} µm')
+            else:
+                row.cell('-')
+            row = table.row()
+            row.cell('Bandpass')
+            if kwargs['bandpass'] is not None:
+                row.cell(f'{kwargs['bandpass'][0]:.2f} µm - {kwargs['bandpass'][1]:.2f} µm')
+            else:
+                row.cell('-')
+            row = table.row()
+            row.cell('Threshold')
+            if kwargs['threshold'] != (None, None):
+                row.cell(f'upper: {kwargs['threshold'][0]:.1f} %\nlower: {kwargs['threshold'][0]:.1f} %')
+            else:
+                row.cell('-')
+            row = table.row()
+            row.cell('Remove outliers')
+            if kwargs['remove_outliers'] is not None:
+                row.cell(f'> {kwargs['remove_outliers']} sigma')
+            else:
+                row.cell('-')
+
+        # Output the PDF
+        output_file = file.parent / (file.name + '.pdf')
+        pdf.output(output_file)
+
+        print(f"PDF report created successfully for {file.name}.")
+
+        if open_after:
+            open_pdf(output_file)

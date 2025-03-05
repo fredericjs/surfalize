@@ -17,4 +17,5 @@ replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion f
    install
    basic_usage
    batch_processing
+   commandline
    apidoc

@@ -113,7 +113,7 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
     grid.point_data["height"] = z.T.ravel()
 
     # Initialize the PyVista plotter
-    plotter = pv.Plotter(off_screen=False, window_size=(1920, 1080))
+    plotter = pv.Plotter(off_screen=not interactive, window_size=(1920, 1080))
 
     # Add the surface plot to the plotter
     plotter.add_mesh(grid, cmap=cmap, scalars="height", show_edges=False, show_scalar_bar=False)
