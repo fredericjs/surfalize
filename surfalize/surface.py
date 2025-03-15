@@ -99,13 +99,16 @@ def batch_method(type_, return_labels=None, batch_doc=None, fixed={'inplace': Tr
         fixed_params = ', '.join(f'`{param}`' for param in fixed.keys())
         batch_note = '\n.. note:: \n\n\tThis method is available in the Batch class.'
         if valid_fixed:
-            batch_note += f' The following parameters are removed in the batch version: {fixed_params}.'
+            batch_note += f' The following parameters are removed in the batch version: {fixed_params}.\n'
+        else:
+            batch_note += '\n'
 
         # Append the note to the method's docstring
         if method.__doc__ is None:
             method.__doc__ = batch_note
         else:
-            method.__doc__ = method.__doc__ + batch_note
+            import textwrap
+            method.__doc__ = textwrap.dedent(method.__doc__) + batch_note
 
         return method
 
@@ -318,6 +321,23 @@ class Surface(CachedInstance):
     def __hash__(self):
         return hash((self.step_x, self.step_y, self.size.x, self.size.y, self.data.mean(), self.data.std()))
 
+    def __getitem__(self, item):
+        step_y = self.step_y
+        step_x = self.step_x
+        if isinstance(item, slice):
+            if item.step is not None:
+                step_y = item.step * self.step_y
+        if isinstance(item, tuple):
+            if isinstance(item[0], slice) and item[0].step is not None:
+                step_y = item[0].step * self.step_y
+            if isinstance(item[1], slice) and item[1].step is not None:
+                step_x = item[1].step * self.step_x
+        return Surface(self.data.__getitem__(item), step_x, step_y)
+
+    def __setitem__(self, key, value):
+        self.data.__setitem__(key, value)
+        self.clear_cache()
+
     @property
     def has_missing_points(self):
         """
@@ -415,6 +435,56 @@ class Surface(CachedInstance):
         List[str]
         """
         return list(self.image_layers.keys())
+
+    def min(self):
+        """
+        Computes the minimum value of the surface, ignoring invalid points.
+
+        Returns
+        -------
+        float
+        """
+        return np.nanmin(self.data)
+
+    def max(self):
+        """
+        Computes the maximum value of the surface, ignoring invalid points.
+
+        Returns
+        -------
+        float
+        """
+        return np.nanmax(self.data)
+
+    def mean(self):
+        """
+        Computes the mean value of the surface, ignoring invalid points.
+
+        Returns
+        -------
+        float
+        """
+        return np.nanmean(self.data)
+
+    def median(self):
+        """
+        Computes the median value of the surface, ignoring invalid points.
+
+        Returns
+        -------
+        float
+        """
+        return np.nanmedian(self.data)
+
+    def std(self):
+        """
+        Computes the standard deviation the surface, ignoring invalid points.
+
+        Returns
+        -------
+        float
+        """
+        return np.nanstd(self.data)
         
     def get_horizontal_profile(self, y, average=1, average_step=None):
         """
@@ -2145,14 +2215,13 @@ class Surface(CachedInstance):
 
     def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
                 light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
-                level_of_detail=100, save_to=None):
+                level_of_detail=100, save_to=None, interactive=False, window_title='surfalize',
+                perspective_projection=False):
         """
         Renders a surface object in 3d using pyvista.
 
         Parameters
         ----------
-        surface: surfalize.Surface
-            Surface object.
         vertical_angle : float
             Angle of the camera in the vertical plane in degree. Defaults to 50.
         horizontal_angle : float
@@ -2183,11 +2252,21 @@ class Surface(CachedInstance):
             number of points in each axis by a factor of 2. Defaults to 100.
         save_to : str | pathlib.Path | None
             Path to where the plot should be saved.
+        interactive : bool
+            Specifies whether the plot should be shown in an interactive window. Does not currently work for jupyter.
+            Defaults to False.
+        window_title : str
+            The window title to show in interactive mode. Defaults to 'surfalize'.
+        perspective_projection : bool
+            Whether to use perspective or parallel projection. Default is True.
 
         Returns
         -------
         PIL.Image
         """
+        if interactive and save_to:
+            raise ValueError('Argument "save_to" can only be set for static plots. '
+                             'For interactive plots, use the widget save button.')
         image = plot_3d(
             self,
             vertical_angle=vertical_angle,
@@ -2202,7 +2281,10 @@ class Surface(CachedInstance):
             cbar_pad=cbar_pad,
             cbar_height=cbar_height,
             scale=scale,
-            level_of_detail=level_of_detail
+            level_of_detail=level_of_detail,
+            interactive=interactive,
+            window_title=window_title,
+            perspective_projection=perspective_projection
         )
         if save_to:
             image.save(save_to)

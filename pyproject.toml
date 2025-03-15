@@ -38,11 +38,38 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-3d = ["pyvista"]
-doc = ["sphinx", "numpydoc", "furo"]
-tests = ["pytest"]
-cli = ["click", "fpdf2"]
-all = ["pyvista", "sphinx", "furo", "numpydoc", "pytest", "click", "fpdf2"]
+3d = [
+    "pyvista",
+    "trame",
+    "trame-vtk",
+    "trame-vuetify",
+    "trame-components"
+]
+doc = [
+    "sphinx",
+    "numpydoc",
+    "furo"
+]
+tests = [
+    "pytest"
+]
+cli = [
+    "click",
+    "fpdf2"
+]
+all = [
+    "pyvista",
+    "trame",
+    "trame-vtk",
+    "trame-vuetify",
+    "trame-components",
+    "sphinx",
+    "furo",
+    "numpydoc",
+    "pytest",
+    "click",
+    "fpdf2"
+]
 
 [project.scripts]
 surfalize = "surfalize.cli:cli"
