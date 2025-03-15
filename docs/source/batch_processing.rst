@@ -245,8 +245,8 @@ template string was constructed wrong. The method `BatchResult.extract_from_file
     pattern = '<fluence|float|F>_<frequency|float|FREP|kHz>_<scanspeed|float|V>_<hatch_distance|float|HD>_<overscans|int|OS>'
     result.extract_from_filename(pattern)
 
-Adding custom parameters
-========================
+Adding custom parameters and operations
+=======================================
 
 Custom parameters can be added to the batch calculation by passing a user defined function to `Batch.custom_parameter`.
 This function must take only one argument, which is the surface object. It must return a dictionary, where the key
@@ -269,6 +269,20 @@ the calculation. If multiple return values are needed, each must be inserted wit
     # Register the functions for batch execution
     batch.custom_parameter(median)
     batch.custom_parameter(mean_std)
+
+Custom operations can be added to the batch calculation by passing a user defined function to `Batch.custom_operation`.
+This function must take only one argument, which is the surface object. It must return None and modify the surface in
+place.
+
+.. code:: python
+
+    # Define the function
+    def amplify_surface(surface):
+        # Change object in place
+        surface.data = surface.data * 10
+
+    # Add the function to the batch
+    batch.custom_operation(amplify_surface)
 
 Full example
 ============

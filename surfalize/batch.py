@@ -209,20 +209,6 @@ class FilenameParser:
                     df.insert(idx, col, '')
         return df.assign(**extracted)
 
-class _CustomParameter:
-
-    def __init__(self, func):
-        self.func = func
-        self.name = id(func)
-
-    def calculate_from(self, surface, ignore_errors=True):
-        try:
-            result = self.func(surface)
-        except CalculationError as error:
-            if not ignore_errors:
-                raise error
-        return result
-
 
 class BatchResult:
 
@@ -287,6 +273,7 @@ class BatchResult:
         parser = FilenameParser(pattern)
         self.__df = parser.apply_on(self.__df, 'file')
 
+
 class _Operation:
     """
     Class that holds the identifier and arguments to register a call to a surface method that operates on its data.
@@ -321,6 +308,7 @@ class _Operation:
         """
         method = getattr(surface, self.identifier)
         method(*self.args, **self.kwargs)
+
 
 class _Parameter:
     """
@@ -391,6 +379,31 @@ class _Parameter:
             return {f'{self.name}_{label}': value for value, label in zip(result, labels)}
         return {self.name: result}
 
+
+class _CustomParameter:
+
+    def __init__(self, func):
+        self.func = func
+        self.name = id(func)
+
+    def calculate_from(self, surface, ignore_errors=True):
+        try:
+            result = self.func(surface)
+        except CalculationError as error:
+            if not ignore_errors:
+                raise error
+        return result
+
+
+class _CustomOperation:
+
+    def __init__(self, func):
+        self.func = func
+
+    def execute_on(self, surface):
+        self.func(surface)
+
+
 def _task(file, steps, ignore_errors, preserve_chaining_order):
     """
     Task that loads a surface from file, executes a list of operations and calculates a list of parameters.
@@ -422,13 +435,13 @@ def _task(file, steps, ignore_errors, preserve_chaining_order):
     results = dict(file=file.name)
     if preserve_chaining_order:
         for step in steps:
-            if isinstance(step, _Operation):
+            if isinstance(step, (_Operation, _CustomOperation)):
                 step.execute_on(surface)
             elif isinstance(step, (_Parameter, _CustomParameter)):
                 result = step.calculate_from(surface, ignore_errors=ignore_errors)
                 results.update(result)
     else:
-        operations = [step for step in steps if isinstance(step, _Operation)]
+        operations = [step for step in steps if isinstance(step, (_Operation, _CustomOperation))]
         parameters = [step for step in steps if isinstance(step, (_Parameter, _CustomParameter))]
         for operation in operations:
             operation.execute_on(surface)
@@ -853,6 +866,31 @@ class Batch:
         self
         """
         self._add_step(_CustomParameter(func))
+        return self
+
+    def custom_operation(self, func):
+        """
+        Add a custom parameter operation in the form of a simple function to the batch calculation. The function
+        must take the surface object as its only parameter and modify the surface object in place, returning None.
+
+        Examples
+        --------
+        An examplary function might look like this:
+
+        >>> def remove_specific_outliers(surface):
+        ...    outlier_value = 1001
+        ...    surface.data[surface.data == outlier_value] = np.nan
+
+        Parameters
+        ----------
+        func: callable
+            Function to be executed. Must take a surface object as the only argument and return None.
+
+        Returns
+        -------
+        self
+        """
+        self._add_step(_CustomOperation(func))
         return self
 
     def roughness_parameters(self, parameters=None):
