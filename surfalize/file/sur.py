@@ -273,7 +273,7 @@ def is_gwyddion_export(sur_obj):
             and sur_obj.header['name_operator'] == 'csm')
 
 
-def read_sur_object(filehandle):
+def read_sur_object(filehandle, encoding='utf-8'):
     """
     Reads a sur object from a file. The function assumes that the filepointer points to the beginning of a sur object.
     A sur object consists of a 512-byte long header, followed by a variable length comment zone, private zone and
@@ -288,7 +288,7 @@ def read_sur_object(filehandle):
     -------
     SurObject
     """
-    header = read_sur_header(filehandle)
+    header = read_sur_header(filehandle, encoding=encoding)
     dtype = DTYPE_MAP[header['bits_per_point']]
     ny = header['n_lines']
     nx = header['n_points_per_line']
@@ -328,7 +328,7 @@ def get_surface(sur_obj):
 
 @FileHandler.register_reader(suffix='.sur', magic=(MAGIC_CLASSIC.encode(), MAGIC_COMPRESSED.encode()))
 def read_sur(filehandle, read_image_layers=False, encoding='utf-8'):
-    top_level_sur_obj = read_sur_object(filehandle)
+    top_level_sur_obj = read_sur_object(filehandle, encoding=encoding)
     if top_level_sur_obj.header['n_objects'] > 1:
         raise UnsupportedFileFormatError(f'Multilayer or series studiables are currently not supported.')
     image_layers = {}
@@ -342,7 +342,7 @@ def read_sur(filehandle, read_image_layers=False, encoding='utf-8'):
             # read rgb layers
             rgb_layers = []
             for i in range(3):
-                rgb_layers.append(read_sur_object(filehandle).data)
+                rgb_layers.append(read_sur_object(filehandle, encoding=encoding).data)
             # image is grayscale
             if np.all(rgb_layers[0] == rgb_layers[1]) and np.all(rgb_layers[0] == rgb_layers[2]):
                 image_layers['Grayscale'] = rgb_layers[0]
@@ -351,7 +351,7 @@ def read_sur(filehandle, read_image_layers=False, encoding='utf-8'):
                 image_layers['RGB'] = np.stack(rgb_layers, axis=-1)
 
             # read intensity layer
-            image_layers['Intensity'] = read_sur_object(filehandle).data
+            image_layers['Intensity'] = read_sur_object(filehandle, encoding=encoding).data
     else:
         raise UnsupportedFileFormatError(
             f'Studiables of type {top_level_sur_obj.header["studiable_type"].name} are not supported.'
@@ -359,7 +359,7 @@ def read_sur(filehandle, read_image_layers=False, encoding='utf-8'):
     return RawSurface(data, step_x, step_y, image_layers=image_layers, metadata=top_level_sur_obj.header)
 
 @FileHandler.register_writer(suffix='.sur')
-def write_sur(filehandle, surface, encoding='utf-8', compressed=False):
+def write_sur(filehandle, surface, encoding='utf-8', compressed=False, comment=''):
     INT32_MAX = int(2 ** 32 / 2) - 1
     INT32_MIN = -int(2 ** 32 / 2)
 
@@ -376,6 +376,8 @@ def write_sur(filehandle, surface, encoding='utf-8', compressed=False):
     spacing_z = (data_max - data_min) / (INT_DATA_MAX - INT_DATA_MIN)
     offset_z = offset = data_min + (data_max - data_min) / 2
     timestamp = datetime.now()
+
+    comment = comment.encode(encoding)
 
     header = {
         'code': MAGIC_CLASSIC if not compressed else MAGIC_COMPRESSED,
@@ -424,7 +426,7 @@ def write_sur(filehandle, surface, encoding='utf-8', compressed=False):
         'week_day': timestamp.weekday(),
         'measurement_duration': 0,
         'compressed_data_size': 0,
-        'length_comment': 0,
+        'length_comment': len(comment),
         'length_private': 0,
         'client_zone': 'Exported by surfalize',
         'offset_x': 0,
@@ -436,7 +438,9 @@ def write_sur(filehandle, surface, encoding='utf-8', compressed=False):
         'unit_step_t': ''
     }
 
-    LAYOUT_HEADER.write(filehandle, header)
+    LAYOUT_HEADER.write(filehandle, header, encoding=encoding)
+    if comment:
+        filehandle.write(comment)
     if not compressed:
         write_array(data, filehandle)
         return
