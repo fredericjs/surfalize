@@ -24,7 +24,7 @@ from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import FileHandler
-from .utils import is_list_like, approximately_equal
+from .utils import is_list_like, register_returnlabels, approximately_equal
 from .cache import CachedInstance, cache
 from .mathutils import Sinusoid, argclosest, trapezoid
 from .autocorrelation import AutocorrelationFunction
@@ -363,7 +363,9 @@ class Surface(CachedInstance):
             the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
             If the surface is read from a buffer, the format value must be specified.
         encoding : str, Default utf-8
-            Encoding of characters in the file. Defaults to utf-8.
+            Encoding of characters in the file. If set to 'auto', the encoding is inferred automatically. For file
+            formats with fixed encoding (such as ASCII formats), this parameter has no effect. The default value is
+            'utf-8'.
         read_image_layers : bool, Default False
             If true, reads all available image layers in the file and saves them in Surface.image_layers dict
 
@@ -407,18 +409,17 @@ class Surface(CachedInstance):
             If the surface is saved to a buffer, the format value must be specified.
         encoding : str, Default utf-8
             Encoding of characters in the file. Defaults to utf-8.
-        **kwargs
-            binary : bool
-                Only for SDF format. Specifies whether to save in the binary version of the format of the ascii version.
-                Default is True.
-            compressed : bool
-                Only for SUR format. Specifies whether to save in the compressed version of the format. Defaults to
-                False.
-            compression : bool
-                Only for SFLZ format. Specifies the type of compression algorithm ('none', 'zlib', 'lzma'). Default
-                is 'zlib'.
-            dtype : str
-                Only for SFLZ format. Specifies the numpy dtype in which to save the array data.
+
+        Optional Parameters
+        -------------------
+        binary : bool
+            Only for SDF format. Specifies whether to save in the binary version of the format of the ascii version.
+        comment : str
+            Only for SUR format. Specifies a comment to add to the file header.
+        compressed : bool
+            Only for SUR format. Specifies whether to use the compressed format. Default is False.
+        compression: {'none', 'zlib', 'lzma'}
+            Only for SFLZ format. Specifies the type of compression, either none, zlib or lzma.
 
         Returns
         -------
@@ -655,6 +656,28 @@ class Surface(CachedInstance):
             Surface object.
         """
         data = self.data - np.nanmin(self.data)
+        if inplace:
+            self._set_data(data=data)
+            return self
+        return Surface(data, self.step_x, self.step_y)
+
+    @batch_method('operation')
+    def invert(self, inplace=False):
+        """
+        Inverts the surface topography, creating a negative.
+
+        Parameters
+        ----------
+        inplace : bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+
+        Returns
+        -------
+        surface : surfalize.Surface
+            Surface object.
+        """
+        data = self.data.min() + self.data.max() - self.data
         if inplace:
             self._set_data(data=data)
             return self
