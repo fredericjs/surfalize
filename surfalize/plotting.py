@@ -118,6 +118,7 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
     plotter = pv.Plotter(off_screen=not interactive, window_size=None if interactive else (1920, 1080))
     if not perspective_projection:
         plotter.enable_parallel_projection()
+
     # Add the surface plot to the plotter
     plotter.add_mesh(grid, cmap=cmap, scalars="height", show_edges=False, show_scalar_bar=False)
 

@@ -4,10 +4,10 @@
 Basic usage
 ===========
 
-All 2d topographies in surfalize are represented by instances of the `Surface` class. To instantiate a surface object
-from a file, simply use its `.load` classmethod and pass it a filepath. Use the `.show()` method to plot a colorcoded
+All 2d topographies in surfalize are represented by instances of the :code:`Surface` class. To instantiate a surface object
+from a file, simply use its :code:`.load` classmethod and pass it a filepath. Use the :code:`.show()` method to plot a colorcoded
 topographical representation of it's data. In Jupyter Notebooks, the surface object can simply be stated in the last
-line of a cell to invoke its repr method, displaying the topography without the need for calling the `.show()` method.
+line of a cell to invoke its repr method, displaying the topography without the need for calling the :code:`.show()` method.
 
 .. code:: python
 
@@ -19,7 +19,7 @@ line of a cell to invoke its repr method, displaying the topography without the 
 
 Surface objects can also be instantiated from file-like objects that live in memory. This can be useful for instance
 when the objects are obtained directly from a database connection. In this example, we read the file from disk into a
-buffer allocated by an `io.BytesIO` object. We then pass the buffer the load `.load()` method instead of a filepath.
+buffer allocated by an :code:`io.BytesIO` object. We then pass the buffer the load :code:`.load()` method instead of a filepath.
 
 .. code:: python
 
@@ -35,8 +35,8 @@ buffer allocated by an `io.BytesIO` object. We then pass the buffer the load `.l
 If the filepath has a suffix (as it should), surfalize determines the file format from the filepath suffix. If, however,
 the file path has no suffix, if a buffer object is passed instead of a filepath or the filepath has a wrong suffix and
 the file reading operation raises an error, surfalize tries to infer the correct file format from the file magic.
-For reading from file-like objects or for overriding the fileformat determined by the file extension, the `format`
-argument of the `load()` method can be specified:
+For reading from file-like objects or for overriding the fileformat determined by the file extension, the :code:`format`
+argument of the :code:`load()` method can be specified:
 
 .. code:: python
 
@@ -48,7 +48,7 @@ argument of the `load()` method can be specified:
 Extracting roughness and topographic parameters
 ===============================================
 
-All roughness parameters can be calculated via methods of the `Surface` class.
+All roughness parameters can be calculated via methods of the :code:`Surface` class.
 The methods are named analogous to the parameters defined in the ISO 25178 standard for the 
 standardized parameters with a capitalized first letter.
 
@@ -72,8 +72,8 @@ standardized parameters with a capitalized first letter.
 Performing surface operations
 =============================
 
-Surface operations return a new `Surface` object by default. If `inplace=True` is specified, the operation applies
-to the `Surface` object it is called on and returns it to allow for method chaining. Inplace is generally faster since
+Surface operations return a new :code:`Surface` object by default. If :code:`inplace=True` is specified, the operation applies
+to the :code:`Surface` object it is called on and returns it to allow for method chaining. Inplace is generally faster since
 it does not copy the data and does not need to instantiate a new object.
 
 .. code:: python
@@ -124,10 +124,10 @@ These methods can be chained:
 Plotting
 ========
 
-The `Surface` object offers multiple types of plots.
+The :code:`Surface` object offers multiple types of plots.
 
-Plotting the topography itself is done using `Surface.show()`. If the repr of a `Surface` object is
-invoked by Jupyter Notebook, it will automaticall call `Surface.show()`.
+Plotting the topography itself is done using :code:`Surface.show()`. If the repr of a :code:`Surface` object is
+invoked by Jupyter Notebook, it will automaticall call :code:`Surface.show()`.
 
 .. code:: python
 
@@ -146,10 +146,10 @@ The Abbott-Firestone curve and Fourier Transform can be plotted using:
 Accessing the raw data
 ======================
 
-The raw data of a `Surface` object can be accessed with the attribute `data` as a two-dimensional `numpy` array.
-The pixel resolution in x (horizontal) and y (vertical) is accessed through the attributes `step_x` and `step_y`.
-The width and height in micrometers are accessed through the attributed `width_um` and `height_um`. The resolution in
-pixels is encoded in the named tuple `size`, holding the dimensions in the form `(y, x)`.
+The raw data of a :code:`Surface` object can be accessed with the attribute :code:`data` as a two-dimensional :code:`numpy` array.
+The pixel resolution in x (horizontal) and y (vertical) is accessed through the attributes :code:`step_x` and :code:`step_y`.
+The width and height in micrometers are accessed through the attributed :code:`width_um` and :code:`height_um`. The resolution in
+pixels is encoded in the named tuple :code:`size`, holding the dimensions in the form :code:`(y, x)`.
 
 
 .. code:: python
@@ -178,9 +178,9 @@ Surfalize can read image data and metadata from several file formats. The metada
     >>> {'Time': 'DD/MM/YYYY', 'Objective': '50X', ...}
 
 Optionally, image layers, such as RGB, intensity or Grayscale image present in the file can be read by specifying
-`read_image_layers=True`, in `Surface.load`. The image layers can then be accessed in the dictionary
-`Surface.image_layers`. Grayscale and RGB images generally have the keys 'Grayscale' and 'RGB', respectively, if no
-other title is specified in the file or file format specification. The images are represented by an `Image` class,
+:code:`read_image_layers=True`, in :code:`Surface.load`. The image layers can then be accessed in the dictionary
+:code:`Surface.image_layers`. Grayscale and RGB images generally have the keys 'Grayscale' and 'RGB', respectively, if no
+other title is specified in the file or file format specification. The images are represented by an :code:`Image` class,
 which is a thin wrapper around a numpy array, that provides additional functionality for saving the image to disk.
 
 .. code:: python
@@ -190,15 +190,15 @@ which is a thin wrapper around a numpy array, that provides additional functiona
 
     >>> {'RGB': Image(736 x 480, Bitdepth: 8, Mode: RGB), 'Intensity': Image(736 x 480, Bitdepth: 16, Mode: Grayscale)}
 
-Image layers can be saved to disk by calling their `.save` method. The raw image data can be accessed in the Image's
-`data` attribute.
+Image layers can be saved to disk by calling their :code:`.save` method. The raw image data can be accessed in the Image's
+:code:`data` attribute.
 
 .. code:: python
 
     surface.image_layers['RGB'].save('C:/image.png') # save the image
     raw_data = surface.image_layers['RGB'].data # returns numpy array
 
-The `Surface.show` method can be used to plot image layers instead of the topography layer.
+The :code:`Surface.show` method can be used to plot image layers instead of the topography layer.
 
 .. code:: python
 
