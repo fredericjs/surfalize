@@ -24,37 +24,16 @@
   resort if no reader could be detected based on file magic, surfalize will try all available readers for that file and
   only then raise an exception if no reader is able to read the file.
 - Added support for custom operations to Batch
+- Extended documentation
+- Added example file download module as `Surfalize.examples`
+- Added indexing to `Surface`, which directly forwards indexing operations to the underlying `Surface.data` numpy array
+- Added basic methods to `Surface`: `min`, `max`, `mean`, `median`, `std`
+- Added experimental commandline interface for opening, converting and generating PDF reports for files
 ## v0.14.3
 - Fixed bug with SUR format encoding argument having no effect
 - Added 'auto' encoding option to automatically infer the encoding using chardet
 - Updated docstrings of Surface.load and Surface.save
 - Added comment kwarg to SUR reading
-## v0.15.0
-- Added 3d plotting capabilities based on pyvista
-- Added pyvista as optional dependency for 3d plotting
-- Fixed bug in AutocorrelationFunction plotting
-- Added Zygo Metropro DAT format reader
-- Reworked Batch to preserve the order of parameters and operations by default. Before, all operations were executed 
-  before parameter calculations. Now operations and parameters can be called in an interlaced manner and their order 
-  will be executed in that order. This allows for cases where the user wants to calculate some parameters before and 
-  others after a specific operation. The legacy behavior of performing all operations first can be activated by 
-  specifying `presever_chaining_order=False` in `Batch.execute`
-- Added docs for Batch processing changes
-- Unified return values of plotting functions. Now all functions return either matplotlib figure and axes or a PIL image
-  depending on the type of plot
-- Refactored `Batch` implementation. `Batch` class now obtains the methods from the `Surface` class that are decorated
-  with the `batch_method` decorator. The decorater specifies the type (parameter, operation) as well as possible return
-  value names (replacing the previous decorator) and fixed keyword arguments such as `inplace = True` that must have
-  a specific value for the Batch version of the method. A note is added to decorated methods of the `Surface` class, 
-  indicating that it is suitable for Batch usage. The `Batch` class dynamically adds these methods to itself upon 
-  instantiation (might change to a metaclass in the future) and adjusts the docstring, removing references to the fixed
-  parameters.
-- Added invert method to Surface class
-- Previously, file readers checked using file magic whether a known file format that raised an exception during reading
-  is actually a different format. Now, this capability has been extended to unknown file formats. Moreover, as a last 
-  resort if no reader could be detected based on file magic, surfalize will try all available readers for that file and
-  only then raise an exception if no reader is able to read the file.
-- Added support for custom operations to Batch
 ## v0.14.2
 - Fixed issues with Python < 3.10 and on linux
 ## v0.14.1

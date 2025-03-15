@@ -24,7 +24,7 @@ from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import FileHandler
-from .utils import is_list_like, register_returnlabels, approximately_equal
+from .utils import is_list_like, approximately_equal
 from .cache import CachedInstance, cache
 from .mathutils import Sinusoid, argclosest, trapezoid
 from .autocorrelation import AutocorrelationFunction
@@ -2239,7 +2239,7 @@ class Surface(CachedInstance):
     def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
                 light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
                 level_of_detail=100, save_to=None, interactive=False, window_title='surfalize',
-                perspective_projection=False):
+                perspective_projection=True):
         """
         Renders a surface object in 3d using pyvista.
 
