@@ -346,20 +346,25 @@ class FileHandler:
 
     def read(self, read_image_layers=False, encoding="utf-8"):
         exception = None
+        # Surface is either a file on disk specified with a path or the format was explicitly specified
+        # In this case, we know the file format
         if self.is_path_like() or self.format is not None:
             if self.format is None:
                 suffix = self.file.suffix
             else:
                 suffix = self.format
             if suffix not in self._readers_by_suffix:
-                raise UnsupportedFileFormatError(f"File format {suffix} is currently not supported.") from None
-            reader = self._readers_by_suffix[suffix]
-            try:
-                with open_file_like(self.file, 'rb') as filehandle:
-                    return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
-            except Exception as e:
-                exception = e
+                exception =  UnsupportedFileFormatError(f"File format {suffix} is currently not supported.")
+            else:
+                reader = self._readers_by_suffix[suffix]
+                try:
+                    with open_file_like(self.file, 'rb') as filehandle:
+                        return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+                except Exception as e:
+                    exception = e
 
+        # If the file format is unknown, the specified file format is not implemented or there is an exception while
+        # loading with the specified file format, we check if the file magic is compatible with another reader
         for magic, reader in self._readers_by_magic.items():
             with open_file_like(self.file, 'rb') as filehandle:
                 detected_magic = filehandle.read(len(magic))
@@ -370,6 +375,19 @@ class FileHandler:
                                       f'correct. The file was now loaded as {reader._suffix}.')
                     filehandle.seek(0, 0)
                     return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+
+        # Else, as a last resort, we try all available readers:
+        for reader_suffix, reader in self._readers_by_suffix.items():
+            try:
+                with open_file_like(self.file, 'rb') as filehandle:
+                    result = reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+                    warnings.warn(f'The file suffix indicates a file of type {self.file.suffix}. However, the file '
+                                  f'seems to actually be of type {reader_suffix}. Check if the file extensions is '
+                                  f'correct. The file was now loaded as {reader_suffix}.')
+                    return result
+            except Exception:
+                pass
+
         if exception is not None:
             raise exception
         raise UnsupportedFileFormatError('The file format is unsupported or could not be correctly matched by file '

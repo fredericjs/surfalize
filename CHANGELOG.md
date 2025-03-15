@@ -19,6 +19,10 @@
   instantiation (might change to a metaclass in the future) and adjusts the docstring, removing references to the fixed
   parameters.
 - Added invert method to Surface class
+- Previously, file readers checked using file magic whether a known file format that raised an exception during reading
+  is actually a different format. Now, this capability has been extended to unknown file formats. Moreover, as a last 
+  resort if no reader could be detected based on file magic, surfalize will try all available readers for that file and
+  only then raise an exception if no reader is able to read the file.
 ## v0.14.2
 - Fixed issues with Python < 3.10 and on linux
 ## v0.14.1
