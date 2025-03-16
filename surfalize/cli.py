@@ -291,25 +291,25 @@ def report(input_path, open_after, periodic_parameters, **kwargs):
             row = table.row()
             row.cell('Lowpass')
             if kwargs['lowpass'] is not None:
-                row.cell(f'{kwargs['lowpass']:.2f} µm')
+                row.cell(f'{kwargs["lowpass"]:.2f} µm')
             else:
                 row.cell('-')
             row = table.row()
             row.cell('Bandpass')
             if kwargs['bandpass'] is not None:
-                row.cell(f'{kwargs['bandpass'][0]:.2f} µm - {kwargs['bandpass'][1]:.2f} µm')
+                row.cell(f'{kwargs["bandpass"][0]:.2f} µm - {kwargs["bandpass"][1]:.2f} µm')
             else:
                 row.cell('-')
             row = table.row()
             row.cell('Threshold')
             if kwargs['threshold'] != (None, None):
-                row.cell(f'upper: {kwargs['threshold'][0]:.1f} %\nlower: {kwargs['threshold'][0]:.1f} %')
+                row.cell(f'upper: {kwargs["threshold"][0]:.1f} %\nlower: {kwargs["threshold"][0]:.1f} %')
             else:
                 row.cell('-')
             row = table.row()
             row.cell('Remove outliers')
             if kwargs['remove_outliers'] is not None:
-                row.cell(f'> {kwargs['remove_outliers']} sigma')
+                row.cell(f'> {kwargs["remove_outliers"]} sigma')
             else:
                 row.cell('-')
 
