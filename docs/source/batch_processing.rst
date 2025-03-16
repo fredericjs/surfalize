@@ -92,13 +92,50 @@ Parameters can also be calculated in bulk using :code:`Batch.roughness_parameter
     # Computes all available parameters
     batch.roughness_parameters()
 
-If arguments need to be supplied, the parameter must be constructed as a :code:`Parameter` object:
+If arguments to parameters in the `roughness_parameters` method need to be supplied, the parameter must be constructed
+as a :code:`Parameter` object (however, it is probably easier to just call the parameter directly as shown above):
 
 .. code:: python
 
     from surfalize.batch import Parameter
     Vmc = Parameter('Vmc', kwargs=dict(p=10, q=80))
     batch.roughness_parameters(['Sa', 'Sq', 'Sz', Vmc])
+
+Executing the batch process
+===========================
+
+Finally, the batch processing is executed by calling :code:`Batch.execute`, returning a :code:`BatchResult` object. The
+:code:`BatchResult` class wraps a :code:`pd.DataFrame` object (but is not a subclass of it) and exposes all its methods.
+Therefore, it can be used like a :code:`DataFrame` for most purposes but also offers some additional functionality. To
+access the underlying :code:`DataFrame` object, the method :code:`get_dataframe` can be called on the object.
+Optionally, :code:`multiprocessing=True` can be specified to :code:`Batch.execute` to split the load among all available
+CPU cores. Moreover, the results can be saved to an Excel Spread sheet by specifiying a path for
+:code:`saveto=r'path\to\excel_file.xlsx`.
+
+.. code:: python
+
+    result = batch.execute(multiprocessing=True)
+
+If the calculation of one parameter fails for even one surface, which could be the case for instance when a
+:code:`FittingError` occurs during the calculation of the structure depth, the entire batch processing stops and the error
+is raised. This is often unwanted behavior, when a large dataset is batch processed. To avoid this, surfalize ignores
+errors that occur during batch processing and fills the parameters that raised an error during calculation with :code:`NaN`
+values. If you specifically want any errors to be raised nonetheless, specify :code:`ignore_errors=False`.
+
+.. code:: python
+
+    result = batch.execute(multiprocessing=True, ignore_errors=False)
+
+Optionally, a Batch object can be initialized with a filepath pointing to an Excel File which contains additional
+parameters, such as laser parameters. The file must contain a column :code:`file`, which specifies the filename including file
+extension in the form :code:`name.ext`, e.g. :code:`topography_50X.vk4`. All other columns will be merged into the resulting
+Dataframe that is returned by :code:`Batch.execute`.
+
+.. code:: python
+
+    batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\laserparameters.xlsx')
+    batch.level().filter('highpass', 20).align().roughness_parameters()
+    result = batch.execute()
 
 Execution order
 ===============
@@ -152,42 +189,6 @@ In this example, we calculate the homogeneity with different unit cell evaluatio
     batch.homogeneity(parameters=['Sa', 'Sk', 'Sdr'], custom_name='H_Sa_Sk_Sdr')
     result = batch.execute()
 
-
-Executing the batch process
-===========================
-
-Finally, the batch processing is executed by calling :code:`Batch.execute`, returning a :code:`BatchResult` object. The
-:code:`BatchResult` class wraps a :code:`pd.DataFrame` object (but is not a subclass of it) and exposes all its methods.
-Therefore, it can be used like a :code:`DataFrame` for most purposes but also offers some additional functionality. To
-access the underlying :code:`DataFrame` object, the method :code:`get_dataframe` can be called on the object.
-Optionally, :code:`multiprocessing=True` can be specified to :code:`Batch.execute` to split the load among all available
-CPU cores. Moreover, the results can be saved to an Excel Spread sheet by specifiying a path for
-:code:`saveto=r'path\to\excel_file.xlsx`.
-
-.. code:: python
-
-    result = batch.execute(multiprocessing=True)
-
-If the calculation of one parameter fails for even one surface, which could be the case for instance when a
-:code:`FittingError` occurs during the calculation of the structure depth, the entire batch processing stops and the error
-is raised. This is often unwanted behavior, when a large dataset is batch processed. To avoid this, surfalize ignores
-errors that occur during batch processing and fills the parameters that raised an error during calculation with :code:`NaN`
-values. If you specifically want any errors to be raised nonetheless, specify :code:`ignore_errors=False`.
-
-.. code:: python
-
-    result = batch.execute(multiprocessing=True, ignore_errors=False)
-
-Optionally, a Batch object can be initialized with a filepath pointing to an Excel File which contains additional
-parameters, such as laser parameters. The file must contain a column :code:`file`, which specifies the filename including file
-extension in the form :code:`name.ext`, e.g. :code:`topography_50X.vk4`. All other columns will be merged into the resulting
-Dataframe that is returned by :code:`Batch.execute`.
-
-.. code:: python
-
-    batch = Batch(filespaths, additional_data=r'C:\users\exampleuser\documents\laserparameters.xlsx')
-    batch.level().filter('highpass', 20).align().roughness_parameters()
-    result = batch.execute()
 
 Parsing filenames for additional parameters
 ===========================================
