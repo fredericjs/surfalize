@@ -707,7 +707,8 @@ class Batch:
             return results
 
         for filepath in tqdm(self._files, desc='Processing'):
-            results.append(_task(filepath, self._operations, self._parameters))
+            results.append(_task(filepath, steps=self._steps, ignore_errors=ignore_errors,
+                               preserve_chaining_order=preserve_chaining_order))
         return results
 
     def _construct_dataframe(self, results, filename_pattern=None):
