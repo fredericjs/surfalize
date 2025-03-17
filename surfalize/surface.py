@@ -1673,6 +1673,25 @@ class Surface(CachedInstance):
         """
         return self.get_abbott_firestone_curve().Vvc(p=p, q=q)
 
+    # Misc parameters ##################################################################################################
+
+    def Std(self, angle_step=0.5):
+        """
+        Calculates the texture direction parameter, which is the angle at which the angular power spectrum is the
+        largest. It represents the lay of the surface texture.
+
+        Parameters
+        ----------
+        angle_step : float
+            Angular resolution of the power spectrum in degree. Defaults to 0.5
+
+        Returns
+        -------
+        float
+        """
+        angles, spectrum = self._get_angular_power_spectrum(angle_step=angle_step)
+        return angles[np.argmax(spectrum)]
+
     # Non-standard parameters ##########################################################################################
 
     @batch_method('parameter')
@@ -2168,6 +2187,45 @@ class Surface(CachedInstance):
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
         if save_to:
             fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
+
+    @cache
+    def _get_angular_power_spectrum(self, angle_step=1):
+        fft_surface = np.fft.fft2(self.data)
+        power_spectrum = np.abs(fft_surface) ** 2
+
+        freq_y, freq_x = np.fft.fftfreq(self.size.y), np.fft.fftfreq(self.size.x)
+        freq_y, freq_x = np.meshgrid(freq_y, freq_x, indexing='ij')
+
+        freq_theta = np.arctan2(freq_y, freq_x)
+
+        angles = np.deg2rad(np.arange(0, 180, angle_step))
+        spectrum = np.zeros_like(angles)
+
+        for i, angle in enumerate(angles):
+            mask = np.abs(freq_theta - angle) < np.deg2rad(angle_step / 2)
+            spectrum[i] = np.sum(power_spectrum[mask])
+
+        return np.arange(0, 180, angle_step), spectrum
+
+    def plot_angular_power_spectrum(self, ax=None, angle_step=1):
+        if ax is None:
+            fig, ax = plt.subplots(dpi=150, subplot_kw={'projection': 'polar'})
+        else:
+            fig = ax.figure
+            rows, cols, start, stop = ax.get_subplotspec().get_geometry()
+            ax.remove()
+            ax = fig.add_subplot(rows, cols, start + 1, projection='polar')
+
+        angles, spectrum = self._get_angular_power_spectrum(angle_step=angle_step)
+
+        ax.plot(np.deg2rad(angles), spectrum, clip_on=False)
+        ax.set_theta_direction(1)
+        ax.set_theta_zero_location('E')
+        ax.set_thetamin(0)
+        ax.set_thetamax(180)
+        ax.set_yticks([])
+
         return fig, ax
 
     def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, vmin=None, vmax=None,
