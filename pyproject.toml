@@ -34,11 +34,46 @@ dependencies = [
     "openpyxl>=3.1.2",
     "scikit-learn",
     "python-dateutil",
-    "pillow"
+    "pillow",
+    "chardet"
 ]
 
 [project.optional-dependencies]
-3d = ["pyvista"]
+3d = [
+    "pyvista",
+    "trame",
+    "trame-vtk",
+    "trame-vuetify",
+    "trame-components"
+]
+doc = [
+    "sphinx",
+    "numpydoc",
+    "furo"
+]
+tests = [
+    "pytest"
+]
+cli = [
+    "click",
+    "fpdf2"
+]
+all = [
+    "pyvista",
+    "trame",
+    "trame-vtk",
+    "trame-vuetify",
+    "trame-components",
+    "sphinx",
+    "furo",
+    "numpydoc",
+    "pytest",
+    "click",
+    "fpdf2"
+]
+
+[project.scripts]
+surfalize = "surfalize.cli:cli"
 
 [tool.setuptools]
 include-package-data = false
@@ -46,3 +81,5 @@ include-package-data = false
 [tool.setuptools.packages.find]
 include = ["surfalize*"]
 exclude = ["docs*", "tests*"]
+
+

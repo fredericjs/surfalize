@@ -52,3 +52,17 @@ def test_fileformat_writing_to_buffer(surface, fileformat):
     buffer = io.BytesIO()
     surface.save(buffer, format=fileformat)
     assert almost_equal(Surface.load(buffer), surface)
+
+def test_sur_encoding(testfile_dir):
+    surface = Surface.load(testfile_dir / 'test_uncompressed.sur', encoding='utf-8')
+    buffer = io.BytesIO()
+    surface.save(buffer, format='.sur', encoding='latin-1')
+    with pytest.raises(UnicodeDecodeError):
+        surface.load(buffer, format='.sur', encoding='utf-8')
+    buffer.seek(0)
+    surface.load(buffer, format='.sur', encoding='latin-1')
+    buffer.seek(0)
+    surface.load(buffer, format='.sur', encoding='auto')
+
+
+

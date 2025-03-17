@@ -1,7 +1,10 @@
+from pathlib import Path
 import pytest
 import pandas as pd
 from pandas.testing import assert_frame_equal
 from surfalize.batch import Batch, FilenameParser, _Parameter, _Operation, _Token
+
+module_path = Path(__file__).parent
 
 TOKENS = [
     _Token('power|float|P'),
@@ -62,3 +65,9 @@ class TestFilenameParser:
         df = parser.extract_from(dataframe, 'file')
         expected = expected_dataframe_output.drop('file', axis=1)
         assert_frame_equal(df, expected, check_dtype=False)
+
+def test_batch_from_dir():
+    batch = Batch.from_dir(module_path / 'test_files')
+    assert set(batch._files) == set((module_path / 'test_files').iterdir())
+
+

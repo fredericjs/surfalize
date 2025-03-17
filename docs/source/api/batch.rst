@@ -2,6 +2,6 @@ Batch
 =====
 
 .. automodule:: surfalize.batch
-   :members: Batch, Parameter, Operation
+   :members: Batch, FileInput, BatchResult, FilenameParser
    :undoc-members:
    :show-inheritance:

@@ -19,9 +19,8 @@ The authors make no guarantees for the correctness of any results obtained using
 and may introduce changes to both implementation details and public API at any point in time. Any results should be validated against established 
 software to verify their correctness, especially when they are intended to be used for scientific publications. 
 
-Some parts of the package are more mature and some are in early development stage. Currently, Gaussian filtering and Profile parameters might 
-suffer from some implementation errors and might not be entirely compliant with ISO standards. Care should be taken when relying on these
-specific functionalities.
+Some parts of the package are more mature and some are in early development stage. Currently, Profile roughness evaluation
+is undocumented and not conforming to ISO standards.
 
 ## Cite this library
 
@@ -64,6 +63,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Gwyddion               | *.gwy*                 | Yes             | No      | 
 | Digital Metrology      | *.os3d*                | Yes             | No      |
 | IAU FITS Working Group | *.fits*                | Yes             | No      |
+| Zygo                   | *.dat*                 | Yes             | No      |
 | General                | *.xyz*                 | Yes             | No      |
 
 ## Supported roughness parameters

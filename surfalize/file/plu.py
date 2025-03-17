@@ -1,6 +1,6 @@
 import dateutil
 import numpy as np
-from .common import RawSurface, Reserved, Entry, Layout, FileHandler, np_from_any
+from .common import RawSurface, Reserved, Entry, Layout, FileHandler, read_array
 
 NON_MEASURED_VALUE = 1000001
 
@@ -52,11 +52,11 @@ def read_plu(filehandle, read_image_layers=False, encoding='utf-8'):
     calibration = LAYOUT_CALIBRATION.read(filehandle, encoding=encoding)
     measure_config = LAYOUT_MEASURE_CONFIG.read(filehandle, encoding=encoding)
     data_length = calibration['xres'] * calibration['yres']
-    data = np_from_any(filehandle, dtype=np.float32, count=data_length)
+    data = read_array(filehandle, dtype=np.float32, count=data_length)
     image_layers = {}
     if read_image_layers:
         filehandle.seek(16, 1) # skip 16 bytes, no idea what they are doing
-        img = np_from_any(filehandle, dtype=np.uint8, count=data_length * 3)
+        img = read_array(filehandle, dtype=np.uint8, count=data_length * 3)
         img = img.reshape(calibration['yres'], calibration['xres'], 3)
         if np.all((img[:, :, 0] == img[:, :, 1]) & (img[:, :, 0] == img[:, :, 2])):
             image_layers['Grayscale'] = img[:, :, 0]

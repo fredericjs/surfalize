@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import warnings
 import numpy as np
+import chardet
 from abc import abstractmethod, ABC
 
 from surfalize.exceptions import UnsupportedFileFormatError
@@ -177,7 +178,10 @@ class Entry(BaseEntry):
             format = self.format
         size = struct.calcsize(format)
         unpacked_data = struct.unpack(f'{format}', filehandle.read(size))[0]
+        # The data is a string
         if isinstance(unpacked_data, bytes):
+            if encoding == 'auto':
+                encoding = chardet.detect(unpacked_data)['encoding']
             unpacked_data = unpacked_data.decode(encoding).rstrip(' \x00')
         data[self.name] = unpacked_data
 
@@ -242,7 +246,7 @@ class Layout:
             entry.read(filehandle, data, encoding)
         return data
 
-def np_from_any(fileobject, dtype, count=-1, offset=0):
+def read_array(fileobject, dtype, count=-1, offset=0):
     """
     Function that invokes either np.frombuffer or np.fromfile depending on whether the object is a file-like object
     or a buffer.
@@ -262,19 +266,16 @@ def np_from_any(fileobject, dtype, count=-1, offset=0):
     -------
     np.ndarray
     """
-    try :
-        result = np.fromfile(fileobject, dtype, count=count, offset=offset)
-    except Exception:
-        if offset > 0:
-            fileobject.seek(offset, 1)
-        if count == -1:
-            buffer = fileobject.read()
-        else:
-            buffer = fileobject.read(count * np.dtype(dtype).itemsize)
-        result = np.frombuffer(buffer, dtype).copy()
+    if offset > 0:
+        fileobject.seek(offset, 1)
+    if count == -1:
+        buffer = fileobject.read()
+    else:
+        buffer = fileobject.read(count * np.dtype(dtype).itemsize)
+    result = np.frombuffer(buffer, dtype).copy()
     return result
 
-def np_to_any(data, fileobject):
+def write_array(data, fileobject):
     try:
         data.tofile(fileobject)
     except io.UnsupportedOperation:
@@ -313,6 +314,8 @@ class FileHandler:
     @classmethod
     def register_reader(cls, *, suffix, magic=None):
         def decorator(func):
+            func._suffix = suffix
+            func._magic = magic
             if is_list_like(suffix):
                 for s in suffix:
                     cls._readers_by_suffix[s] = func
@@ -325,8 +328,6 @@ class FileHandler:
                     cls._readers_by_magic[m] = func
             else:
                 cls._readers_by_magic[magic] = func
-            func._suffix = suffix
-            func._magic = magic
             return func
         return decorator
 
@@ -349,20 +350,25 @@ class FileHandler:
 
     def read(self, read_image_layers=False, encoding="utf-8"):
         exception = None
+        # Surface is either a file on disk specified with a path or the format was explicitly specified
+        # In this case, we know the file format
         if self.is_path_like() or self.format is not None:
             if self.format is None:
                 suffix = self.file.suffix
             else:
                 suffix = self.format
             if suffix not in self._readers_by_suffix:
-                raise UnsupportedFileFormatError(f"File format {suffix} is currently not supported.") from None
-            reader = self._readers_by_suffix[suffix]
-            try:
-                with open_file_like(self.file, 'rb') as filehandle:
-                    return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
-            except Exception as e:
-                exception = e
+                exception =  UnsupportedFileFormatError(f"File format {suffix} is currently not supported.")
+            else:
+                reader = self._readers_by_suffix[suffix]
+                try:
+                    with open_file_like(self.file, 'rb') as filehandle:
+                        return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+                except Exception as e:
+                    exception = e
 
+        # If the file format is unknown, the specified file format is not implemented or there is an exception while
+        # loading with the specified file format, we check if the file magic is compatible with another reader
         for magic, reader in self._readers_by_magic.items():
             with open_file_like(self.file, 'rb') as filehandle:
                 detected_magic = filehandle.read(len(magic))
@@ -373,6 +379,19 @@ class FileHandler:
                                       f'correct. The file was now loaded as {reader._suffix}.')
                     filehandle.seek(0, 0)
                     return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+
+        # Else, as a last resort, we try all available readers:
+        for reader_suffix, reader in self._readers_by_suffix.items():
+            try:
+                with open_file_like(self.file, 'rb') as filehandle:
+                    result = reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
+                    warnings.warn(f'The file suffix indicates a file of type {self.file.suffix}. However, the file '
+                                  f'seems to actually be of type {reader_suffix}. Check if the file extensions is '
+                                  f'correct. The file was now loaded as {reader_suffix}.')
+                    return result
+            except Exception:
+                pass
+
         if exception is not None:
             raise exception
         raise UnsupportedFileFormatError('The file format is unsupported or could not be correctly matched by file '

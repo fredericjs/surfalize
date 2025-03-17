@@ -18,6 +18,9 @@ class AutocorrelationFunction(CachedInstance):
         Surface object on which to calculate the 2d autocorrelation function.
     """
     def __init__(self, surface):
+        if surface.has_missing_points:
+            raise ValueError("Missing points must be filled before "
+                             "the autocorrelation function can be instantiated.") from None
         super().__init__()
         # For now we level and center. In the future, we should replace that with lookups of booleans
         # to avoid double computation

@@ -5,7 +5,7 @@ import io
 import dateutil
 from PIL import Image
 import numpy as np
-from .common import FormatFromPrevious, RawSurface, Entry, Layout, FileHandler, np_from_any
+from .common import FormatFromPrevious, RawSurface, Entry, Layout, FileHandler, read_array
 from ..exceptions import CorruptedFileError
 
 MAGIC = b'OmniSurf3D'
@@ -33,7 +33,7 @@ def read_os3d(filehandle, read_image_layers=False, encoding='utf-8'):
     if magic != MAGIC:
         raise CorruptedFileError(f'Unknown file magic detected: {magic.decode()}')
     header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
-    data = np_from_any(filehandle, count=header['nPointsAlongX'] * header['nPointsAlongY'], dtype='float32')
+    data = read_array(filehandle, count=header['nPointsAlongX'] * header['nPointsAlongY'], dtype='float32')
     data = data.reshape(header['nPointsAlongY'], header['nPointsAlongX'])
     data[data < THRESHOLD] = np.nan
     step_x = header['dSpacingAlongXUM']

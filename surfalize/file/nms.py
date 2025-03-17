@@ -1,7 +1,7 @@
 import struct
 import numpy as np
 import dateutil
-from .common import RawSurface, FileHandler, np_from_any
+from .common import RawSurface, FileHandler, read_array
 from datetime import datetime
 
 
@@ -26,7 +26,7 @@ def read_nms(filehandle, read_image_layers=False, encoding='utf-8'):
     dx, dy = struct.unpack('<2d', filehandle.read(16))
     filehandle.seek(HEADER_SIZE, 0)
 
-    data = np_from_any(filehandle, dtype=DTYPE_HEIGHT, count=nx * ny)
+    data = read_array(filehandle, dtype=DTYPE_HEIGHT, count=nx * ny)
     #nonmeasured_points_mask = (data == 0)
     data = data / (2 ** 16 - 2) * (zmax - zmin) + zmax
     #data[nonmeasured_points_mask] = np.nan
@@ -36,7 +36,7 @@ def read_nms(filehandle, read_image_layers=False, encoding='utf-8'):
     step_y = dy * 1e-3
     image_layers = {}
     if read_image_layers:
-        image_layers['Grayscale'] = np_from_any(filehandle, dtype=DTYPE_IMG, count=nx * ny).reshape(ny, ny)
+        image_layers['Grayscale'] = read_array(filehandle, dtype=DTYPE_IMG, count=nx * ny).reshape(ny, ny)
 
     metadata = dict(date=date)
 

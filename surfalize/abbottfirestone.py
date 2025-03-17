@@ -21,6 +21,9 @@ class AbbottFirestoneCurve(CachedInstance):
     EQUIVALENCE_LINE_WIDTH = 40
 
     def __init__(self, surface, nbins=10000):
+        if surface.has_missing_points:
+            raise ValueError("Missing points must be filled before the "
+                             "Abbott-Firestone curve can be instantiated.") from None
         super().__init__()
         self._surface = surface
         self._nbins = nbins

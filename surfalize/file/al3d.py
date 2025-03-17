@@ -1,7 +1,7 @@
 import struct
 import numpy as np
 from ..exceptions import CorruptedFileError
-from .common import RawSurface, FileHandler, np_from_any, np_to_any
+from .common import RawSurface, FileHandler, read_array, write_array
 
 MAGIC = b'AliconaImaging\x00\r\n'
 TAG_LAYOUT = '20s30s2s'
@@ -42,7 +42,7 @@ def write_al3d(filehandle, surface, encoding='utf-8'):
     n_padding = header['DepthImageOffset'] - pos - 2
     filehandle.write(b'\x00' * n_padding + b'\r\n')
     data = surface.data.astype(DTYPE) * 1e-6
-    np_to_any(data, filehandle)
+    write_array(data, filehandle)
 
 @FileHandler.register_reader(suffix='.al3d', magic=MAGIC)
 def read_al3d(filehandle, read_image_layers=False, encoding='utf-8'):
@@ -70,7 +70,7 @@ def read_al3d(filehandle, read_image_layers=False, encoding='utf-8'):
     step_y = float(header['PixelSizeYMeter']) * 1e6
     offset = int(header['DepthImageOffset'])
     filehandle.seek(offset)
-    data = np_from_any(filehandle, dtype=np.float32, count=nx * ny, offset=0).reshape(ny, nx)
+    data = read_array(filehandle, dtype=np.float32, count=nx * ny, offset=0).reshape(ny, nx)
 
     invalidValue = float(header['InvalidPixelValue'])
     data[data == invalidValue] = np.nan
