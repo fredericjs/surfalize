@@ -146,3 +146,66 @@ def read_tmd_v2(filehandle, read_image_layers=False, encoding='utf-8'):
     step_y = metadata.get("y_length", 1) / height if height else 1
 
     return RawSurface(height_map, step_x, step_y, metadata=metadata)
+
+@FileHandler.register_writer(suffix=['.tmd'])
+def write_tmd_v2(filehandle, surface, encoding='utf-8'):
+    """
+    Writer for TMD v2 files.
+
+    This function writes a TMD v2 file with the following structure:
+      - A 32-byte header string ("Binary TrueMap Data File v2.0") padded with nulls.
+      - A 24-byte comment string padded with nulls.
+      - Two unsigned integers (4 bytes each, little-endian) for width and height.
+      - Four floats (4 bytes each, little-endian) for x_length, y_length, x_offset, and y_offset.
+      - A block of height map data as float32 values.
+
+    Args:
+        filehandle: A file-like object to write the TMD v2 data to.
+        surface: A RawSurface object containing the height map, spatial resolution, and metadata.
+        encoding: (Optional) The text encoding used for string fields (default 'utf-8').
+
+    Returns:
+        None
+    """
+    # Write header string, padded to HEADER_LEN bytes.
+    header_str = "Binary TrueMap Data File v2.0"
+    header_bytes = header_str.encode("ascii")
+    if len(header_bytes) < HEADER_LEN:
+        header_bytes += b'\0' * (HEADER_LEN - len(header_bytes))
+    else:
+        header_bytes = header_bytes[:HEADER_LEN]
+    filehandle.write(header_bytes)
+
+    # Write comment string, padded to COMMENT_LEN bytes.
+    comment = surface.metadata.get("comment", "Created by surfalize TMD v2 writer")
+    comment_bytes = comment.encode("ascii")
+    if len(comment_bytes) < COMMENT_LEN:
+        comment_bytes += b'\0' * (COMMENT_LEN - len(comment_bytes))
+    else:
+        comment_bytes = comment_bytes[:COMMENT_LEN]
+    filehandle.write(comment_bytes)
+
+    # Retrieve dimensions from surface data (assumed shape: (height, width))
+    height, width = surface.data.shape
+    filehandle.write(struct.pack("<I", width))
+    filehandle.write(struct.pack("<I", height))
+
+    # Determine spatial parameters:
+    # Use metadata if provided, otherwise derive from step sizes.
+    x_length = surface.metadata.get("x_length", surface.step_x * width)
+    y_length = surface.metadata.get("y_length", surface.step_y * height)
+    x_offset = surface.metadata.get("x_offset", 0.0)
+    y_offset = surface.metadata.get("y_offset", 0.0)
+
+    filehandle.write(struct.pack("<f", x_length))
+    filehandle.write(struct.pack("<f", y_length))
+    filehandle.write(struct.pack("<f", x_offset))
+    filehandle.write(struct.pack("<f", y_offset))
+
+    # Write the height map data as float32.
+    data = surface.data.astype(np.float32)
+    filehandle.write(data.tobytes())
+
+    logger.debug("TMD v2 file written:")
+    logger.debug(f"Dimensions: {width} x {height}")
+    logger.debug(f"Spatial parameters: x_length={x_length}, y_length={y_length}, x_offset={x_offset}, y_offset={y_offset}")
