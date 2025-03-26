@@ -64,5 +64,19 @@ def test_sur_encoding(testfile_dir):
     buffer.seek(0)
     surface.load(buffer, format='.sur', encoding='auto')
 
+def test_tmd_file_loading(testfile_dir):
+    """
+    Test loading of a TMD file (test_1.tmd).
+    """
+    tmd_file = testfile_dir / 'test_1.tmd'
+    if not tmd_file.exists():
+        pytest.skip("test_1.tmd file not found in test_files directory.")
+    surface = Surface.load(tmd_file, read_image_layers=False)
+    # Verify that the height map is non-empty.
+    assert surface.data is not None
+    assert surface.data.size > 0
 
-
+    # Verify that expected metadata keys are present.
+    metadata = surface.metadata
+    for key in ['width', 'height', 'x_length', 'y_length', 'x_offset', 'y_offset', 'mmpp']:
+        assert key in metadata, f"Metadata missing key: {key}"
