@@ -7,7 +7,7 @@ from .common import RawSurface, FileHandler
 @FileHandler.register_reader(suffix='.xyz')
 def read_xyz(filehandle, read_image_layers=False, encoding='utf-8'):
     try:
-        raw_data = np.loadtxt(filehandle, converters=lambda x: x.replace(',', '.'))
+        raw_data = np.loadtxt(filehandle)
     except UnicodeDecodeError:
         raise UnsupportedFileFormatError('The xyz file contains binary data. Only ASCII xyz files are supported.')
     except ValueError:
