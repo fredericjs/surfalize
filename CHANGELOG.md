@@ -1,3 +1,4 @@
+## v0.16.0
 - Added angular power spectrum calculation, plot and Std parameter
 - Fixed bug with XYZ files that have comma decimals
 - Added X3P file format reader
