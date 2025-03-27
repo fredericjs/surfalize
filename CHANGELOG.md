@@ -1,5 +1,6 @@
 - Added angular power spectrum calculation, plot and Std parameter
 - Fixed bug with XYZ files that have comma decimals
+- Added X3P file format reader
 ## v0.15.1
 - Fixed f-string bug occuring with older Python versions in CLI code.
 - Fixed bug with single-threaded operation in batch execution
