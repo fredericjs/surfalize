@@ -64,6 +64,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Digital Metrology      | *.os3d*                | Yes             | No      |
 | IAU FITS Working Group | *.fits*                | Yes             | No      |
 | Zygo                   | *.dat*                 | Yes             | No      |
+| OpenFMC                | *.x3p*                 | Yes             | No      |
 | TrueMap                | *.tmd*                 | Yes             | Yes     |
 | General                | *.xyz*                 | Yes             | No      |
 
