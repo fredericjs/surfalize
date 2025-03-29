@@ -1,3 +1,5 @@
+## v0.16.1
+- Fixed inverted x-axis on 3d-plots
 ## v0.16.0
 - Added angular power spectrum calculation, plot and Std parameter
 - Fixed bug with XYZ files that have comma decimals
