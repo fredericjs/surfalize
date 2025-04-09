@@ -1,3 +1,6 @@
+## v0.16.2
+- Fixed colormap on 3d plots
+- Removed underscore from Profile attributes (data, step, length_um)
 ## v0.16.1
 - Fixed inverted x-axis on 3d-plots
 ## v0.16.0
