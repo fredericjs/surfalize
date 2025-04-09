@@ -104,7 +104,7 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
 
     # Generate a grid of x, y values
     x = np.linspace(0, surface.width_um, surface.size.x)
-    y = np.linspace(0, surface.height_um, surface.size.y)
+    y = np.flip(np.linspace(0, surface.height_um, surface.size.y))
     x, y = np.meshgrid(x, y)
 
     # Define a mathematical function for z values
@@ -112,7 +112,7 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
 
     # Create a PyVista grid
     grid = pv.StructuredGrid(x, y, z)
-    grid.point_data["height"] = np.rot90(z).ravel()
+    grid.point_data["height"] = z.T.ravel()
 
     # Initialize the PyVista plotter
     plotter = pv.Plotter(off_screen=not interactive, window_size=None if interactive else (1920, 1080))
