@@ -4,7 +4,7 @@ from enum import IntEnum
 import dateutil
 import numpy as np
 from ..exceptions import CorruptedFileError, CorruptedFileError
-from .common import RawSurface, get_unit_conversion, FileHandler, read_array
+from .common import RawSurface, get_unit_conversion, FileHandler, read_array, decode
 
 # This code was only tested on .opd files with an itemsize of 2
 MAGIC = b'\x01\x00Directory'
@@ -56,7 +56,7 @@ class Block:
         return data
 
     def _read_text(self, filehandle, encoding='utf-8'):
-        return filehandle.read(self.size).decode(encoding).rstrip('\x00')
+        return decode(filehandle.read(self.size), encoding).rstrip('\x00')
 
     def _read_number(self, filehandle):
         dtype = dtypes[self.type]
@@ -77,7 +77,7 @@ class Block:
 
 
 def read_block_definition(filehandle, encoding='utf-8'):
-    name = filehandle.read(16).decode().rstrip('\x00')
+    name = decode(filehandle.read(16), encoding).rstrip('\x00')
     type_, size, flags = struct.unpack('<hlH', filehandle.read(8))
     return name, Block(BlockType(type_), size, flags)
 

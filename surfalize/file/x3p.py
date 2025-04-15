@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ElementTree
 import dateutil
 
 from surfalize.exceptions import CorruptedFileError, UnsupportedFileFormatError
-from surfalize.file.common import get_unit_conversion, FileHandler, read_array, RawSurface
+from surfalize.file.common import get_unit_conversion, FileHandler, read_array, RawSurface, decode
 
 UNIT = 'm'
 CONVERSION_FACTOR = get_unit_conversion(UNIT, 'um')
@@ -38,7 +38,7 @@ def read_x3p(filehandle, read_image_layers=False, encoding='utf-8'):
         if 'md5checksum.hex' not in contents:
             raise CorruptedFileError('File does not contain required md5checksum.hex file.') from None
         with archive.open('md5checksum.hex') as checksum_file:
-            checksum = checksum_file.read().decode().split()[0]
+            checksum = decode(checksum_file.read(), encoding).split()[0]
 
         with archive.open('main.xml') as file:
             md5_hash = hashlib.md5()

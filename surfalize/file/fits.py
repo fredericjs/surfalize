@@ -1,5 +1,5 @@
 import numpy as np
-from .common import RawSurface, get_unit_conversion, FileHandler, read_array
+from .common import RawSurface, get_unit_conversion, FileHandler, read_array, decode
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'SIMPLE'
@@ -53,12 +53,12 @@ def parse_header_block(block):
     return header, block_ended
 
 
-def read_header(filehandle):
+def read_header(filehandle, encoding='auto'):
     has_ended = False
     header = dict()
     while not has_ended:
         block = filehandle.read(BLOCKSIZE)
-        partial_header, has_ended = parse_header_block(block.decode())
+        partial_header, has_ended = parse_header_block(decode(block, encoding))
         header.update(partial_header)
     return header
 
@@ -78,13 +78,13 @@ def read_fits(filehandle, read_image_layers=False, encoding='utf-8'):
         raise FileFormatError("Invalid file magic detected.")
 
     filehandle.seek(0)
-    header = read_header(filehandle)
+    header = read_header(filehandle, encoding=encoding)
 
     layers = dict()
     while True:
         block = filehandle.read(BLOCKSIZE)
         if block.startswith(b'XTENSION'):
-            hdu_header, has_ended = parse_header_block(block.decode())
+            hdu_header, has_ended = parse_header_block(decode(block, encoding))
             if hdu_header['NAXIS'] != 2:
                 raise UnsupportedFileFormatError("Array with number of dimensions not equal to 2 detected.")
             datasize = hdu_header['NAXIS1'] * hdu_header['NAXIS2'] * int(abs(hdu_header['BITPIX'] / 8))

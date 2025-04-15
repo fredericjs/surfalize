@@ -78,6 +78,34 @@ def get_unit_conversion(from_unit, to_unit):
     exponent = UNIT_EXPONENT[from_unit] - UNIT_EXPONENT[to_unit]
     return 10**exponent
 
+def decode(data, encoding):
+    """
+    Decodes a byte string using a specified encoding. If encoding is 'auto', chardet is used
+    to determine the appropriate encoding.
+
+    Parameters
+    ----------
+    data : bytes
+        Bytestring of data.
+    encoding : str
+        Standard encoding or 'auto'.
+
+    Returns
+    -------
+    str
+    """
+    if encoding == 'auto':
+        try:
+            return data.decode('utf-8')
+        except UnicodeDecodeError:
+            pass
+        try:
+            return data.decode('latin1')
+        except UnicodeDecodeError:
+            pass
+        encoding = chardet.detect(data)['encoding']
+    return data.decode(encoding)
+
 @contextmanager
 def open_file_like(file_or_path, mode='r'):
     """
@@ -180,9 +208,7 @@ class Entry(BaseEntry):
         unpacked_data = struct.unpack(f'{format}', filehandle.read(size))[0]
         # The data is a string
         if isinstance(unpacked_data, bytes):
-            if encoding == 'auto':
-                encoding = chardet.detect(unpacked_data)['encoding']
-            unpacked_data = unpacked_data.decode(encoding).rstrip(' \x00')
+            unpacked_data = decode(unpacked_data, encoding).rstrip(' \x00')
         data[self.name] = unpacked_data
 
 

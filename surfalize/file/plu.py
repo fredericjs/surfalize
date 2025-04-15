@@ -1,6 +1,6 @@
 import dateutil
 import numpy as np
-from .common import RawSurface, Reserved, Entry, Layout, FileHandler, read_array
+from .common import RawSurface, Reserved, Entry, Layout, FileHandler, read_array, decode
 
 NON_MEASURED_VALUE = 1000001
 
@@ -47,7 +47,7 @@ LAYOUT_MEASURE_CONFIG = Layout(
 @FileHandler.register_reader(suffix='.plu')
 def read_plu(filehandle, read_image_layers=False, encoding='utf-8'):
     date_block = filehandle.read(DATE_SIZE)
-    timestamp = dateutil.parser.parse(date_block.decode().rstrip('\x00'))
+    timestamp = dateutil.parser.parse(decode(date_block, encoding).rstrip('\x00'))
     filehandle.seek(COMMENT_SIZE + 4, 1)
     calibration = LAYOUT_CALIBRATION.read(filehandle, encoding=encoding)
     measure_config = LAYOUT_MEASURE_CONFIG.read(filehandle, encoding=encoding)

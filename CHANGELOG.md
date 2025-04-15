@@ -1,3 +1,7 @@
+## v0.16.3
+- Fixed decode error for vk4 files with encodings other than utf-8
+- Changed default parameter for encoding to 'auto'
+- Auto decoding now tries utf-8, then latin1 and finally falls back on chardet
 ## v0.16.2
 - Fixed colormap on 3d plots
 - Removed underscore from Profile attributes (data, step, length_um)

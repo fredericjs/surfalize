@@ -2,7 +2,7 @@ import re
 import struct
 import numpy as np
 
-from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT, FileHandler, read_array
+from .common import get_unit_conversion, RawSurface, UNIT_EXPONENT, FileHandler, read_array, decode
 from ..exceptions import FileFormatError, UnsupportedFileFormatError
 
 MAGIC = b'GWYP'
@@ -10,7 +10,7 @@ MAGIC = b'GWYP'
 STR_MAX_SIZE = 4096
 
 
-def read_null_terminated_string(filehandle, maxsize=STR_MAX_SIZE):
+def read_null_terminated_string(filehandle, maxsize=STR_MAX_SIZE, encoding='auto'):
     """
     Reads a null-terminated string from a Gwyddion file. Stops on a null character or when maxsize is reached.
 
@@ -33,7 +33,7 @@ def read_null_terminated_string(filehandle, maxsize=STR_MAX_SIZE):
             break
         string += char
         i += 1
-    return string.decode('utf-8')
+    return decode(string, encoding)
 
 
 def _filter_candidates_by_z_unit_presence(tree, candidates):
@@ -130,9 +130,10 @@ def get_image_related_layer_keys(tree):
 
 class Container:
 
-    def __init__(self, filehandle):
+    def __init__(self, filehandle, encoding='auto'):
         self.filehandle = filehandle
-        self.name = read_null_terminated_string(filehandle)
+        self.encoding = encoding
+        self.name = read_null_terminated_string(filehandle, encoding=self.encoding)
         self.size = struct.unpack('I', filehandle.read(4))[0]
 
     def __repr__(self):
@@ -144,16 +145,17 @@ class Container:
         pos = self.filehandle.tell()
         components = {}
         while self.filehandle.tell() < pos + self.size:
-            component = Component(self.filehandle)
+            component = Component(self.filehandle, encoding=self.encoding)
             components[component.name] = component.read_contents()
         return {self.name: components}
 
 
 class Component:
 
-    def __init__(self, filehandle):
+    def __init__(self, filehandle, encoding='auto'):
         self.filehandle = filehandle
-        self.name = read_null_terminated_string(filehandle)
+        self.encoding = encoding
+        self.name = read_null_terminated_string(filehandle, encoding=self.encoding)
         datatype = filehandle.read(1).decode('utf-8')
         self.is_array = datatype.isupper()
         self.datatype = datatype.lower()
@@ -171,16 +173,16 @@ class Component:
     def _read_array(self, filehandle):
         array_size = struct.unpack('I', filehandle.read(4))[0]
         if self.datatype == 'o':
-            return [Container(filehandle).read_contents() for _ in range(array_size)]
+            return [Container(filehandle, encoding=self.encoding).read_contents() for _ in range(array_size)]
         elif self.datatype == 's':
-            return [read_null_terminated_string(filehandle) for _ in range(array_size)]
+            return [read_null_terminated_string(filehandle, encoding=self.encoding) for _ in range(array_size)]
         return read_array(filehandle, count=array_size, dtype=self.datatype)
 
     def _read_atomic(self, filehandle):
         if self.datatype == 'o':
-            return Container(filehandle).read_contents()
+            return Container(filehandle, encoding=self.encoding).read_contents()
         elif self.datatype == 's':
-            return read_null_terminated_string(filehandle)
+            return read_null_terminated_string(filehandle, encoding=self.encoding)
         result = struct.unpack(f'{self.datatype}', filehandle.read(struct.calcsize(self.datatype)))[0]
         if self.datatype == 'b':
             # Gwyddion docs state that all non-zero values are to be interpreted as true
@@ -188,8 +190,8 @@ class Component:
         return result
 
 
-def parse_gwy_tree(filehandle):
-    container = Container(filehandle)
+def parse_gwy_tree(filehandle, encoding='auto'):
+    container = Container(filehandle, encoding=encoding)
     return container.read_contents()
 
 
@@ -215,7 +217,7 @@ def read_gwy(filehandle, read_image_layers=False, encoding='utf-8'):
     if filehandle.read(4) != MAGIC:
         raise FileFormatError('Unknown file magic detected.')
 
-    tree = parse_gwy_tree(filehandle)
+    tree = parse_gwy_tree(filehandle, encoding=encoding)
     # Image related layers refers to all layers / channels that contain 2d data that can be represented as an image
     # This also encompasses height data, or DFT, etc.
     image_related_layers = get_image_related_layer_keys(tree)

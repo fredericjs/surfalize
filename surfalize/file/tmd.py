@@ -1,5 +1,5 @@
 from ..exceptions import CorruptedFileError
-from .common import RawSurface, FileHandler, read_array, write_array, Layout, Entry
+from .common import RawSurface, FileHandler, read_array, write_array, Layout, Entry, decode
 
 MAGIC = b'Binary TrueMap Data File v2.0'
 LINE_TERMINATION = '\r\n\x00'
@@ -39,7 +39,7 @@ def write_tmd(filehandle, surface, encoding='utf-8', comment='Exported by surfal
     if len(comment) > COMMENT_LEN:
         raise ValueError(f'Comment has too many characters. Maximum number allows is {COMMENT_LEN}')
     header = {
-        'header': MAGIC.decode() + LINE_TERMINATION,
+        'header': decode(MAGIC, encoding) + LINE_TERMINATION,
         'comment': comment + ' ' * (COMMENT_LEN - len(comment)) + LINE_TERMINATION,
         'width': surface.size.x,
         'height': surface.size.y,
