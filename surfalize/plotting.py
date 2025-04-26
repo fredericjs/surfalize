@@ -128,8 +128,8 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
     distance = surface.width_um * 2 / zoom
 
     h_dist = np.cos(np.deg2rad(vertical_angle)) * distance
-    x = target_position[0] + np.sin(np.deg2rad(horizontal_angle)) * h_dist
-    y = target_position[1] + np.cos(np.deg2rad(horizontal_angle)) * h_dist
+    x = target_position[0] - np.sin(np.deg2rad(horizontal_angle)) * h_dist
+    y = target_position[1] - np.cos(np.deg2rad(horizontal_angle)) * h_dist
     z = target_position[2] + np.sin(np.deg2rad(vertical_angle)) * distance
 
     camera_position = (x, y, z)
