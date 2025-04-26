@@ -1207,7 +1207,7 @@ class Surface(CachedInstance):
         lower_median = np.median(self.data[~mask])
         return upper_median, lower_median
 
-    @batch_method('operation')
+    @batch_method('parameter')
     @cache
     def stepheight(self):
         """
@@ -1221,7 +1221,7 @@ class Surface(CachedInstance):
         step_height = upper_median - lower_median
         return step_height
 
-    @batch_method('operation')
+    @batch_method('parameter')
     def cavity_volume(self, threshold=0.50):
         """
         Calculates the cavity volume of a flat surface containing an ablation crater with a leveled bottom plane.

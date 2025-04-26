@@ -103,8 +103,8 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
                                     surface.step_y / factor)
 
     # Generate a grid of x, y values
-    x = np.flip(np.linspace(0, surface.width_um, surface.size.x))
-    y = np.linspace(0, surface.height_um, surface.size.y)
+    x = np.linspace(0, surface.width_um, surface.size.x)
+    y = np.flip(np.linspace(0, surface.height_um, surface.size.y))
     x, y = np.meshgrid(x, y)
 
     # Define a mathematical function for z values

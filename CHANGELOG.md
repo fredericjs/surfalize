@@ -1,3 +1,6 @@
+## v0.16.4
+- Fixed wrongful designation of stepheight parameters as batch operations instead of parameters
+- Fixed orientation of 3d plot (thanks to juanmigueltiscar)
 ## v0.16.3
 - Fixed decode error for vk4 files with encodings other than utf-8
 - Changed default parameter for encoding to 'auto'
