@@ -3,7 +3,7 @@ import struct
 from datetime import datetime
 
 import numpy as np
-from .common import get_unit_conversion, RawSurface, read_array, Entry, Reserved, Layout, FileHandler
+from .common import get_unit_conversion, RawSurface, read_array, Entry, Reserved, Layout, FileHandler, decode
 from ..exceptions import CorruptedFileError
 
 HEADER_SIZE = 12
@@ -143,20 +143,20 @@ def read_height_layer(filehandle, offset):
     channel_data = channel_data.reshape(channel_table['height'], channel_table['width'])
     return channel_data
 
-def read_string_data(filehandle, offset):
+def read_string_data(filehandle, offset, encoding='auto'):
     filehandle.seek(offset, 0)
     str_data = dict()
     size_title = struct.unpack('I', filehandle.read(4))[0] * 2
     # Every character is followed by a null byte. Therefore, we read twice the since of the expected string length and slice to
     # remove every second character
-    str_data['title'] = filehandle.read(size_title).decode()[::2]
+    str_data['title'] = decode(filehandle.read(size_title), encoding)[::2]
     size_lens_name = struct.unpack('I', filehandle.read(4))[0] * 2
     # Same here
-    str_data['lens_name'] = filehandle.read(size_lens_name).decode()[::2]
+    str_data['lens_name'] = decode(filehandle.read(size_lens_name), encoding)[::2]
     return str_data
 
 @FileHandler.register_reader(suffix='.vk4', magic=b'VK4_')
-def read_vk4(filehandle, read_image_layers=False, encoding='utf-8'):
+def read_vk4(filehandle, read_image_layers=False, encoding='auto'):
     metadata = dict()
     header = filehandle.read(HEADER_SIZE)
     offset_table = LAYOUT_OFFSET_TABLE.read(filehandle)
@@ -173,7 +173,7 @@ def read_vk4(filehandle, read_image_layers=False, encoding='utf-8'):
     else:
         image_layers = None
     height_layer = read_height_layer(filehandle, offset_table['height'])
-    metadata.update(read_string_data(filehandle, offset_table['string_data']))
+    metadata.update(read_string_data(filehandle, offset_table['string_data'], encoding=encoding))
 
     scale_factor = get_unit_conversion(FIXED_UNIT, 'um')
     scale_factor_height = scale_factor * measurement_conditions['z_length_per_digit']

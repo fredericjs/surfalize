@@ -2,7 +2,7 @@ import zipfile
 import dateutil
 import xml.etree.ElementTree as ET
 import numpy as np
-from .common import RawSurface, FileHandler
+from .common import RawSurface, FileHandler, decode
 
 # Names of the files in the zip archive
 TOPOGRAPHY_FILE_NAME = 'LAYER_0.raw'
@@ -18,7 +18,7 @@ def read_plux(filehandle, read_image_layers=False, encoding='utf-8'):
             img_raw = archive.read(IMAGE_FILE_NAME)
         xml_metadata = archive.read(XML_METADATA_FILE_NAME)
 
-    xml_str = xml_metadata.decode(encoding)
+    xml_str = decode(xml_metadata, encoding)
     metadata = {}
     # Parse the XML string
     root = ET.fromstring(xml_str)

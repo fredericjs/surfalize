@@ -1,7 +1,7 @@
 import struct
 import numpy as np
 import dateutil
-from .common import RawSurface, FileHandler, read_array
+from .common import RawSurface, FileHandler, read_array, decode
 from datetime import datetime
 
 
@@ -19,7 +19,7 @@ def read_nms(filehandle, read_image_layers=False, encoding='utf-8'):
     filehandle.seek(OFFSET_Z, 0)
     zmin, zmax = struct.unpack('<2d', filehandle.read(16))
     filehandle.seek(OFFSET_DATE, 0)
-    date = dateutil.parser.parse(filehandle.read(16).decode())
+    date = dateutil.parser.parse(decode(filehandle.read(16), encoding))
     filehandle.seek(OFFSET_POINTS, 0)
     nx, ny = struct.unpack('<2I', filehandle.read(8))
     filehandle.seek(OFFSET_SPACING, 0)

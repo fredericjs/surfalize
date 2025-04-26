@@ -350,7 +350,7 @@ class Surface(CachedInstance):
         return np.any(np.isnan(self.data))
 
     @classmethod
-    def load(cls, path_or_buffer, format=None, encoding='utf-8', read_image_layers=False):
+    def load(cls, path_or_buffer, format=None, encoding='auto', read_image_layers=False):
         """
         Classmethod to load a topography from a file.
 
@@ -362,10 +362,10 @@ class Surface(CachedInstance):
             File format in which file should be read. If the file is provided as a path and does not contain a suffix,
             the format must be specified here. If both a suffix and format are given, the format overrides the suffix.
             If the surface is read from a buffer, the format value must be specified.
-        encoding : str, Default utf-8
+        encoding : str, Default auto
             Encoding of characters in the file. If set to 'auto', the encoding is inferred automatically. For file
             formats with fixed encoding (such as ASCII formats), this parameter has no effect. The default value is
-            'utf-8'.
+            'auto'.
         read_image_layers : bool, Default False
             If true, reads all available image layers in the file and saves them in Surface.image_layers dict
 

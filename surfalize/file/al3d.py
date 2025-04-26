@@ -1,14 +1,14 @@
 import struct
 import numpy as np
 from ..exceptions import CorruptedFileError
-from .common import RawSurface, FileHandler, read_array, write_array
+from .common import RawSurface, FileHandler, read_array, write_array, decode
 
 MAGIC = b'AliconaImaging\x00\r\n'
 TAG_LAYOUT = '20s30s2s'
 DTYPE = 'float32'
 
-def read_tag(filehandle):
-    key, value, lf = [val.decode().rstrip('\x00') for val in struct.unpack(TAG_LAYOUT, filehandle.read(52))]
+def read_tag(filehandle, encoding='auto'):
+    key, value, lf = [decode(val, encoding).rstrip('\x00') for val in struct.unpack(TAG_LAYOUT, filehandle.read(52))]
     if lf != '\r\n':
         raise CorruptedFileError('Tag with incorrect delimiter detected.')
     return key, value
@@ -50,18 +50,18 @@ def read_al3d(filehandle, read_image_layers=False, encoding='utf-8'):
     if magic != MAGIC:
         raise CorruptedFileError('Incompatible file magic detected.')
     header = dict()
-    key, value = read_tag(filehandle)
+    key, value = read_tag(filehandle, encoding=encoding)
     if key != 'Version':
         raise CorruptedFileError('Version tag expected but not found.')
     header[key] = value
 
-    key, value = read_tag(filehandle)
+    key, value = read_tag(filehandle, encoding=encoding)
     if key != 'TagCount':
         raise CorruptedFileError('TagCount tag expected but not found.')
     header[key] = value
 
     for _ in range(int(header['TagCount'])):
-        key, value = read_tag(filehandle)
+        key, value = read_tag(filehandle, encoding=encoding)
         header[key] = value
 
     nx = int(header['Cols'])
