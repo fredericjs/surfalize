@@ -30,5 +30,5 @@ def read_nid(filename):
 #Testing
 import glob
 files = glob.glob('*.nid')
-surface = read_nid(files[1])
+surface = read_nid(files[0])
 surface.show()
