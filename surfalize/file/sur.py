@@ -142,9 +142,6 @@ def read_sur_header(filehandle, encoding='utf-8'):
     if header['code'] not in (MAGIC_CLASSIC, MAGIC_COMPRESSED) or header['version_number'] != 1:
         raise CorruptedFileError('Unknown header format')
 
-    if header['unit_ratio_x'] != 1 or header['unit_ratio_y'] != 1 or header['unit_ratio_z'] != 1:
-        raise NotImplementedError("This file type cannot be correctly read currently.")
-
     header['studiable_type'] = StudiableType(header['studiable_type'])
     header['acquisition_type'] = AcquisitionType(header['acquisition_type'])
 

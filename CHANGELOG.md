@@ -1,3 +1,6 @@
+## unreleased
+- Fixed issues with wrongly decoded µ characters in file readers.
+- Removed misinterpretation of uppercase file suffixes as unknown file formats.
 ## v0.16.4
 - Fixed wrongful designation of stepheight parameters as batch operations instead of parameters
 - Fixed orientation of 3d plot (thanks to juanmigueltiscar)
