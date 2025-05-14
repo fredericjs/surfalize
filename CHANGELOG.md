@@ -1,4 +1,4 @@
-## unreleased
+## v0.16.5
 - Fixed issues with wrongly decoded µ characters in file readers.
 - Removed misinterpretation of uppercase file suffixes as unknown file formats.
 ## v0.16.4
