@@ -1196,7 +1196,8 @@ class Surface(CachedInstance):
     def _stepheight_get_upper_lower_median(self):
         """
         Calculates the median value of the upper and lower surfaces in a stepheight calculation for a rectangular
-        ablation cavity.
+        ablation cavity. This function is intended to be used when the measurement contains two approximately flat surfaces on two
+        different levels.
 
         Returns
         -------
