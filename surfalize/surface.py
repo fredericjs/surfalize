@@ -2103,13 +2103,16 @@ class Surface(CachedInstance):
         -------
         plt.Figure, plt.Axes
         """
+        if self.has_missing_points:
+            raise ValueError("Non-measured points must be filled before any other operation.")
+
         acf = self.get_autocorrelation_function()
         fig, ax = acf.plot_autocorrelation(ax=ax, cmap=cmap, show_cbar=show_cbar)
         if save_to:
             fig.savefig(save_to, dpi=300, bbox_inches='tight')
         return fig, ax
         
-    def plot_fourier_transform(self, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
+    def plot_fourier_transform(self, ax = None, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
                                cmap='inferno', adjust_colormap=True, save_to=None):
         """
         Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral
@@ -2117,6 +2120,8 @@ class Surface(CachedInstance):
 
         Parameters
         ----------
+        ax : matplotlib axis, default None
+            If specified, the plot will be drawn the specified axis.
         log : bool, Default True
             Shows the logarithm of the Fourier Transform to increase peak visibility.
         hanning : bool, Default False
@@ -2139,6 +2144,14 @@ class Surface(CachedInstance):
         -------
         plt.Figure, plt.Axes
         """
+        if self.has_missing_points:
+            raise ValueError("Non-measured points must be filled before any other operation.")
+
+        if ax is None:
+            fig, ax = plt.subplots(dpi=150)
+        else:
+            fig = ax.figure
+            
         N, M = self.size
         data = self.data
         if subtract_mean:
@@ -2180,7 +2193,6 @@ class Surface(CachedInstance):
             vmin = fft.mean()
             vmax = 0.7 * fft.max()
 
-        fig, ax = plt.subplots()
         ax.set_xlabel('Frequency [µm$^{-1}$]')
         ax.set_ylabel('Frequency [µm$^{-1}$]')
         extent = (freq_x[ixmin], freq_x[ixmax], freq_y[iymax], freq_y[iymin])
