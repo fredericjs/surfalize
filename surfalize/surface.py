@@ -2112,7 +2112,7 @@ class Surface(CachedInstance):
             fig.savefig(save_to, dpi=300, bbox_inches='tight')
         return fig, ax
         
-    def plot_fourier_transform(self, ax = None, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
+    def plot_fourier_transform(self, ax=None, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
                                cmap='inferno', adjust_colormap=True, save_to=None):
         """
         Plots the 2d Fourier transform of the surface. Optionally, a Hanning window can be applied to reduce to spectral

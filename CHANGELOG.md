@@ -1,3 +1,6 @@
+## v0.16.6
+- Added requirement of no invalid points to plotting of Fourier transform (#29)
+- Added axis argument to plot_fourier_transform (#29)
 ## v0.16.5
 - Fixed issues with wrongly decoded µ characters in file readers.
 - Removed misinterpretation of uppercase file suffixes as unknown file formats.
