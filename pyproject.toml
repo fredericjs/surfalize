@@ -74,6 +74,7 @@ all = [
 
 [project.scripts]
 surfalize = "surfalize.cli:cli"
+surfalize-thumbnailer = "surfalize.thumbnailer:main"
 
 [tool.setuptools]
 include-package-data = false
