@@ -1,3 +1,7 @@
+## v0.16.8
+- Fixed missing call of `on_file_complete` callback in single-threaded batch processing
+## v0.16.7
+- Fixed CLI issues
 ## v0.16.6
 - Added requirement of no invalid points to plotting of Fourier transform (#29)
 - Added axis argument to plot_fourier_transform (#29)
