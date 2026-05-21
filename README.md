@@ -15,7 +15,7 @@ roughness and other topographic parameters. It is intended primarily for microte
 replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion for the most common tasks.
 
 ## Surfalize WebApp (beta)
-Surfalize is now also available as an interactive webapp under [surfalize.com](surfalize.com), running entirely clientside powered by pyodide. 
+Surfalize is now also available as an interactive webapp under [surfalize.com](https://surfalize.com), running entirely clientside powered by pyodide. 
 
 ## Disclaimer
 The authors make no guarantees for the correctness of any results obtained using this package. The package is an early work in progress
