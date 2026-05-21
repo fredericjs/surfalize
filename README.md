@@ -14,6 +14,9 @@ surfalize is a python package for analyzing microscope topography measurement da
 roughness and other topographic parameters. It is intended primarily for microtextured surfaces and is supposed to 
 replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion for the most common tasks.
 
+## Surfalize WebApp (beta)
+Surfalize is now also available as an interactive webapp under [surfalize.com](surfalize.com), running entirely clientside powered by pyodide. 
+
 ## Disclaimer
 The authors make no guarantees for the correctness of any results obtained using this package. The package is an early work in progress
 and may introduce changes to both implementation details and public API at any point in time. Any results should be validated against established 
