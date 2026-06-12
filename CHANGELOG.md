@@ -18,6 +18,9 @@
 - Fixed a bug where `AbbottFirestoneCurve.Vvv` and `Vvc` ignored their material ratio arguments and always used the
   default values
 - `Profile.length_um` is now calculated automatically from the stepsize and number of points if not provided
+- Fixed `Surface.__eq__` wrongly considering a surface equal to another surface with everywhere lower height values
+- Fixed `5 - surface` wrongly computing `surface - 5` due to incorrect `__rsub__` implementation
+- Importing surfalize no longer overrides the global warning formatting of the user's program
 ## v0.16.8
 - Fixed missing call of `on_file_complete` callback in single-threaded batch processing
 ## v0.16.7

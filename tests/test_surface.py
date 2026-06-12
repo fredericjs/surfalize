@@ -87,6 +87,17 @@ def test_threshold(noisy_surface):
     assert np.nanmax(thresholded_surface.data) == pytest.approx(1.34271246)
     assert np.nanmin(thresholded_surface.data) == pytest.approx(-1.3238377)
 
+def test_eq(surface):
+    assert surface == Surface(surface.data.copy(), surface.step_x, surface.step_y)
+    # A surface that is everywhere lower must not compare equal
+    assert surface != surface - 1
+    assert surface != surface + 1
+    assert surface != Surface(surface.data.copy(), surface.step_x * 2, surface.step_y)
+
+def test_rsub(surface):
+    assert np.allclose((5 - surface).data, 5 - surface.data)
+    assert np.allclose((surface - 5).data, surface.data - 5)
+
 def test_fill_nonmeasured(noisy_surface):
     surface_with_missing_points = noisy_surface.remove_outliers()
     assert not bool(np.any(np.isnan(surface_with_missing_points.fill_nonmeasured().data)))

@@ -5,7 +5,6 @@ from .plotting import plot_3d
 
 logger = logging.getLogger(__name__)
 import warnings
-warnings.formatwarning = lambda msg, *args, **kwargs: f'Warning: {msg}\n'
 from collections import namedtuple
 
 # Scipy stack
@@ -212,7 +211,8 @@ class Surface(BaseTopography):
     def __sub__(self, other):
         return self._arithmetic_operation(other, lambda a, b: a-b)
 
-    __rsub__ = __sub__
+    def __rsub__(self, other):
+        return self._arithmetic_operation(other, lambda a, b: b-a)
 
     def __mul__(self, other):
         return self._arithmetic_operation(other, lambda a, b: a*b)
@@ -227,7 +227,7 @@ class Surface(BaseTopography):
             return False
         if self.step_x != other.step_x or self.step_y != other.step_y or self.size != other.size:
             return False
-        if np.any(self.data - other.data > 1e-10):
+        if np.any(np.abs(self.data - other.data) > 1e-10):
             return False
         return True
 
