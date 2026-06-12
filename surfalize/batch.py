@@ -517,9 +517,17 @@ class Batch:
         self._steps = []
         self._filename_pattern = None
 
-        for name, method in Surface.__dict__.items():
-            if hasattr(method, '_batch_type'):
-                self._create_batch_method(name, method)
+        # Walk the method resolution order so that batch methods inherited from base classes
+        # (e.g. BaseTopography) are registered as well. Methods defined in subclasses take
+        # precedence over base class methods of the same name.
+        seen = set()
+        for klass in Surface.__mro__:
+            for name, method in klass.__dict__.items():
+                if name in seen:
+                    continue
+                seen.add(name)
+                if hasattr(method, '_batch_type'):
+                    self._create_batch_method(name, method)
 
     def __len__(self):
         return len(self._files)

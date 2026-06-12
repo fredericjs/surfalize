@@ -1,3 +1,23 @@
+## v0.17.0
+- Added roughness parameter calculations to the `Profile` class: height parameters (`Ra`, `Rq`, `Rp`, `Rv`, `Rz`, `Rt`,
+  `Rsk`, `Rku`), hybrid parameters (`Rdq`) and functional parameters derived from the Abbott-Firestone curve
+  (`Rk`, `Rpk`, `Rvk`, `Rmr1`, `Rmr2`, `Rmr(c)`, `Rmc(mr)`, `Rxp`, `Vmp`, `Vmc`, `Vvv`, `Vvc`)
+- `Rp`, `Rv` and `Rz` are evaluated per sampling length and averaged over the evaluation length according to ISO 4287,
+  with the number of sampling lengths controlled by the `n_sections` argument (default 5). The previous behavior of
+  `Profile.Rz` (evaluation over the entire profile) is available as `Rt` or via `Rz(n_sections=1)`.
+- Added data operations to the `Profile` class analogous to the `Surface` class: `center`, `zero`, `invert`,
+  `remove_outliers`, `threshold`, `fill_nonmeasured`, `level`, `detrend_polynomial`, `filter`, `crop`, `zoom`, as well
+  as `roughness_parameters`, `plot_abbott_curve` and `plot_functional_parameter_study`
+- Introduced common base class `BaseTopography` in the new module `surfalize.base`, which contains all operations
+  and parameters that are agnostic to the dimensionality of the data and is shared by `Surface` and `Profile`
+- `AbbottFirestoneCurve` now accepts either a `Surface` or a `Profile` object. Its parameter methods were renamed to
+  reflect their dimensionality-agnostic nature: `Sk`→`k`, `Spk`→`pk`, `Svk`→`vk`, `Smr1`→`mr1`, `Smr2`→`mr2`,
+  `Smr`→`mr`, `Smc`→`mc`, `Vmp`→`vmp`, `Vmc`→`vmc`, `Vvv`→`vvv`, `Vvc`→`vvc`
+- `GaussianFilter` now operates on both `Surface` and `Profile` objects
+- Fixed a bug in `GaussianFilter` where the sigma value of the y-axis was wrongly applied to the x-axis
+- Fixed a bug where `AbbottFirestoneCurve.Vvv` and `Vvc` ignored their material ratio arguments and always used the
+  default values
+- `Profile.length_um` is now calculated automatically from the stepsize and number of points if not provided
 ## v0.16.8
 - Fixed missing call of `on_file_complete` callback in single-threaded batch processing
 ## v0.16.7

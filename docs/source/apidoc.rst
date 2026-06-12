@@ -7,6 +7,8 @@ API Documentation
    :caption: Api Documentaion:
 
    api/surface
+   api/profile
+   api/base
    api/batch
    api/autocorrelation
    api/abbottfirestone

@@ -6,26 +6,28 @@ from .cache import CachedInstance, cache
 
 class AbbottFirestoneCurve(CachedInstance):
     """
-    Represents the Abbott-Firestone curve of a Surface object and provides methods to calculate the functional
-    roughness parameters derived from it.
+    Represents the Abbott-Firestone curve of a Surface or Profile object and provides methods to calculate the
+    functional roughness parameters derived from it. The parameter methods are named agnostically with respect to
+    the dimensionality of the underlying data, since the calculation is identical for profiles and surfaces. For
+    instance, the method 'k' computes the core height, which corresponds to Sk for surfaces and Rk for profiles.
 
     Parameters
     ----------
-    surface : Surface
-        Surface object from which to calcualte the Abbott-Firestone curve
+    obj : Surface | Profile
+        Surface or Profile object from which to calculate the Abbott-Firestone curve.
     nbins : int, default 10000
         Number of bins for the material density histogram. Large numbers result in longer computation time but increased
         accuracy of results. The default value of 10000 represents a reasonable compromise.
     """
-    # Width of the equivalence line in % as defined by ISO 25178-2
+    # Width of the equivalence line in % as defined by ISO 25178-2 and ISO 13565-2
     EQUIVALENCE_LINE_WIDTH = 40
 
-    def __init__(self, surface, nbins=10000):
-        if surface.has_missing_points:
+    def __init__(self, obj, nbins=10000):
+        if obj.has_missing_points:
             raise ValueError("Missing points must be filled before the "
                              "Abbott-Firestone curve can be instantiated.") from None
         super().__init__()
-        self._surface = surface
+        self._obj = obj
         self._nbins = nbins
         self._calculate_curve()
 
@@ -38,7 +40,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         height, material_ratio : tuple[ndarray[float], ndarray[float]]
         """
-        hist, height = np.histogram(self._surface.data, bins=self._nbins)
+        hist, height = np.histogram(self._obj.data, bins=self._nbins)
         hist = hist[::-1]  # sort descending
         height = height[::-1]  # sort descending
         material_ratio = np.append(1, np.cumsum(hist))  # prepend 1 for first bin edge after cumsum
@@ -50,7 +52,7 @@ class AbbottFirestoneCurve(CachedInstance):
         """
         Performs the calculations necessary for evaluation of the functional parameters. First, the function finds
         the 40% equivalence line and computes its slope as well as intercept with 0% and 100% material ratio.
-        The resulting values and a linear interpolator for Smc and Smr are saved in instance attributes.
+        The resulting values and a linear interpolator for mc and mr are saved in instance attributes.
 
         Returns
         -------
@@ -102,9 +104,9 @@ class AbbottFirestoneCurve(CachedInstance):
         self._material_ratio = material_ratio
 
     @cache
-    def Sk(self):
+    def k(self):
         """
-        Calculates Sk.
+        Calculates the core height (Sk for surfaces, Rk for profiles).
 
         Returns
         -------
@@ -112,9 +114,9 @@ class AbbottFirestoneCurve(CachedInstance):
         """
         return self._yupper - self._ylower
 
-    def Smr(self, c):
+    def mr(self, c):
         """
-        Calculates Smr(c).
+        Calculates the material ratio at the height c (Smr(c) for surfaces, Rmr(c) for profiles).
 
         Parameters
         ----------
@@ -127,9 +129,9 @@ class AbbottFirestoneCurve(CachedInstance):
         """
         return float(self._smr_fit(c))
 
-    def Smc(self, mr):
+    def mc(self, mr):
         """
-        Calculates Smc(mr).
+        Calculates the height at the material ratio mr (Smc(mr) for surfaces, Rmc(mr) for profiles).
 
         Parameters
         ----------
@@ -143,31 +145,31 @@ class AbbottFirestoneCurve(CachedInstance):
         return float(self._smc_fit(mr))
 
     @cache
-    def Smr1(self):
+    def mr1(self):
         """
-        Calculates Smr1.
+        Calculates the material ratio that separates the peaks from the core (Smr1 for surfaces, Rmr1 for profiles).
 
         Returns
         -------
         float
         """
-        return self.Smr(self._yupper)
+        return self.mr(self._yupper)
 
     @cache
-    def Smr2(self):
+    def mr2(self):
         """
-        Calculates Smr2.
+        Calculates the material ratio that separates the dales from the core (Smr2 for surfaces, Rmr2 for profiles).
 
         Returns
         -------
         float
         """
-        return self.Smr(self._ylower)
+        return self.mr(self._ylower)
 
     @cache
-    def Spk(self):
+    def pk(self):
         """
-        Calculates Spk.
+        Calculates the reduced peak height (Spk for surfaces, Rpk for profiles).
 
         Returns
         -------
@@ -180,13 +182,13 @@ class AbbottFirestoneCurve(CachedInstance):
         # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
         idx = argclosest(self._yupper, self._height)
         A1 = np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx]))
-        Spk = 2 * A1 / self.Smr1()
-        return Spk
+        pk = 2 * A1 / self.mr1()
+        return pk
 
     @cache
-    def Svk(self):
+    def vk(self):
         """
-        Calculates Svk.
+        Calculates the reduced dale height (Svk for surfaces, Rvk for profiles).
 
         Returns
         -------
@@ -195,35 +197,63 @@ class AbbottFirestoneCurve(CachedInstance):
         # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
         idx = argclosest(self._ylower, self._height)
         A2 = np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:]))
-        Svk = 2 * A2 / (100 - self.Smr2())
-        return Svk
+        vk = 2 * A2 / (100 - self.mr2())
+        return vk
 
     @cache
-    def Vmp(self, p=10):
-        idx = argclosest(self.Smc(p), self._height)
+    def vmp(self, p=10):
+        """
+        Calculates the peak material volume at material ratio p (Vmp).
+
+        Returns
+        -------
+        float
+        """
+        idx = argclosest(self.mc(p), self._height)
         return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx]) / 100)
 
     @cache
-    def Vmc(self, p=10, q=80):
-        idx = argclosest(self.Smc(q), self._height)
-        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx])) / 100 - self.Vmp(p)
+    def vmc(self, p=10, q=80):
+        """
+        Calculates the difference in material volume between material ratios p and q (Vmc).
+
+        Returns
+        -------
+        float
+        """
+        idx = argclosest(self.mc(q), self._height)
+        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx])) / 100 - self.vmp(p)
 
     @cache
-    def Vvv(self, q=80):
-        idx = argclosest(self.Smc(80), self._height)
+    def vvv(self, q=80):
+        """
+        Calculates the dale void volume at material ratio q (Vvv).
+
+        Returns
+        -------
+        float
+        """
+        idx = argclosest(self.mc(q), self._height)
         return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100
 
     @cache
-    def Vvc(self, p=10, q=80):
-        idx = argclosest(self.Smc(10), self._height)
-        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.Vvv(q)
+    def vvc(self, p=10, q=80):
+        """
+        Calculates the difference in void volume between material ratios p and q (Vvc).
+
+        Returns
+        -------
+        float
+        """
+        idx = argclosest(self.mc(p), self._height)
+        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.vvv(q)
 
     def plot(self, nbars=20, ax=None):
         if ax is None:
             fig, ax = plt.subplots()
         else:
             fig = ax.figure
-        dist_bars, bins_bars = np.histogram(self._surface.data, bins=nbars)
+        dist_bars, bins_bars = np.histogram(self._obj.data, bins=nbars)
         dist_bars = np.flip(dist_bars)
         bins_bars = np.flip(bins_bars)
 
@@ -235,10 +265,10 @@ class AbbottFirestoneCurve(CachedInstance):
         ax2.set_xlabel('Material ratio (%)')
         ax.set_box_aspect(1)
         ax2.set_xlim(0, 100)
-        ax.set_ylim(self._surface.data.min(), self._surface.data.max())
+        ax.set_ylim(self._obj.data.min(), self._obj.data.max())
 
         ax.barh(bins_bars[:-1] + np.diff(bins_bars) / 2, dist_bars / dist_bars.cumsum().max() * 100,
-                height=(self._surface.data.max() - self._surface.data.min()) / nbars, edgecolor='k', color='lightblue')
+                height=(self._obj.data.max() - self._obj.data.min()) / nbars, edgecolor='k', color='lightblue')
         ax2.plot(material_ratio, height, c='r', clip_on=True)
 
         return fig, (ax, ax2)
@@ -253,17 +283,17 @@ class AbbottFirestoneCurve(CachedInstance):
         ax.set_ylim(self._height.min(), self._height.max())
         x = np.linspace(0, 100, 10)
         ax.plot(x, self._slope * x + self._intercept, c='k')
-        ax.add_patch(plt.Polygon([[0, self._yupper], [0, self._yupper + self.Spk()], [self.Smr1(), self._yupper]],
+        ax.add_patch(plt.Polygon([[0, self._yupper], [0, self._yupper + self.pk()], [self.mr1(), self._yupper]],
                                  fc='orange', ec='k'))
-        ax.add_patch(plt.Polygon([[100, self._ylower], [100, self._ylower - self.Svk()], [self.Smr2(), self._ylower]],
+        ax.add_patch(plt.Polygon([[100, self._ylower], [100, self._ylower - self.vk()], [self.mr2(), self._ylower]],
                                  fc='orange', ec='k'))
         ax.plot(self._material_ratio, self._height, c='r')
         ax.axhline(self._ylower, c='k', lw=1)
         ax.axhline(self._yupper, c='k', lw=1)
-        ax.axhline(self._ylower - self.Svk(), c='k', lw=1)
-        ax.axhline(self._yupper + self.Spk(), c='k', lw=1)
-        ax.plot([self.Smr1(), self.Smr1()], [0, self._yupper], c='k', lw=1)
-        ax.plot([self.Smr2(), self.Smr2()], [0, self._ylower], c='k', lw=1)
+        ax.axhline(self._ylower - self.vk(), c='k', lw=1)
+        ax.axhline(self._yupper + self.pk(), c='k', lw=1)
+        ax.plot([self.mr1(), self.mr1()], [0, self._yupper], c='k', lw=1)
+        ax.plot([self.mr2(), self.mr2()], [0, self._ylower], c='k', lw=1)
 
         ax.set_xlabel('Material ratio (%)')
         ax.set_ylabel('Height (µm)')

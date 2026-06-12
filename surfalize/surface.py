@@ -1,5 +1,4 @@
 # Standard imports
-import inspect
 import logging
 
 from .plotting import plot_3d
@@ -7,7 +6,6 @@ from .plotting import plot_3d
 logger = logging.getLogger(__name__)
 import warnings
 warnings.formatwarning = lambda msg, *args, **kwargs: f'Warning: {msg}\n'
-from functools import wraps
 from collections import namedtuple
 
 # Scipy stack
@@ -17,104 +15,23 @@ from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.linalg import lstsq
 from scipy.interpolate import griddata
-from scipy.signal import find_peaks
-from scipy.optimize import curve_fit
 import scipy.ndimage as ndimage
 from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import FileHandler
-from .utils import is_list_like, approximately_equal
-from .cache import CachedInstance, cache
+from .utils import approximately_equal
+from .cache import cache
 from .mathutils import Sinusoid, argclosest, trapezoid
 from .autocorrelation import AutocorrelationFunction
-from .abbottfirestone import AbbottFirestoneCurve
+from .base import BaseTopography, batch_method, no_nonmeasured_points
 from .profile import Profile
-from .filter import GaussianFilter
 from .image import Image
 
 
 size = namedtuple('Size', ['y', 'x'])
-           
-def no_nonmeasured_points(function):
-    """
-    Decorator that raises an Exception if the method is called on a surface object that contains non-measured points.
-    This decorator should be used for any method that does not compute correctly if nan values are present in the array.
 
-    Parameters
-    ----------
-    function : function
-        Function to be decorated.
-
-    Returns
-    -------
-    Wrapped function
-    """
-    @wraps(function)
-    def wrapper_function(self, *args, **kwargs):
-        if self.has_missing_points:
-            raise ValueError("Non-measured points must be filled before any other operation.")
-        return function(self, *args, **kwargs)
-    return wrapper_function
-
-# Mutable default arg should be no issue here since we don't mutate it. Hopefully I won't change implementation in the
-# future and forget about this^^
-def batch_method(type_, return_labels=None, batch_doc=None, fixed={'inplace': True}):
-    """
-    Decorator to mark Surface methods for batch processing.
-
-    Parameters
-    ----------
-    type_ : str
-        Type of batch method ('operation' or 'parameter')
-    return_labels : tuple, optional
-        Labels for multiple return values (only used for parameters)
-    batch_doc : str, optional
-        Additional batch-specific documentation.
-    fixed : dict[str: Any]
-        Keyword arguments that must have a specific value when calling the method from the Batch class. By default, the
-        inplace argument is set to True for the Batch method, since returning a copy of the surface object does not make
-        sense. Parameters with fixed values are removed from the function signature and docstring of the Batch method.
-
-    Returns
-    -------
-    Wrapped function
-    """
-
-    def decorator(method):
-        sig = inspect.signature(method)
-        param_names = set(sig.parameters.keys())
-
-        # Filter fixed parameters to only include those in the method signature
-        valid_fixed = {k: v for k, v in fixed.items() if k in param_names}
-
-        method._batch_type = type_
-        method._fixed = valid_fixed
-        if return_labels is not None:
-            method.return_labels = return_labels
-        if batch_doc is not None:
-            method._batch_doc = batch_doc
-
-        # Create the batch availability note
-        fixed_params = ', '.join(f'`{param}`' for param in fixed.keys())
-        batch_note = '\n.. note:: \n\n\tThis method is available in the Batch class.'
-        if valid_fixed:
-            batch_note += f' The following parameters are removed in the batch version: {fixed_params}.\n'
-        else:
-            batch_note += '\n'
-
-        # Append the note to the method's docstring
-        if method.__doc__ is None:
-            method.__doc__ = batch_note
-        else:
-            import textwrap
-            method.__doc__ = textwrap.dedent(method.__doc__) + batch_note
-
-        return method
-
-    return decorator
-
-class Surface(CachedInstance):
+class Surface(BaseTopography):
     """
     Representation a 2D-topography characterised by a 2d array of height data and an associated stepsize in x and y.
     x hereby denotes the horizontal axis, which corresponds to the second array dimension, while y denotes the vertical
@@ -262,12 +179,8 @@ class Surface(CachedInstance):
         self.height_um = (self.size.y - 1) * self.step_y
         self.clear_cache() # Calls method from parent class
 
-    def _repr_png_(self):
-        """
-        Repr method for Jupyter notebooks. When Jupyter makes a call to repr, it checks first if a _repr_png_ is
-        defined. If not, it falls back on __repr__.
-        """
-        self.show()
+    def _with_data(self, data):
+        return Surface(data, self.step_x, self.step_y)
 
     def _arithmetic_operation(self, other, func):
         """
@@ -337,17 +250,6 @@ class Surface(CachedInstance):
     def __setitem__(self, key, value):
         self.data.__setitem__(key, value)
         self.clear_cache()
-
-    @property
-    def has_missing_points(self):
-        """
-        Returns true if surface contains non-measured points.
-
-        Returns
-        -------
-        bool
-        """
-        return np.any(np.isnan(self.data))
 
     @classmethod
     def load(cls, path_or_buffer, format=None, encoding='auto', read_image_layers=False):
@@ -437,56 +339,6 @@ class Surface(CachedInstance):
         """
         return list(self.image_layers.keys())
 
-    def min(self):
-        """
-        Computes the minimum value of the surface, ignoring invalid points.
-
-        Returns
-        -------
-        float
-        """
-        return np.nanmin(self.data)
-
-    def max(self):
-        """
-        Computes the maximum value of the surface, ignoring invalid points.
-
-        Returns
-        -------
-        float
-        """
-        return np.nanmax(self.data)
-
-    def mean(self):
-        """
-        Computes the mean value of the surface, ignoring invalid points.
-
-        Returns
-        -------
-        float
-        """
-        return np.nanmean(self.data)
-
-    def median(self):
-        """
-        Computes the median value of the surface, ignoring invalid points.
-
-        Returns
-        -------
-        float
-        """
-        return np.nanmedian(self.data)
-
-    def std(self):
-        """
-        Computes the standard deviation the surface, ignoring invalid points.
-
-        Returns
-        -------
-        float
-        """
-        return np.nanstd(self.data)
-        
     def get_horizontal_profile(self, y, average=1, average_step=None):
         """
         Extracts a horizontal profile from the surface with optional averaging over parallel profiles.
@@ -617,150 +469,6 @@ class Surface(CachedInstance):
         return Profile(data, step, length_um)
 
     # Operations #######################################################################################################
-    @batch_method('operation')
-    def center(self, inplace=False):
-        """
-        Centers the data around its mean value. The height of the surface will be distributed equally around 0.
-
-        Parameters
-        ----------
-        inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self. 
-
-        Returns
-        -------
-        surface : surfalize.Surface
-            Surface object.
-        """
-        data = self.data - np.nanmean(self.data)
-        if inplace:
-            self._set_data(data=data)
-            return self
-        return Surface(data, self.step_x, self.step_y)
-
-    @batch_method('operation')
-    def zero(self, inplace=False):
-        """
-        Sets the minimum height of the surface to zero.
-
-        Parameters
-        ----------
-        inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self. 
-
-        Returns
-        -------
-        surface : surfalize.Surface
-            Surface object.
-        """
-        data = self.data - np.nanmin(self.data)
-        if inplace:
-            self._set_data(data=data)
-            return self
-        return Surface(data, self.step_x, self.step_y)
-
-    @batch_method('operation')
-    def invert(self, inplace=False):
-        """
-        Inverts the surface topography, creating a negative.
-
-        Parameters
-        ----------
-        inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self.
-
-        Returns
-        -------
-        surface : surfalize.Surface
-            Surface object.
-        """
-        data = self.data.min() + self.data.max() - self.data
-        if inplace:
-            self._set_data(data=data)
-            return self
-        return Surface(data, self.step_x, self.step_y)
-
-    @batch_method('operation')
-    def remove_outliers(self, n=3, method='mean', inplace=False):
-        """
-        Removes outliers based on the n-sigma criterion. All values that fall outside n-standard deviations of the mean
-        are replaced by nan values. The default is three standard deviations. This method supports operation on data
-        which contains non-measured points.
-
-        Parameters
-        ----------
-        n : float, default 3
-            Number of standard deviations outside of which values are considered outliers if method is 'mean'. If the
-            method is 'median', n represents the number of medians distances of the data to its median value.
-        method : {'mean', 'median'}, default 'mean'
-            Method by which to perform the outlier detection. The default method is mean, which removes outliers outside
-            an interval of n standard deviations from the mean. The method 'median' removes outliers outside n median
-            distances of the data to its median.
-        inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self.
-
-        Returns
-        -------
-        surface : surfalize.Surface
-            Surface object.
-        """
-        data = self.data.copy()
-        if method == 'mean':
-            data[np.abs(data - np.nanmean(data)) > n * np.nanstd(data)] = np.nan
-        elif method == 'median':
-            dist = np.abs(data - np.nanmedian(data))
-            data[dist > n * np.nanmedian(dist)] = np.nan
-        else:
-            raise ValueError("Invalid methode.")
-        if inplace:
-            self._set_data(data=data)
-            return self
-        return Surface(data, self.step_x, self.step_y)
-
-    @batch_method('operation')
-    def threshold(self, threshold=0.5, inplace=False):
-        """
-        Removes data outside of threshold percentage of the material ratio curve.
-        The topmost percentage (given by threshold) of hight values and the lowest percentage of height values are
-        replaced with non-measured points. This method supports operation on data which contains non-measured points.
-
-        Parameters
-        ----------
-        threshold : float or tuple[float, float], default 0.5
-            Percentage threshold value of the material ratio. If threshold is a tuple, the first value represents the
-            upper threshold and the second value represents the lower threshold. For example, threshold=0.5 removes the
-            uppermost and lowermost 0.5% from the areal material ratio curve. The achieve the same result when
-            specifiying the upper and lower threshold explicitly, the tuple passed ton threshold must be (0.5, 0.5)
-        inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self.
-
-        Returns
-        -------
-        surface : surfalize.Surface
-            Surface object.
-        """
-        y = np.sort(self.data[~np.isnan(self.data)])[::-1]
-        x = np.arange(1, y.size + 1, 1) / y.size
-        if is_list_like(threshold):
-            threshold_upper, threshold_lower = threshold
-        else:
-            threshold_upper, threshold_lower = threshold, threshold
-        if threshold_lower + threshold_upper >= 100:
-            raise ValueError("Combined threshold is larger than 100%.")
-        idx0 = argclosest(threshold_upper / 100, x)
-        idx1 = argclosest(1 - threshold_lower / 100, x)
-        data = self.data.copy()
-        data[(data > y[idx0]) | (data < y[idx1])] = np.nan
-        if inplace:
-            self._set_data(data=data)
-            return self
-        return Surface(data, self.step_x, self.step_y)
-
     @batch_method('operation')
     def fill_nonmeasured(self, method='nearest', inplace=False):
         """
@@ -931,75 +639,6 @@ class Surface(CachedInstance):
             return self
 
         return Surface(rotated_cropped, step_x, step_y)
-
-    @batch_method('operation')
-    @no_nonmeasured_points
-    def filter(self, filter_type, cutoff, cutoff2=None, inplace=False, endeffect_mode='reflect'):
-        """
-        Filters the surface by applying a Gaussian filter.
-
-        There a several types of filtering:
-
-        - 'highpass': computes spatial frequencies above the specified cutoff value
-        - 'lowpass': computes spatial frequencies below the specified cutoff value
-        - 'both': computes and returns both the highpass and lowpass filtered surfaces
-        - 'bandpass': computes frequencies below the specified cutoff value and above the value specified for cutoff2
-
-        The surface object's data can be changed inplace by specifying 'inplace=True' for 'highpass', 'lowpass' and
-        'bandpass' mode. For mode='both', inplace=True will raise a ValueError.
-
-        Parameters
-        ----------
-        filter_type : str
-            Mode of filtering. Possible values: 'highpass', 'lowpass', 'both', 'bandpass'.
-        cutoff : float
-            Cutoff wavelength in µm at which the high and low spatial frequencies are separated.
-            Actual cutoff will be rounded to the nearest pixel unit (1/px) equivalent.
-        cutoff2 : float | None, default None
-            Used only in mode='bandpass'. Specifies the larger cutoff wavelength of the bandpass filter. Must be greater
-            than cutoff.
-        inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
-            objects will be returned.
-        endeffect_mode : {reflect, constant, nearest, mirror, wrap}, default reflect
-            The parameter determines how the endeffects of the filter at the boundaries of the data are managed.
-            For details, see the documentation of scipy.ndimage.gaussian_filter.
-            https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.gaussian_filter.html
-
-        Returns
-        -------
-        surface : surfalize.Surface
-            Surface object.
-        """
-        if filter_type not in ('highpass', 'lowpass', 'both', 'bandpass'):
-            raise ValueError("Invalid mode selected")
-        if filter_type == 'both' and inplace:
-            raise ValueError(
-                "Mode 'both' does not support inplace operation since two Surface objects will be returned")
-
-        if filter_type == 'bandpass':
-            if cutoff2 is None:
-                raise ValueError("cutoff2 must be provided.")
-            if cutoff2 <= cutoff:
-                raise ValueError("The value of cutoff2 must be greater than the value of cutoff.")
-
-            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
-            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff2, endeffect_mode=endeffect_mode)
-            return highpass_filter(lowpass_filter(self, inplace=inplace), inplace=inplace)
-
-        if filter_type == 'lowpass':
-            lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
-            return lowpass_filter(self, inplace=inplace)
-
-        if filter_type == 'highpass':
-            highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
-            return highpass_filter(self, inplace=inplace)
-
-        # If filter_type == 'both' is only remaining option
-        highpass_filter = GaussianFilter(filter_type='highpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
-        lowpass_filter = GaussianFilter(filter_type='lowpass', cutoff=cutoff, endeffect_mode=endeffect_mode)
-        return highpass_filter(self, inplace=False), lowpass_filter(self, inplace=False)
 
     @batch_method('operation')
     def zoom(self, factor, inplace=False):
@@ -1485,19 +1124,6 @@ class Surface(CachedInstance):
     # Functional parameters ############################################################################################
 
     @batch_method('parameter')
-    @cache
-    def get_abbott_firestone_curve(self):
-        """
-        Instantiates and returns an AbbottFirestoneCurve object. LRU cache is used to return the same object with
-        every function call.
-
-        Returns
-        -------
-        AbbottFirestoneCurve
-        """
-        return AbbottFirestoneCurve(self)
-
-    @batch_method('parameter')
     def Sk(self):
         """
         Calculates Sk in µm.
@@ -1506,7 +1132,7 @@ class Surface(CachedInstance):
         -------
         Sk : float
         """
-        return self.get_abbott_firestone_curve().Sk()
+        return self.get_abbott_firestone_curve().k()
 
     @batch_method('parameter')
     def Spk(self):
@@ -1517,7 +1143,7 @@ class Surface(CachedInstance):
         -------
         Spk : float
         """
-        return self.get_abbott_firestone_curve().Spk()
+        return self.get_abbott_firestone_curve().pk()
 
     @batch_method('parameter')
     def Svk(self):
@@ -1528,7 +1154,7 @@ class Surface(CachedInstance):
         -------
         Svk : float
         """
-        return self.get_abbott_firestone_curve().Svk()
+        return self.get_abbott_firestone_curve().vk()
 
     @batch_method('parameter')
     def Smr1(self):
@@ -1539,7 +1165,7 @@ class Surface(CachedInstance):
         -------
         Smr1 : float
         """
-        return self.get_abbott_firestone_curve().Smr1()
+        return self.get_abbott_firestone_curve().mr1()
 
     @batch_method('parameter')
     def Smr2(self):
@@ -1550,7 +1176,7 @@ class Surface(CachedInstance):
         -------
         Smr2 : float
         """
-        return self.get_abbott_firestone_curve().Smr2()
+        return self.get_abbott_firestone_curve().mr2()
 
     @batch_method('parameter')
     def Smr(self, c):
@@ -1566,7 +1192,7 @@ class Surface(CachedInstance):
         -------
         areal material ratio : float
         """
-        return self.get_abbott_firestone_curve().Smr(c)
+        return self.get_abbott_firestone_curve().mr(c)
 
     @batch_method('parameter')
     def Smc(self, mr):
@@ -1582,7 +1208,7 @@ class Surface(CachedInstance):
         -------
         height : float
         """
-        return self.get_abbott_firestone_curve().Smc(mr)
+        return self.get_abbott_firestone_curve().mc(mr)
 
     @batch_method('parameter')
     def Sxp(self, p=2.5, q=50):
@@ -1602,77 +1228,6 @@ class Surface(CachedInstance):
         Height difference: float
         """
         return self.Smc(p) - self.Smc(q)
-
-    # Functional volume parameters ######################################################################################
-    @batch_method('parameter')
-    def Vmp(self, p=10):
-        """
-        Calculates the peak material volume at p. The default value of p is 10% according to ISO-25178-3.
-
-        Parameters
-        ----------
-        p : float, default 10.
-            areal material ratio in %.
-
-        Returns
-        -------
-        Vmp : float
-        """
-        return self.get_abbott_firestone_curve().Vmp(p=p)
-
-    @batch_method('parameter')
-    def Vmc(self, p=10, q=80):
-        """
-        Calculates the difference in material volume between the p and q material ratio. The default value of p and q
-        are is 10% and 80%, respectively, according to ISO-25178-3.
-
-        Parameters
-        ----------
-        p : float, default 10.
-            areal material ratio in %.
-        q : float, default 80.
-            areal material ratio in %.
-
-        Returns
-        -------
-        Vmc : float
-        """
-        return self.get_abbott_firestone_curve().Vmc(p=p, q=q)
-
-    @batch_method('parameter')
-    def Vvv(self, q=80):
-        """
-        Calculates the dale volume at p material ratio. The default value of p is 80% according to ISO-25178-3.
-
-        Parameters
-        ----------
-        p : float, default 80.
-            areal material ratio in %.
-
-        Returns
-        -------
-        Vvv : float
-        """
-        return self.get_abbott_firestone_curve().Vvv(q=q)
-
-    @batch_method('parameter')
-    def Vvc(self, p=10, q=80):
-        """
-        Calculates the difference in void volume between p and q material ratio. The default value of p and q
-        are is 10% and 80%, respectively, according to ISO-25178-3.
-
-        Parameters
-        ----------
-        p : float, default 10.
-            areal material ratio in %.
-        q : float, default 80.
-            areal material ratio in %.
-
-        Returns
-        -------
-        Vvc : float
-        """
-        return self.get_abbott_firestone_curve().Vvc(p=p, q=q)
 
     # Misc parameters ##################################################################################################
 
@@ -2011,78 +1566,7 @@ class Surface(CachedInstance):
         """
         return self.depth()[0] / self.period()
 
-    def roughness_parameters(self, parameters: list[str] = None) -> dict[str: float]:
-        """
-        Computes multiple roughness parameters at once and returns them in a dictionary.
-
-        Examples
-        --------
-
-        >>> surface.roughness_parameters(['Sa', 'Sq', 'Sz'])
-        {'Sa': 1.23, 'Sq': 1.87, 'Sz': 2.51}
-
-        Parameters
-        ----------
-        parameters : list-like[str], default None
-            List-like object of parameters to evaluate. If None, all available parameters are evaluated.
-
-        Returns
-        -------
-        parameters : dict[str: float]
-        """
-        if parameters is None:
-            parameters = self.ISO_PARAMETERS
-        results = dict()
-        for parameter in parameters:
-            if parameter in self.AVAILABLE_PARAMETERS:
-                results[parameter] = getattr(self, parameter)()
-            else:
-                raise ValueError(f'Parameter "{parameter}" is undefined.')
-        return results
-
     # Plotting #########################################################################################################
-    def plot_abbott_curve(self, nbars: int = 20, save_to=None):
-        """
-        Plots the Abbott-Firestone curve.
-
-        Parameters
-        ----------
-        nbars : int
-            Number of bars to display for the material density
-        save_to : str | pathlib.Path | None
-            Path to where the plot should be saved.
-
-        Returns
-        -------
-        plt.Figure, tuple[plt.Axes]
-        """
-        abbott_curve = self.get_abbott_firestone_curve()
-        fig, axs = abbott_curve.plot(nbars=nbars)
-        if save_to:
-            fig.savefig(save_to, dpi=300, bbox_inches='tight')
-        return fig, axs
-
-    def plot_functional_parameter_study(self, save_to=None):
-        """
-        Plots the Abbott-Firestone curve.
-
-        Parameters
-        ----------
-        nbars : int
-            Number of bars to display for the material density
-        save_to : str | pathlib.Path | None
-            Path to where the plot should be saved.
-
-        Returns
-        -------
-        plt.Figure, plt.Axes
-        """
-        abbott_curve = self.get_abbott_firestone_curve()
-        fig, ax = abbott_curve.visual_parameter_study()
-        if save_to:
-            fig.savefig(save_to, dpi=300, bbox_inches='tight')
-        return fig, ax
-
     def plot_autocorrelation(self, ax=None, cmap='jet', show_cbar=True, save_to=None):
         """
         Plots the Autocorrelation function.

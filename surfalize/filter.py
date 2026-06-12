@@ -50,52 +50,52 @@ class GaussianFilter:
         """
         return cutoff / np.pi * np.sqrt(np.log(2) / 2)
 
-    def __call__(self, surface, inplace=False):
+    def __call__(self, topography, inplace=False):
         """
-        Applied the filter to a Surface object
+        Applies the filter to a Surface or Profile object.
 
         Parameters
         ----------
-        surface : Surface
-            The surface object on which to apply the filter.
+        topography : Surface | Profile
+            The surface or profile object on which to apply the filter.
         inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
-            objects will be returned.
+            If False, create and return new object with processed data. If True, changes data inplace and
+            return self.
 
         Returns
         -------
-        filtered_surface : Surface
+        filtered_topography : Surface | Profile
         """
-        return self.apply(surface, inplace=inplace)
+        return self.apply(topography, inplace=inplace)
 
-    def apply(self, surface, inplace=False):
+    def apply(self, topography, inplace=False):
         """
-        Applied the filter to a Surface object.
+        Applies the filter to a Surface or Profile object.
 
         Parameters
         ----------
-        surface : Surface
-            The surface object on which to apply the filter.
+        topography : Surface | Profile
+            The surface or profile object on which to apply the filter.
         inplace : bool, default False
-            If False, create and return new Surface object with processed data. If True, changes data inplace and
-            return self. Inplace operation is not compatible with mode='both' argument, since two surfalize.Surface
-            objects will be returned.
+            If False, create and return new object with processed data. If True, changes data inplace and
+            return self.
 
         Returns
         -------
-        filtered_surface : Surface
+        filtered_topography : Surface | Profile
         """
-        cutoff_x_px = self._cutoff / surface.step_x
-        cutoff_y_px = self._cutoff / surface.step_y
-        sigma_x = self.sigma(cutoff_x_px)
-        sigma_y = self.sigma(cutoff_y_px)
-        data = ndimage.gaussian_filter(surface.data, (sigma_y, sigma_y), mode=self._endeffect_mode)
+        if topography.data.ndim == 1:
+            sigma = self.sigma(self._cutoff / topography.step)
+        else:
+            sigma_x = self.sigma(self._cutoff / topography.step_x)
+            sigma_y = self.sigma(self._cutoff / topography.step_y)
+            sigma = (sigma_y, sigma_x)
+        data = ndimage.gaussian_filter(topography.data, sigma, mode=self._endeffect_mode)
         if self._filter_type == 'highpass':
-            data = surface.data - data
+            data = topography.data - data
         if inplace:
-            surface._set_data(data=data)
-            return surface
-        # We use surface.__class__ to obtain the class without needing to import it
+            topography._set_data(data=data)
+            return topography
+        # We use topography._with_data to construct the new object without needing to import its class
         # This mitigates a circular import conflict
-        return surface.__class__(data, surface.step_x, surface.step_y)
+        return topography._with_data(data)
