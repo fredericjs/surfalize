@@ -401,6 +401,23 @@ class FileHandler:
         return set(cls._writers.keys())
 
     @classmethod
+    def get_reader_suffix_groups(cls):
+        """
+        Groups the supported read suffixes by their reader function. Since a single file format may be registered
+        under several suffixes (e.g. FITS as '.fits', '.fit' and '.fts') that all map to the same reader, this
+        returns one entry per actual format rather than per suffix.
+
+        Returns
+        -------
+        list[tuple[str]]
+            A list of suffix tuples, one tuple per unique reader function.
+        """
+        groups = {}
+        for suffix, reader in cls._readers_by_suffix.items():
+            groups.setdefault(reader, []).append(suffix)
+        return [tuple(sorted(suffixes)) for suffixes in groups.values()]
+
+    @classmethod
     def register_reader(cls, *, suffix, magic=None):
         def decorator(func):
             func._suffix = suffix
@@ -469,15 +486,18 @@ class FileHandler:
                     filehandle.seek(0, 0)
                     return reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
 
-        # Else, as a last resort, we try all available readers:
+        # Else, as a last resort, we try all available readers. We are only probing here and silently discard any
+        # reader that fails, so we also suppress any warnings the probed readers might emit on incompatible data.
         for reader_suffix, reader in self._readers_by_suffix.items():
             try:
-                with open_file_like(self.file, 'rb') as filehandle:
+                with open_file_like(self.file, 'rb') as filehandle, warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
                     result = reader(filehandle, read_image_layers=read_image_layers, encoding=encoding)
-                    warnings.warn(f'The file suffix indicates a file of type {self.file.suffix}. However, the file '
-                                  f'seems to actually be of type {reader_suffix}. Check if the file extensions is '
-                                  f'correct. The file was now loaded as {reader_suffix}.')
-                    return result
+                # The probing succeeded, so we emit the mismatch warning outside the suppression context
+                warnings.warn(f'The file suffix indicates a file of type {self.file.suffix}. However, the file '
+                              f'seems to actually be of type {reader_suffix}. Check if the file extensions is '
+                              f'correct. The file was now loaded as {reader_suffix}.')
+                return result
             except Exception:
                 pass
 

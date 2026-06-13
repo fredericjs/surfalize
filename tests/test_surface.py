@@ -92,7 +92,8 @@ def test_eq(surface):
     # A surface that is everywhere lower must not compare equal
     assert surface != surface - 1
     assert surface != surface + 1
-    assert surface != Surface(surface.data.copy(), surface.step_x * 2, surface.step_y)
+    # A surface with a different stepsize must not compare equal (scale both axes to avoid the unequal-pixel warning)
+    assert surface != Surface(surface.data.copy(), surface.step_x * 2, surface.step_y * 2)
 
 def test_rsub(surface):
     assert np.allclose((5 - surface).data, 5 - surface.data)

@@ -21,6 +21,11 @@
 - Fixed `Surface.__eq__` wrongly considering a surface equal to another surface with everywhere lower height values
 - Fixed `5 - surface` wrongly computing `surface - 5` due to incorrect `__rsub__` implementation
 - Importing surfalize no longer overrides the global warning formatting of the user's program
+- Added `FileHandler.get_reader_suffix_groups`, which groups read suffixes by their reader function so that formats
+  registered under multiple suffixes (e.g. FITS) are no longer reported as skipped in the test suite when only one
+  of their suffixes has a testfile
+- Reading a file by trying all available readers as a last resort no longer leaks warnings from the readers that are
+  speculatively probed and discarded
 ## v0.16.8
 - Fixed missing call of `on_file_complete` callback in single-threaded batch processing
 ## v0.16.7

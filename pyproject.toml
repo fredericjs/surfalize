@@ -75,6 +75,14 @@ all = [
 [project.scripts]
 surfalize = "surfalize.cli:cli"
 
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Several test files genuinely have slightly unequal pixel sizes in x and y, which the Surface constructor
+    # warns about by design. This is expected in the test suite, so we silence it here while keeping it active
+    # for real users.
+    "ignore:The surface has different pixel size in x and y:UserWarning",
+]
+
 [tool.setuptools]
 include-package-data = false
 

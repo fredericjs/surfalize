@@ -3,7 +3,7 @@ from pathlib import Path
 import io
 import numpy as np
 from surfalize import Surface
-from surfalize.file import supported_formats_read, supported_formats_write
+from surfalize.file import supported_formats_read, supported_formats_write, reader_suffix_groups
 
 module_path = Path(__file__).parent
 
@@ -22,18 +22,27 @@ def almost_equal(surface1, surface2):
 def testfile_dir():
     return module_path / 'test_files'
 
-@pytest.mark.parametrize('fileformat', supported_formats_read)
-def test_fileformat_reading_from_path(testfile_dir, fileformat):
-    files = list(testfile_dir.glob(f'*{fileformat}'))
+# A single format may be registered under several suffixes (e.g. FITS as '.fits', '.fit', '.fts') that all map to
+# the same reader. We therefore parametrize over format groups and consider a format tested if a testfile exists for
+# any one of its suffixes, so that the remaining suffixes do not show up as skipped.
+def _files_for_suffixes(testfile_dir, suffixes):
+    files = []
+    for suffix in suffixes:
+        files.extend(testfile_dir.glob(f'*{suffix}'))
+    return files
+
+@pytest.mark.parametrize('suffixes', reader_suffix_groups, ids=lambda s: ','.join(s))
+def test_fileformat_reading_from_path(testfile_dir, suffixes):
+    files = _files_for_suffixes(testfile_dir, suffixes)
     if not files:
         pytest.skip('No testfiles found.')
     for file in files:
         Surface.load(file, read_image_layers=False)
         Surface.load(file, read_image_layers=True)
 
-@pytest.mark.parametrize('fileformat', supported_formats_read)
-def test_fileformat_reading_from_buffer(testfile_dir, fileformat):
-    files = list(testfile_dir.glob(f'*{fileformat}'))
+@pytest.mark.parametrize('suffixes', reader_suffix_groups, ids=lambda s: ','.join(s))
+def test_fileformat_reading_from_buffer(testfile_dir, suffixes):
+    files = _files_for_suffixes(testfile_dir, suffixes)
     if not files:
         pytest.skip('No testfiles found.')
     for file in files:

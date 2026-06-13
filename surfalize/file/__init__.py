@@ -11,3 +11,4 @@ from .common import FileHandler
 
 supported_formats_read = FileHandler.get_supported_formats_read()
 supported_formats_write = FileHandler.get_supported_formats_write()
+reader_suffix_groups = FileHandler.get_reader_suffix_groups()
