@@ -22,8 +22,7 @@ The authors make no guarantees for the correctness of any results obtained using
 and may introduce changes to both implementation details and public API at any point in time. Any results should be validated against established 
 software to verify their correctness, especially when they are intended to be used for scientific publications. 
 
-Some parts of the package are more mature and some are in early development stage. Currently, Profile roughness evaluation
-is undocumented and not conforming to ISO standards.
+Some parts of the package are more mature and some are in early development stage.
 
 ## Cite this library
 
@@ -73,7 +72,8 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 
 ## Supported roughness parameters
 
-This package aims to implement all parameters defined in ISO 25178. Currently, the following parameters are supported:
+This package aims to implement all field parameters defined in ISO 25178-2:2021. Currently, the following parameters
+are supported:
 
 | Category            | Parameter       | Full name                         | Validated against                  |
 |---------------------|-----------------|-----------------------------------|------------------------------------|
@@ -88,21 +88,52 @@ This package aims to implement all parameters defined in ISO 25178. Currently, t
 |                     | Sdq             | Root mean square gradient         | MountainsMap                       |
 | Spatial             | Sal             | Autocorrelation length            | -                                  |
 |                     | Str             | Texture aspect ratio              | -                                  |
+|                     | Std             | Texture direction                 | -                                  |
+|                     | Ssw             | Dominant spatial wavelength       | -                                  |
 | Functional          | Sk              | Core roughness depth              | MountainsMap                       |
 |                     | Spk             | Reduced peak height               | MountainsMap                       |
 |                     | Svk             | Reduced dale height               | MountainsMap                       |
-|                     | Smr1            | Material ratio 1                  | MountainsMap                       |
-|                     | Smr2            | Material ratio 2                  | MountainsMap                       |
+|                     | Spkx            | Maximum peak height               | -                                  |
+|                     | Svkx            | Maximum pit depth                 | -                                  |
+|                     | Sak1            | Area of the hills                 | -                                  |
+|                     | Sak2            | Area of the dales                 | -                                  |
+|                     | Smr1 / Smrk1    | Material ratio 1                  | MountainsMap                       |
+|                     | Smr2 / Smrk2    | Material ratio 2                  | MountainsMap                       |
+|                     | Smr(c)          | Areal material ratio              | MountainsMap                       |
+|                     | Smc(mr)         | Inverse areal material ratio      | MountainsMap                       |
 |                     | Sxp             | Peak extreme height               | MountainsMap                       |
+|                     | Sdc             | Material ratio height difference  | -                                  |
 | Functional (volume) | Vmp             | Peak material volume              | MountainsMap                       |
 |                     | Vmc             | Core material volume              | MountainsMap                       |
 |                     | Vvv             | Dale void volume                  | MountainsMap                       |
 |                     | Vvc             | Core void volume                  | MountainsMap                       |
+|                     | Vm(p)           | Material volume                   | -                                  |
+|                     | Vv(p)           | Void volume                       | -                                  |
 
 <sup>1</sup> Per default, Sdr calculation uses the algorithm proposed by ISO 25178 and also used by MountainsMap
 By keyword argument, the Gwyddion algorithm can be used instead.\
 <sup>2</sup> Gwyddion does not support Sdr calculation directly, but calculates surface area and projected
 area. 
+
+## Supported profile roughness parameters
+
+The `Profile` class supports the calculation of profile roughness parameters. Profiles can be extracted from a
+`Surface` (e.g. via `get_horizontal_profile`, `get_vertical_profile` or `get_oblique_profile`) or constructed
+directly. The peak/valley parameters Rp, Rv and Rz are evaluated per sampling length and averaged over the evaluation
+length according to ISO 4287, controlled by the `n_sections` argument (default 5).
+
+| Category            | Parameter                       | Full name                          |
+|---------------------|---------------------------------|------------------------------------|
+| Height              | Ra, Rq, Rp, Rv, Rz, Rt          | Amplitude parameters               |
+|                     | Rsk, Rku                        | Skewness, kurtosis                 |
+| Hybrid              | Rdq                             | Root mean square slope             |
+| Functional          | Rk, Rpk, Rvk                    | Core / reduced peak / reduced dale |
+|                     | Rpkx, Rvkx                      | Maximum peak height / pit depth    |
+|                     | Rak1, Rak2                      | Area of the hills / dales          |
+|                     | Rmr1 / Rmrk1, Rmr2 / Rmrk2      | Material ratios                    |
+|                     | Rmr(c), Rmc(mr)                 | (Inverse) material ratio           |
+|                     | Rxp, Rdc                        | Extreme height / ratio height diff |
+| Functional (volume) | Vmp, Vmc, Vvv, Vvc, Vm(p), Vv(p)| Volume parameters                  |
 
 ## Supported parameters of 1d-periodic surfaces
 
