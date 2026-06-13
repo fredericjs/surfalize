@@ -34,6 +34,9 @@
   is deterministic and removes the heaviest transitive dependency.
 - Added analytic test anchors for height parameters that validate `Surface` and `Profile` against the closed-form
   values of a pure sinusoid, complementing the existing golden-value regression tests.
+- Fixed `test_from_fit` depending on the global numpy RNG state and test execution order (it failed when the math
+  utils tests were run in isolation). It now uses a local generator and asserts recovery of the true sinusoid
+  parameters instead of a value that depended on execution order.
 - Fixed `Surface.__eq__` wrongly comparing equal when one surface has a non-measured point (NaN) where the other has a
   finite value. NaN positions must now match between both surfaces and the remaining finite values are compared within
   tolerance.

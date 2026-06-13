@@ -3,8 +3,6 @@ from numpy.testing import assert_array_almost_equal
 import pytest
 from surfalize.mathutils import argclosest, closest, interp1d, _sinusoid, Sinusoid, otsu_threshold
 
-np.random.seed(0)
-
 @pytest.fixture
 def array():
     return np.array([1, 2, 3, 4, 5])
@@ -69,11 +67,16 @@ class TestSinusoid:
         assert self.sinusoid.first_extremum() == pytest.approx(0.5)
 
     def test_from_fit(self):
+        # Use a local generator so the test is independent of the global RNG state and test execution order.
+        # The fit must recover the true parameters of the generating sinusoid within a tolerance set by the noise.
+        rng = np.random.default_rng(0)
         a, p, x0, y0 = 5, 0.5, 1, -0.5
         xdata = np.linspace(0, 10, 1000)
-        ydata = a * np.sin((xdata - x0) / p * 2 * np.pi) + y0 + np.random.normal(size=xdata.size)
+        ydata = a * np.sin((xdata - x0) / p * 2 * np.pi) + y0 + rng.normal(size=xdata.size)
         sinusoid = Sinusoid.from_fit(xdata, ydata, infer_p0=True)
-        assert sinusoid.amplitude == pytest.approx(4.945544, abs=0.01)
-        assert sinusoid.period == pytest.approx(0.5, abs=0.1)
-        assert sinusoid.x0 == pytest.approx(0, abs=0.1)
-        assert sinusoid.y0 == pytest.approx(-0.54, abs=0.1)
+        assert sinusoid.amplitude == pytest.approx(a, abs=0.2)
+        assert sinusoid.period == pytest.approx(p, abs=0.05)
+        assert sinusoid.y0 == pytest.approx(y0, abs=0.1)
+        # x0 is only defined modulo the period; the true offset x0=1 is equivalent to 0 for p=0.5
+        phase = sinusoid.x0 % sinusoid.period
+        assert min(phase, sinusoid.period - phase) == pytest.approx(0, abs=0.05)
