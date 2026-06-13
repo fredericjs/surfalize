@@ -889,7 +889,7 @@ class Batch:
 
         >>> def remove_specific_outliers(surface):
         ...    outlier_value = 1001
-        ...    surface.data[surface.data == outlier_value] = np.nan
+        ...    surface[surface.data == outlier_value] = np.nan
 
         Parameters
         ----------

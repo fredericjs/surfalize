@@ -112,18 +112,35 @@ class Surface(BaseTopography):
                 'The surface has different pixel size in x and y. Some methods might result in incorrect values.'
             )
 
-        self.data = height_data
         self.step_x = step_x
         self.step_y = step_y
+        # Assigning through the data property stores the array, recomputes width_um/height_um and clears the cache
+        self.data = height_data
 
         self.metadata = metadata if metadata is not None else {}
         self.image_layers = image_layers if image_layers is not None else {}
 
-        self.width_um = (height_data.shape[1] - 1) * step_x
-        self.height_um = (height_data.shape[0] - 1) * step_y
-
     def __repr__(self):
         return f'{self.__class__.__name__}({self.width_um:.2f} x {self.height_um:.2f} µm²)'
+
+    @property
+    def data(self):
+        """
+        The 2d height data array. The returned array is a read-only view: mutating it in place
+        (e.g. ``surface.data[i, j] = x``) is disallowed because it would not invalidate the cached
+        roughness parameters. To edit values in place use ``surface[i, j] = x``, which clears the cache.
+        Assigning a new array (``surface.data = new_array``) recomputes width_um/height_um and clears the cache.
+        """
+        view = self._data.view()
+        view.flags.writeable = False
+        return view
+
+    @data.setter
+    def data(self, value):
+        self._data = value
+        self.width_um = (value.shape[1] - 1) * self.step_x
+        self.height_um = (value.shape[0] - 1) * self.step_y
+        self.clear_cache()
 
     @property
     def size(self):
@@ -244,11 +261,7 @@ class Surface(BaseTopography):
                 step_y = item[0].step * self.step_y
             if isinstance(item[1], slice) and item[1].step is not None:
                 step_x = item[1].step * self.step_x
-        return Surface(self.data.__getitem__(item), step_x, step_y)
-
-    def __setitem__(self, key, value):
-        self.data.__setitem__(key, value)
-        self.clear_cache()
+        return Surface(self._data.__getitem__(item), step_x, step_y)
 
     @classmethod
     def load(cls, path_or_buffer, format=None, encoding='auto', read_image_layers=False):

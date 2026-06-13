@@ -61,14 +61,32 @@ class Profile(BaseTopography):
 
     def __init__(self, height_data, step, length_um=None):
         super().__init__()  # Initialize cached instance
-        self.data = height_data
         self.step = step
-        if length_um is None:
-            length_um = (height_data.shape[0] - 1) * step
-        self.length_um = length_um
+        # Assigning through the data property stores the array, recomputes length_um and clears the cache
+        self.data = height_data
+        if length_um is not None:
+            self.length_um = length_um
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.length_um:.2f} µm)'
+
+    @property
+    def data(self):
+        """
+        The 1d height data array. The returned array is a read-only view: mutating it in place
+        (e.g. ``profile.data[i] = x``) is disallowed because it would not invalidate the cached
+        roughness parameters. Assign a new array (``profile.data = new_array``) to replace the data, which
+        recomputes length_um and clears the cache.
+        """
+        view = self._data.view()
+        view.flags.writeable = False
+        return view
+
+    @data.setter
+    def data(self, value):
+        self._data = value
+        self.length_um = (value.shape[0] - 1) * self.step
+        self.clear_cache()
 
     @property
     def size(self):

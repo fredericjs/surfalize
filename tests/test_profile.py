@@ -203,8 +203,27 @@ def test_size(profile):
 
 def test_has_missing_points(profile):
     assert profile.has_missing_points == False
-    profile.data[0] = np.nan
+    profile[0] = np.nan
     assert profile.has_missing_points == True
+
+def test_data_is_read_only(profile):
+    with pytest.raises(ValueError):
+        profile.data[0] = 5
+
+def test_setitem_clears_cache(profile):
+    ra_before = profile.Ra()
+    new_data = np.linspace(-1, 1, profile.size)
+    profile[:] = new_data
+    assert profile.Ra() != ra_before
+    assert profile.Ra() == pytest.approx(Profile(new_data, profile.step).Ra())
+
+def test_data_setter_clears_cache_and_recomputes_length(profile):
+    ra_before = profile.Ra()
+    new_data = np.linspace(-1, 1, profile.size)
+    profile.data = new_data
+    assert profile.Ra() != ra_before
+    assert profile.Ra() == pytest.approx(Profile(new_data, profile.step).Ra())
+    assert profile.length_um == pytest.approx((profile.size - 1) * profile.step)
 
 # Analytic anchors ####################################################################################################
 # A pure sinusoid z(x) = a*sin(2*pi*x/lambda) sampled over an integer number of periods has closed-form roughness

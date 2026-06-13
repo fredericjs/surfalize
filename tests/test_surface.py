@@ -55,10 +55,29 @@ def test_detrend_polynomial(data):
 def test_has_missing_points(data):
     surface = Surface(data, 1, 1)
     assert surface.has_missing_points == False
-    surface.data[0,0] = np.nan
+    surface[0, 0] = np.nan
     assert surface.has_missing_points == True
-    surface.data[0, 0] = None
+    surface[0, 0] = None
     assert surface.has_missing_points == True
+
+def test_data_is_read_only(surface):
+    with pytest.raises(ValueError):
+        surface.data[0, 0] = 5
+
+def test_setitem_clears_cache(surface):
+    sa_before = surface.Sa()
+    new_data = np.tile(np.linspace(-1, 1, surface.size.x), (surface.size.y, 1))
+    surface[:, :] = new_data
+    assert surface.Sa() != sa_before
+    assert surface.Sa() == pytest.approx(Surface(new_data, surface.step_x, surface.step_y).Sa())
+
+def test_data_setter_clears_cache_and_recomputes_dims(surface):
+    sa_before = surface.Sa()
+    new_data = np.tile(np.linspace(-1, 1, surface.size.x), (surface.size.y, 1))
+    surface.data = new_data
+    assert surface.Sa() != sa_before
+    assert surface.Sa() == pytest.approx(Surface(new_data, surface.step_x, surface.step_y).Sa())
+    assert surface.width_um == pytest.approx((surface.size.x - 1) * surface.step_x)
 
 def test_zero(surface):
     assert surface.zero().data.min() == pytest.approx(0)

@@ -125,6 +125,14 @@ class BaseTopography(CachedInstance):
         """
         self.show()
 
+    def __setitem__(self, key, value):
+        """
+        Blessed in-place edit path. Mutates the underlying height data directly and invalidates the cache, since the
+        data property itself returns a read-only view to prevent silently stale cached parameters.
+        """
+        self._data[key] = value
+        self.clear_cache()
+
     @property
     def has_missing_points(self):
         """
