@@ -104,6 +104,38 @@ def test_homogeneity(surface):
     assert surface.homogeneity() == pytest.approx(0.9985, abs=EPSILON)
 
 
+# Orientation and texture direction ###################################################################################
+
+@pytest.fixture
+def grooved_surface():
+    # Sinusoidal grooves with wavefronts rotated by 30 degrees
+    theta = np.deg2rad(30)
+    n = 400
+    period_px = 40
+    x, y = np.meshgrid(np.arange(n), np.arange(n))
+    z = np.sin(2 * np.pi * (x * np.cos(theta) + y * np.sin(theta)) / period_px)
+    return Surface(z, 0.1, 0.1)
+
+def test_orientation_fft(grooved_surface):
+    # The fft method recovers the groove angle (magnitude) within a few degrees
+    assert abs(grooved_surface.orientation(method='fft')) == pytest.approx(30, abs=2)
+
+def test_orientation_fft_refined(grooved_surface):
+    # The refined method (the default) recovers the angle more precisely
+    assert abs(grooved_surface.orientation(method='fft_refined')) == pytest.approx(30, abs=1)
+
+def test_orientation_default_is_refined(grooved_surface):
+    assert grooved_surface.orientation() == grooved_surface.orientation(method='fft_refined')
+
+def test_orientation_invalid_method(grooved_surface):
+    with pytest.raises(ValueError):
+        grooved_surface.orientation(method='nonsense')
+
+def test_Std(grooved_surface):
+    # Texture direction is the angle of maximum angular amplitude density
+    assert grooved_surface.Std() == pytest.approx(30, abs=2)
+
+
 # New ISO 25178-2:2021 parameters #####################################################################################
 
 def test_Spkx(surface):

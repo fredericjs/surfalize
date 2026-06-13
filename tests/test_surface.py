@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from numpy.testing import assert_array_almost_equal
-from surfalize import Surface
+from surfalize import Surface, Profile
 
 target = {
     'level':
@@ -157,6 +157,95 @@ def test_stepheight_mask_segments_two_levels(stepheight_surface):
 def test_cavity_volume(stepheight_surface):
     # Cavity is 100x100 px at depth 5 -> volume approx 100*100*5
     assert stepheight_surface.cavity_volume() == pytest.approx(100 * 100 * 5, rel=0.02)
+
+def test_stepheight_level(stepheight_surface):
+    # Add a tilt that stepheight_level should remove based on the upper-level plane
+    yy, xx = np.mgrid[0:stepheight_surface.size.y, 0:stepheight_surface.size.x]
+    tilted = Surface(stepheight_surface.data + 0.01 * xx + 0.02 * yy,
+                     stepheight_surface.step_x, stepheight_surface.step_y)
+    leveled = tilted.stepheight_level()
+    assert isinstance(leveled, Surface)
+    # The upper level must become flat (its tilt removed) while the step is preserved
+    mask = leveled._stepheight_get_mask()
+    assert leveled.data[mask].std() < 0.05
+    assert leveled.stepheight() == pytest.approx(5.0, abs=0.05)
+
+# Geometric operations ################################################################################################
+
+def test_crop(surface):
+    cropped = surface.crop((10, 50, 5, 25))
+    assert cropped.width_um == pytest.approx(40)
+    assert cropped.height_um == pytest.approx(20)
+    with pytest.raises(ValueError):
+        surface.crop((-1, 50, 0, 10))
+
+def test_crop_inplace(surface):
+    target = surface.crop((10, 50, 5, 25))
+    surface.crop((10, 50, 5, 25), inplace=True)
+    assert surface == target
+
+def test_zoom(surface):
+    zoomed = surface.zoom(2)
+    assert zoomed.width_um == pytest.approx(surface.width_um / 2, abs=surface.step_x)
+    assert zoomed.height_um == pytest.approx(surface.height_um / 2, abs=surface.step_y)
+
+def test_getitem(surface):
+    sub = surface[0:50, 0:100]
+    assert sub.size.y == 50
+    assert sub.size.x == 100
+    assert sub.step_x == surface.step_x
+    assert sub.step_y == surface.step_y
+
+def test_getitem_step_scales_stepsize(surface):
+    sub = surface[::2, ::2]
+    assert sub.step_x == pytest.approx(2 * surface.step_x)
+    assert sub.step_y == pytest.approx(2 * surface.step_y)
+
+def test_rotate(surface):
+    rotated = surface.rotate(30)
+    assert isinstance(rotated, Surface)
+    # Rotating and cropping to the inscribed rectangle reduces the area
+    assert rotated.size.x * rotated.size.y < surface.size.x * surface.size.y
+    assert not rotated.has_missing_points
+
+@pytest.fixture
+def grooved_surface():
+    # Sinusoidal grooves with wavefronts rotated by 30 degrees
+    theta = np.deg2rad(30)
+    n = 400
+    period_px = 40
+    x, y = np.meshgrid(np.arange(n), np.arange(n))
+    z = np.sin(2 * np.pi * (x * np.cos(theta) + y * np.sin(theta)) / period_px)
+    return Surface(z, 0.1, 0.1)
+
+def test_align(grooved_surface):
+    aligned = grooved_surface.align(axis='y')
+    assert isinstance(aligned, Surface)
+    # After aligning to the y-axis the dominant texture is vertical -> orientation near 0
+    assert aligned.orientation(method='fft') == pytest.approx(0, abs=2)
+
+# Profile extraction ##################################################################################################
+
+def test_get_horizontal_profile(surface):
+    profile = surface.get_horizontal_profile(surface.height_um / 2)
+    assert isinstance(profile, Profile)
+    assert profile.length_um == pytest.approx(surface.width_um)
+    assert profile.size == surface.size.x
+
+def test_get_vertical_profile(surface):
+    profile = surface.get_vertical_profile(surface.width_um / 2)
+    assert isinstance(profile, Profile)
+    assert profile.length_um == pytest.approx(surface.height_um)
+    assert profile.size == surface.size.y
+
+def test_get_oblique_profile(surface):
+    profile = surface.get_oblique_profile(0, 0, surface.width_um, surface.height_um)
+    assert isinstance(profile, Profile)
+    assert profile.length_um == pytest.approx(np.hypot(surface.width_um, surface.height_um), rel=0.02)
+
+def test_get_horizontal_profile_out_of_bounds(surface):
+    with pytest.raises(ValueError):
+        surface.get_horizontal_profile(surface.height_um + 1)
 
 def test_fill_nonmeasured(noisy_surface):
     surface_with_missing_points = noisy_surface.remove_outliers()
