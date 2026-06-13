@@ -243,7 +243,12 @@ class Surface(BaseTopography):
             return False
         if self.step_x != other.step_x or self.step_y != other.step_y or self.size != other.size:
             return False
-        if np.any(np.abs(self.data - other.data) > 1e-10):
+        # Non-measured points (NaN) must be located at the same positions in both surfaces. Comparing them directly
+        # would not work, since any comparison involving NaN evaluates to False and would wrongly mask a difference.
+        nan_mask = np.isnan(self.data)
+        if not np.array_equal(nan_mask, np.isnan(other.data)):
+            return False
+        if np.any(np.abs(self.data[~nan_mask] - other.data[~nan_mask]) > 1e-10):
             return False
         return True
 

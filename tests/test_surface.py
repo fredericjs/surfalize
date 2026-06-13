@@ -118,6 +118,23 @@ def test_rsub(surface):
     assert np.allclose((5 - surface).data, 5 - surface.data)
     assert np.allclose((surface - 5).data, surface.data - 5)
 
+def test_eq_nan_handling(surface):
+    # A NaN where the other surface has a finite value must not compare equal
+    data = surface.data.copy()
+    data[0, 0] = np.nan
+    with_nan = Surface(data, surface.step_x, surface.step_y)
+    assert surface != with_nan
+    # Two surfaces with NaN at the same position and identical finite values compare equal
+    data2 = surface.data.copy()
+    data2[0, 0] = np.nan
+    with_nan2 = Surface(data2, surface.step_x, surface.step_y)
+    assert with_nan == with_nan2
+    # A NaN at a different position must not compare equal
+    data3 = surface.data.copy()
+    data3[0, 1] = np.nan
+    with_nan3 = Surface(data3, surface.step_x, surface.step_y)
+    assert with_nan != with_nan3
+
 @pytest.fixture
 def stepheight_surface():
     # Flat upper surface at height 5 with a central rectangular cavity at height 0

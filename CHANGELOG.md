@@ -34,6 +34,9 @@
   is deterministic and removes the heaviest transitive dependency.
 - Added analytic test anchors for height parameters that validate `Surface` and `Profile` against the closed-form
   values of a pure sinusoid, complementing the existing golden-value regression tests.
+- Fixed `Surface.__eq__` wrongly comparing equal when one surface has a non-measured point (NaN) where the other has a
+  finite value. NaN positions must now match between both surfaces and the remaining finite values are compared within
+  tolerance.
 - `Surface.data` and `Profile.data` are now properties that return a read-only view of the height data. This prevents
   silently stale cached roughness parameters from in-place mutation (`surface.data[i, j] = x`). Use `surface[i, j] = x`
   for in-place edits (now available on `Profile` as well) or assign a new array via `surface.data = new_array`, both of
