@@ -205,3 +205,11 @@ def test_has_missing_points(profile):
     assert profile.has_missing_points == False
     profile.data[0] = np.nan
     assert profile.has_missing_points == True
+
+def test_available_parameters_are_callable():
+    # Guards against registry drift: every registered parameter name must resolve to a callable method on the class.
+    for name in Profile.AVAILABLE_PARAMETERS:
+        assert callable(getattr(Profile, name, None)), f'{name!r} is registered but not a callable method'
+
+def test_iso_parameters_subset_of_available():
+    assert set(Profile.ISO_PARAMETERS) <= set(Profile.AVAILABLE_PARAMETERS)

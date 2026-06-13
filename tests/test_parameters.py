@@ -108,3 +108,13 @@ def test_size(surface):
     size = surface.size
     assert size.x == surface.data.shape[1]
     assert size.y == surface.data.shape[0]
+
+
+def test_available_parameters_are_callable():
+    # Guards against registry drift: every registered parameter name must resolve to a callable method on the class.
+    for name in Surface.AVAILABLE_PARAMETERS:
+        assert callable(getattr(Surface, name, None)), f'{name!r} is registered but not a callable method'
+
+
+def test_iso_parameters_subset_of_available():
+    assert set(Surface.ISO_PARAMETERS) <= set(Surface.AVAILABLE_PARAMETERS)

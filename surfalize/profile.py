@@ -53,7 +53,9 @@ class Profile(BaseTopography):
     """
     ISO_PARAMETERS = ('Ra', 'Rq', 'Rp', 'Rv', 'Rz', 'Rsk', 'Rku', 'Rdq', 'Rk', 'Rpk', 'Rvk', 'Rmr1', 'Rmr2', 'Rxp',
                       'Vmp', 'Vmc', 'Vvv', 'Vvc')
-    AVAILABLE_PARAMETERS = ISO_PARAMETERS + ('Rt', 'period')
+    # Non-standard parameters that are not defined by the profile roughness standards but can still be evaluated
+    NON_ISO_PARAMETERS = ('Rt', 'period')
+    AVAILABLE_PARAMETERS = ISO_PARAMETERS + NON_ISO_PARAMETERS
     # Number of sampling lengths in the evaluation length according to ISO 4287/4288
     DEFAULT_N_SECTIONS = 5
 

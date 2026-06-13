@@ -102,9 +102,9 @@ class Surface(BaseTopography):
     """
     ISO_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
                             'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc')
-    AVAILABLE_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
-                            'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'period', 'depth', 'aspect_ratio',
-                            'homogeneity', 'stepheight', 'cavity_volume')
+    # Non-standard parameters that are not defined by ISO 25178 but can still be evaluated
+    NON_ISO_PARAMETERS = ('period', 'depth', 'aspect_ratio', 'homogeneity', 'stepheight', 'cavity_volume')
+    AVAILABLE_PARAMETERS = ISO_PARAMETERS + NON_ISO_PARAMETERS
     
     def __init__(self, height_data, step_x, step_y, metadata=None, image_layers=None):
         super().__init__() # Initialize cached instance

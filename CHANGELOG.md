@@ -26,6 +26,9 @@
   of their suffixes has a testfile
 - Reading a file by trying all available readers as a last resort no longer leaks warnings from the readers that are
   speculatively probed and discarded
+- `AVAILABLE_PARAMETERS` is now derived from `ISO_PARAMETERS + NON_ISO_PARAMETERS` on both `Surface` and `Profile`,
+  removing the duplicated parameter names. A test now guards against registry drift by asserting every registered
+  parameter resolves to a callable method.
 ## v0.16.8
 - Fixed missing call of `on_file_complete` callback in single-threaded batch processing
 ## v0.16.7
