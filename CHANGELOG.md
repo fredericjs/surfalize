@@ -1,4 +1,8 @@
 ## v0.17.0
+- Extracted the Fourier transform into a dedicated `FourierTransform` class (`surfalize.fourier`), accessible via
+  `Surface.get_fourier_transform()`. The `period`, `period_x_y`, `orientation(method='fft')`, `Std`,
+  `plot_fourier_transform` and `plot_angular_power_spectrum` methods now delegate to it, so the FFT is computed once
+  per surface and shared instead of being recomputed in several places.
 - Added roughness parameter calculations to the `Profile` class: height parameters (`Ra`, `Rq`, `Rp`, `Rv`, `Rz`, `Rt`,
   `Rsk`, `Rku`), hybrid parameters (`Rdq`) and functional parameters derived from the Abbott-Firestone curve
   (`Rk`, `Rpk`, `Rvk`, `Rmr1`, `Rmr2`, `Rmr(c)`, `Rmc(mr)`, `Rxp`, `Vmp`, `Vmc`, `Vvv`, `Vvc`)

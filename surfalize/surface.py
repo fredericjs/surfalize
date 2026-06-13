@@ -20,8 +20,9 @@ import scipy.ndimage as ndimage
 from .file import FileHandler
 from .utils import approximately_equal
 from .cache import cache
-from .mathutils import Sinusoid, argclosest, trapezoid, otsu_threshold
+from .mathutils import Sinusoid, trapezoid, otsu_threshold
 from .autocorrelation import AutocorrelationFunction
+from .fourier import FourierTransform
 from .base import BaseTopography, batch_method, no_nonmeasured_points
 from .profile import Profile
 from .image import Image
@@ -746,44 +747,6 @@ class Surface(BaseTopography):
             angle += 90
         return self.rotate(-angle, inplace=inplace)
 
-    @cache
-    def _get_fourier_peak_dx_dy(self):
-        """
-        Calculates the distance in x and y in spatial frequency length units. The zero peak is avoided by
-        centering the data around the mean. This method is used by the period and orientation calculation.
-
-        Returns
-        -------
-        (dx, dy) : tuple[float,float]
-            Distance between largest Fourier peaks in x (dx) and in y (dy)
-        """
-        # Get rid of the zero peak in the DFT for data that features a substantial offset in the z-direction
-        # by centering the values around the mean
-        data = self.data - self.data.mean()
-        fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
-        N, M = self.size
-        # Calculate the frequency values for the x and y axes
-        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self.width_um / M))  # Frequency values for the x-axis
-        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self.height_um / N))  # Frequency values for the y-axis
-        # Sort in descending order by computing sorting indices
-        idx_y, idx_x = np.unravel_index(np.argsort(fft.flatten())[::-1], fft.shape)
-        # Transform into spatial frequencies in length units
-        # If this is not done, the computed angle will be wrong since the frequency per pixel
-        # resolution is different in x and y due to the different sampling length!
-        peaks_x = freq_x[idx_x]
-        peaks_y = freq_y[idx_y]
-        # Create peak tuples for ease of use
-        peak0 = (peaks_x[0], peaks_y[0])
-        peak1 = (peaks_x[1], peaks_y[1])
-        # Peak1 should always be to the right of peak0
-        if peak0[0] > peak1[0]:
-            peak0, peak1 = peak1, peak0
-
-        dx = peak1[0] - peak0[0]
-        dy = peak0[1] - peak1[1]
-
-        return dx, dy
-
     # Stepheight #######################################################################################################
 
     @cache
@@ -1091,6 +1054,19 @@ class Surface(BaseTopography):
 
     @batch_method('parameter')
     @cache
+    def get_fourier_transform(self):
+        """
+        Instantiates and returns a FourierTransform object. LRU cache is used to return the same object with
+        every function call.
+
+        Returns
+        -------
+        FourierTransform
+        """
+        return FourierTransform(self)
+
+    @batch_method('parameter')
+    @cache
     def Sal(self, s=0.2):
         """
         Calculates the autocorrelation length Sal. Sal represents the horizontal distance of the f_ACF(tx,ty)
@@ -1260,8 +1236,7 @@ class Surface(BaseTopography):
         -------
         float
         """
-        angles, spectrum = self._get_angular_power_spectrum(angle_step=angle_step)
-        return angles[np.argmax(spectrum)]
+        return self.get_fourier_transform().Std(angle_step=angle_step)
 
     # Non-standard parameters ##########################################################################################
 
@@ -1279,8 +1254,7 @@ class Surface(BaseTopography):
         -------
         period : float
         """
-        dx, dy = self._get_fourier_peak_dx_dy()
-        return 2/np.hypot(dx, dy)
+        return self.get_fourier_transform().period()
 
     @cache
     @no_nonmeasured_points
@@ -1292,28 +1266,7 @@ class Surface(BaseTopography):
         -------
         (periodx, periody) : tuple[float, float]
         """
-        dx, dy = self._get_fourier_peak_dx_dy()
-        periodx = np.inf if dx == 0 else np.abs(2/dx)
-        periody = np.inf if dy == 0 else np.abs(2/dy)
-        return periodx, periody
-
-    def _orientation_fft(self) -> float:
-        """
-        Computes the orientation angle of the dominant texture towards the vertical axis from the peaks of the Fourier
-        transform.
-
-        Returns
-        -------
-        angle : float
-            Angle of the dominant texture to the vertical axis
-        """
-        dx, dy = self._get_fourier_peak_dx_dy()
-        # Account for special cases
-        if dx == np.inf or dx == 0:
-            return 90
-        if dy == np.inf or dy == 0:
-            return 0
-        return np.rad2deg(np.arctan(dy / dx))
+        return self.get_fourier_transform().period_x_y()
 
     def _orientation_refined(self) -> float:
         """
@@ -1393,7 +1346,7 @@ class Surface(BaseTopography):
         if method == 'fft_refined':
             return self._orientation_refined()
         elif method == 'fft':
-            return self._orientation_fft()
+            return self.get_fourier_transform().orientation()
         raise ValueError('Invalid method specified.')
 
     @batch_method('parameter')
@@ -1643,102 +1596,16 @@ class Surface(BaseTopography):
         -------
         plt.Figure, plt.Axes
         """
-        if self.has_missing_points:
-            raise ValueError("Non-measured points must be filled before any other operation.")
-
-        if ax is None:
-            fig, ax = plt.subplots(dpi=150)
-        else:
-            fig = ax.figure
-            
-        N, M = self.size
-        data = self.data
-        if subtract_mean:
-            data = data - self.data.mean()
-
-        if hanning:
-            hann_window_y = np.hanning(N)
-            hann_window_x = np.hanning(M)
-            hann_window_2d = np.outer(hann_window_y, hann_window_x)
-            data = data * hann_window_2d
-
-        fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
-
-        # Calculate the frequency values for the x and y axes
-        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=self.width_um / M))  # Frequency values for the x-axis
-        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=self.height_um / N))  # Frequency values for the y-axis
-
-        if log:
-            # We add a small offset to avoid ln(0)
-            fft = np.log10(fft+ 1e-10)
-        ixmin = 0
-        ixmax = M-1
-        iymin = 0
-        iymax = N-1
-
-        if fxmax is not None:
-            ixmax = argclosest(fxmax, freq_x)
-            ixmin = M - ixmax
-            fft = fft[:,ixmin:ixmax+1]
-
-        if fymax is not None:
-            iymax = argclosest(fymax, freq_y)
-            iymin = N - iymax
-            fft = fft[iymin:iymax+1]
-
-        vmin = None
-        vmax = None
-        if adjust_colormap:
-            vmin = fft.mean()
-            vmax = 0.7 * fft.max()
-
-        ax.set_xlabel('Frequency [µm$^{-1}$]')
-        ax.set_ylabel('Frequency [µm$^{-1}$]')
-        extent = (freq_x[ixmin], freq_x[ixmax], freq_y[iymax], freq_y[iymin])
-
-        ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)
+        fig, ax = self.get_fourier_transform().plot(
+            ax=ax, log=log, hanning=hanning, subtract_mean=subtract_mean, fxmax=fxmax, fymax=fymax,
+            cmap=cmap, adjust_colormap=adjust_colormap
+        )
         if save_to:
             fig.savefig(save_to, dpi=300, bbox_inches='tight')
         return fig, ax
 
-    @cache
-    def _get_angular_power_spectrum(self, angle_step=1):
-        fft_surface = np.fft.fft2(self.data)
-        power_spectrum = np.abs(fft_surface) ** 2
-
-        freq_y, freq_x = np.fft.fftfreq(self.size.y), np.fft.fftfreq(self.size.x)
-        freq_y, freq_x = np.meshgrid(freq_y, freq_x, indexing='ij')
-
-        freq_theta = np.arctan2(freq_y, freq_x)
-
-        angles = np.deg2rad(np.arange(0, 180, angle_step))
-        spectrum = np.zeros_like(angles)
-
-        for i, angle in enumerate(angles):
-            mask = np.abs(freq_theta - angle) < np.deg2rad(angle_step / 2)
-            spectrum[i] = np.sum(power_spectrum[mask])
-
-        return np.arange(0, 180, angle_step), spectrum
-
     def plot_angular_power_spectrum(self, ax=None, angle_step=1):
-        if ax is None:
-            fig, ax = plt.subplots(dpi=150, subplot_kw={'projection': 'polar'})
-        else:
-            fig = ax.figure
-            rows, cols, start, stop = ax.get_subplotspec().get_geometry()
-            ax.remove()
-            ax = fig.add_subplot(rows, cols, start + 1, projection='polar')
-
-        angles, spectrum = self._get_angular_power_spectrum(angle_step=angle_step)
-
-        ax.plot(np.deg2rad(angles), spectrum, clip_on=False)
-        ax.set_theta_direction(1)
-        ax.set_theta_zero_location('E')
-        ax.set_thetamin(0)
-        ax.set_thetamax(180)
-        ax.set_yticks([])
-
-        return fig, ax
+        return self.get_fourier_transform().plot_angular_power_spectrum(ax=ax, angle_step=angle_step)
 
     def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, vmin=None, vmax=None,
                 show_cbar=None, save_to=None):
