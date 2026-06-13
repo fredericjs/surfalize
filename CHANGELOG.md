@@ -32,6 +32,8 @@
 - Removed the `scikit-learn` dependency. The two-level segmentation used by `stepheight`, `stepheight_level` and
   `cavity_volume` now uses a built-in Otsu threshold (`surfalize.mathutils.otsu_threshold`) instead of k-means, which
   is deterministic and removes the heaviest transitive dependency.
+- Added analytic test anchors for height parameters that validate `Surface` and `Profile` against the closed-form
+  values of a pure sinusoid, complementing the existing golden-value regression tests.
 ## v0.16.8
 - Fixed missing call of `on_file_complete` callback in single-threaded batch processing
 ## v0.16.7

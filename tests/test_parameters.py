@@ -110,6 +110,44 @@ def test_size(surface):
     assert size.y == surface.data.shape[0]
 
 
+# Analytic anchors ####################################################################################################
+# A surface that is sinusoidal along x and constant along y, z(x) = a*sin(2*pi*x/lambda), sampled over an integer
+# number of periods has closed-form areal height parameters, which anchors correctness rather than guarding change.
+ANALYTIC_AMPLITUDE = 2.0
+
+@pytest.fixture
+def sinusoidal_surface():
+    # samples_per_period divisible by 4 so the peak/valley land exactly on a sample
+    samples_per_period = 200
+    n_periods = 10
+    nx = samples_per_period * n_periods
+    ny = 100
+    x = np.arange(nx)
+    row = ANALYTIC_AMPLITUDE * np.sin(2 * np.pi * x / samples_per_period)
+    data = np.tile(row, (ny, 1))
+    return Surface(data, 0.1, 0.1)
+
+def test_analytic_Sa(sinusoidal_surface):
+    assert sinusoidal_surface.Sa() == pytest.approx(2 / np.pi * ANALYTIC_AMPLITUDE, abs=1e-3)
+
+def test_analytic_Sq(sinusoidal_surface):
+    assert sinusoidal_surface.Sq() == pytest.approx(ANALYTIC_AMPLITUDE / np.sqrt(2), abs=1e-3)
+
+def test_analytic_Ssk(sinusoidal_surface):
+    assert sinusoidal_surface.Ssk() == pytest.approx(0, abs=1e-6)
+
+def test_analytic_Sku(sinusoidal_surface):
+    assert sinusoidal_surface.Sku() == pytest.approx(1.5, abs=1e-3)
+
+def test_analytic_Sp_Sv_Sz(sinusoidal_surface):
+    assert sinusoidal_surface.Sp() == pytest.approx(ANALYTIC_AMPLITUDE, abs=1e-3)
+    assert sinusoidal_surface.Sv() == pytest.approx(ANALYTIC_AMPLITUDE, abs=1e-3)
+    assert sinusoidal_surface.Sz() == pytest.approx(2 * ANALYTIC_AMPLITUDE, abs=1e-3)
+
+def test_analytic_period(sinusoidal_surface):
+    # lambda = samples_per_period * step = 200 * 0.1 = 20.0
+    assert sinusoidal_surface.period() == pytest.approx(20.0, abs=1e-2)
+
 def test_available_parameters_are_callable():
     # Guards against registry drift: every registered parameter name must resolve to a callable method on the class.
     for name in Surface.AVAILABLE_PARAMETERS:

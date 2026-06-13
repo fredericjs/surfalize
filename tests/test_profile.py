@@ -206,6 +206,49 @@ def test_has_missing_points(profile):
     profile.data[0] = np.nan
     assert profile.has_missing_points == True
 
+# Analytic anchors ####################################################################################################
+# A pure sinusoid z(x) = a*sin(2*pi*x/lambda) sampled over an integer number of periods has closed-form roughness
+# parameters, which anchors correctness rather than merely guarding against change.
+AMPLITUDE = 2.0
+
+@pytest.fixture
+def sinusoidal_profile():
+    # samples_per_period divisible by 4 so the peak/valley land exactly on a sample
+    samples_per_period = 200
+    n_periods = 10
+    n = samples_per_period * n_periods
+    x = np.arange(n)
+    data = AMPLITUDE * np.sin(2 * np.pi * x / samples_per_period)
+    return Profile(data, 0.1)
+
+def test_analytic_Ra(sinusoidal_profile):
+    # Ra = (2/pi) * a
+    assert sinusoidal_profile.Ra() == pytest.approx(2 / np.pi * AMPLITUDE, abs=1e-3)
+
+def test_analytic_Rq(sinusoidal_profile):
+    # Rq = a / sqrt(2)
+    assert sinusoidal_profile.Rq() == pytest.approx(AMPLITUDE / np.sqrt(2), abs=1e-3)
+
+def test_analytic_Rsk(sinusoidal_profile):
+    # Symmetric distribution -> skewness 0
+    assert sinusoidal_profile.Rsk() == pytest.approx(0, abs=1e-6)
+
+def test_analytic_Rku(sinusoidal_profile):
+    # Kurtosis of a sinusoid = 3/2
+    assert sinusoidal_profile.Rku() == pytest.approx(1.5, abs=1e-3)
+
+def test_analytic_Rt(sinusoidal_profile):
+    # Peak-to-valley = 2a
+    assert sinusoidal_profile.Rt() == pytest.approx(2 * AMPLITUDE, abs=1e-3)
+
+def test_analytic_Rz(sinusoidal_profile):
+    # Each sampling section spans full periods, so section peak-to-valley = 2a
+    assert sinusoidal_profile.Rz() == pytest.approx(2 * AMPLITUDE, abs=1e-3)
+
+def test_analytic_Rp_Rv(sinusoidal_profile):
+    assert sinusoidal_profile.Rp() == pytest.approx(AMPLITUDE, abs=1e-3)
+    assert sinusoidal_profile.Rv() == pytest.approx(AMPLITUDE, abs=1e-3)
+
 def test_available_parameters_are_callable():
     # Guards against registry drift: every registered parameter name must resolve to a callable method on the class.
     for name in Profile.AVAILABLE_PARAMETERS:
