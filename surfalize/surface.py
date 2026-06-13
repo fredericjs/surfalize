@@ -100,8 +100,9 @@ class Surface(BaseTopography):
     >>> filepath = r'path\\to\\surface.plu'
     >>> surface = Surface.load(filepath)
     """
-    ISO_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Sk', 'Spk', 'Svk',
-                            'Smr1', 'Smr2', 'Sxp', 'Vmp', 'Vmc', 'Vvv', 'Vvc')
+    ISO_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Ssw', 'Sk', 'Spk',
+                            'Svk', 'Spkx', 'Svkx', 'Sak1', 'Sak2', 'Smr1', 'Smr2', 'Sxp', 'Sdc', 'Vmp', 'Vmc', 'Vvv',
+                            'Vvc')
     # Non-standard parameters that are not defined by ISO 25178 but can still be evaluated
     NON_ISO_PARAMETERS = ('period', 'depth', 'aspect_ratio', 'homogeneity', 'stepheight', 'cavity_volume')
     AVAILABLE_PARAMETERS = ISO_PARAMETERS + NON_ISO_PARAMETERS
@@ -1148,6 +1149,54 @@ class Surface(BaseTopography):
         return self.get_abbott_firestone_curve().vk()
 
     @batch_method('parameter')
+    def Spkx(self):
+        """
+        Calculates the maximum peak height Spkx in µm according to ISO 25178-2, i.e. the height of the highest point
+        above the core surface before the reduction process.
+
+        Returns
+        -------
+        Spkx : float
+        """
+        return self.get_abbott_firestone_curve().pkx()
+
+    @batch_method('parameter')
+    def Svkx(self):
+        """
+        Calculates the maximum pit depth Svkx in µm according to ISO 25178-2, i.e. the depth of the deepest point
+        below the core surface before the reduction process.
+
+        Returns
+        -------
+        Svkx : float
+        """
+        return self.get_abbott_firestone_curve().vkx()
+
+    @batch_method('parameter')
+    def Sak1(self):
+        """
+        Calculates the area of the hills Sak1 in %·µm according to ISO 25178-2, the area of the triangle obtained
+        during the reduction process of the protruding hills.
+
+        Returns
+        -------
+        Sak1 : float
+        """
+        return self.get_abbott_firestone_curve().ak1()
+
+    @batch_method('parameter')
+    def Sak2(self):
+        """
+        Calculates the area of the dales Sak2 in %·µm according to ISO 25178-2, the area of the triangle obtained
+        during the reduction process of the protruding dales.
+
+        Returns
+        -------
+        Sak2 : float
+        """
+        return self.get_abbott_firestone_curve().ak2()
+
+    @batch_method('parameter')
     def Smr1(self):
         """
         Calculates Smr1 in %.
@@ -1168,6 +1217,30 @@ class Surface(BaseTopography):
         Smr2 : float
         """
         return self.get_abbott_firestone_curve().mr2()
+
+    @batch_method('parameter')
+    def Smrk1(self):
+        """
+        Calculates Smrk1 in %, the material ratio of the hills according to ISO 25178-2:2021. This is the parameter
+        formerly named Smr1.
+
+        Returns
+        -------
+        Smrk1 : float
+        """
+        return self.Smr1()
+
+    @batch_method('parameter')
+    def Smrk2(self):
+        """
+        Calculates Smrk2 in %, the material ratio of the dales according to ISO 25178-2:2021. This is the parameter
+        formerly named Smr2.
+
+        Returns
+        -------
+        Smrk2 : float
+        """
+        return self.Smr2()
 
     @batch_method('parameter')
     def Smr(self, c):
@@ -1220,6 +1293,25 @@ class Surface(BaseTopography):
         """
         return self.Smc(p) - self.Smc(q)
 
+    @batch_method('parameter')
+    def Sdc(self, p=2.5, q=50):
+        """
+        Calculates the material ratio height difference Sdc according to ISO 25178-2, the difference in height between
+        the p and q material ratio with p < q. This generalizes Sxp; the default values of p and q match Sxp.
+
+        Parameters
+        ----------
+        p : float, default 2.5
+            material ratio p in %.
+        q : float, default 50
+            material ratio q in %.
+
+        Returns
+        -------
+        Height difference : float
+        """
+        return self.get_abbott_firestone_curve().dc(p, q)
+
     # Misc parameters ##################################################################################################
 
     def Std(self, angle_step=0.5):
@@ -1237,6 +1329,19 @@ class Surface(BaseTopography):
         float
         """
         return self.get_fourier_transform().Std(angle_step=angle_step)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def Ssw(self) -> float:
+        """
+        Calculates the dominant spatial wavelength Ssw according to ISO 25178-2, the wavelength which corresponds to
+        the largest absolute value of the Fourier transform of the ordinate values.
+
+        Returns
+        -------
+        Ssw : float
+        """
+        return self.get_fourier_transform().dominant_wavelength()
 
     # Non-standard parameters ##########################################################################################
 

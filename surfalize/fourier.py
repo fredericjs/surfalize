@@ -111,6 +111,26 @@ class FourierTransform(CachedInstance):
         return np.rad2deg(np.arctan(dy / dx))
 
     @cache
+    def dominant_wavelength(self):
+        """
+        Calculates the dominant spatial wavelength (Ssw), the wavelength corresponding to the largest absolute value
+        of the Fourier transform of the ordinate values. The mean is subtracted beforehand to avoid the zero peak.
+
+        Returns
+        -------
+        wavelength : float
+        """
+        surface = self._surface
+        data = surface.data - surface.data.mean()
+        fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
+        N, M = surface.size
+        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=surface.width_um / M))
+        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=surface.height_um / N))
+        iy, ix = np.unravel_index(np.argmax(fft), fft.shape)
+        radial_frequency = np.hypot(freq_x[ix], freq_y[iy])
+        return np.inf if radial_frequency == 0 else 1 / radial_frequency
+
+    @cache
     def angular_power_spectrum(self, angle_step=1):
         """
         Computes the angular power spectrum by integrating the power spectrum over angular bins.

@@ -104,6 +104,51 @@ def test_homogeneity(surface):
     assert surface.homogeneity() == pytest.approx(0.9985, abs=EPSILON)
 
 
+# New ISO 25178-2:2021 parameters #####################################################################################
+
+def test_Spkx(surface):
+    assert surface.Spkx() == pytest.approx(0.651521, abs=EPSILON)
+
+def test_Svkx(surface):
+    assert surface.Svkx() == pytest.approx(0.887011, abs=EPSILON)
+
+def test_Sak1(surface):
+    assert surface.Sak1() == pytest.approx(0.197043, abs=EPSILON)
+
+def test_Sak2(surface):
+    assert surface.Sak2() == pytest.approx(1.090266, abs=EPSILON)
+
+def test_Sdc(surface):
+    assert surface.Sdc() == pytest.approx(1.168843, abs=EPSILON)
+
+def test_Ssw(surface):
+    assert surface.Ssw() == pytest.approx(19.98, abs=1e-2)
+
+def test_Sak1_equals_triangle_area(surface):
+    assert surface.Sak1() == pytest.approx(0.5 * surface.Spk() * surface.Smr1(), abs=EPSILON)
+
+def test_Sak2_equals_triangle_area(surface):
+    assert surface.Sak2() == pytest.approx(0.5 * surface.Svk() * (100 - surface.Smr2()), abs=EPSILON)
+
+def test_Sdc_equals_Sxp_at_defaults(surface):
+    assert surface.Sdc(2.5, 50) == pytest.approx(surface.Sxp(2.5, 50), abs=EPSILON)
+
+def test_Smrk_aliases(surface):
+    assert surface.Smrk1() == surface.Smr1()
+    assert surface.Smrk2() == surface.Smr2()
+
+def test_Spkx_geq_Spk(surface):
+    assert surface.Spkx() >= surface.Spk()
+    assert surface.Svkx() >= surface.Svk()
+
+def test_general_volume_parameters_reduce_to_special_cases(surface):
+    # Vmp/Vmc/Vvv/Vvc are special cases of the general Vm(p)/Vv(p)
+    assert surface.Vmp() == pytest.approx(surface.Vm(10), abs=EPSILON)
+    assert surface.Vvv() == pytest.approx(surface.Vv(80), abs=EPSILON)
+    assert surface.Vmc() == pytest.approx(surface.Vm(80) - surface.Vm(10), abs=EPSILON)
+    assert surface.Vvc() == pytest.approx(surface.Vv(10) - surface.Vv(80), abs=EPSILON)
+
+
 def test_size(surface):
     size = surface.size
     assert size.x == surface.data.shape[1]

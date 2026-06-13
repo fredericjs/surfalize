@@ -1,4 +1,10 @@
 ## v0.17.0
+- Added new areal parameters introduced in ISO 25178-2:2021 that build on already-computed quantities: `Sdc` (material
+  ratio height difference), `Spkx`/`Svkx` (maximum peak height / pit depth before reduction), `Sak1`/`Sak2` (area of
+  the hills / dales), `Smrk1`/`Smrk2` (renamed `Smr1`/`Smr2`), `Ssw` (dominant spatial wavelength) and the general
+  `Vm(p)`/`Vv(p)` material/void volume parameters. The corresponding profile parameters (`Rdc`, `Rpkx`, `Rvkx`,
+  `Rak1`, `Rak2`, `Rmrk1`, `Rmrk2`) were added as well.
+- `Vmp`/`Vmc`/`Vvv`/`Vvc` are now implemented in terms of the general `Vm(p)`/`Vv(p)` parameters (identical results).
 - Extracted the Fourier transform into a dedicated `FourierTransform` class (`surfalize.fourier`), accessible via
   `Surface.get_fourier_transform()`. The `period`, `period_x_y`, `orientation(method='fft')`, `Std`,
   `plot_fourier_transform` and `plot_angular_power_spectrum` methods now delegate to it, so the FFT is computed once

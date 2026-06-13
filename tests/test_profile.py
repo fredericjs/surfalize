@@ -81,6 +81,31 @@ def test_Vvv(profile):
 def test_Vvc(profile):
     assert profile.Vvc() == pytest.approx(0.921124, abs=EPSILON)
 
+# New ISO 25178-2:2021 parameters #####################################################################################
+
+def test_Rak1_equals_triangle_area(profile):
+    assert profile.Rak1() == pytest.approx(0.5 * profile.Rpk() * profile.Rmr1(), abs=EPSILON)
+
+def test_Rak2_equals_triangle_area(profile):
+    assert profile.Rak2() == pytest.approx(0.5 * profile.Rvk() * (100 - profile.Rmr2()), abs=EPSILON)
+
+def test_Rdc_equals_Rxp_at_defaults(profile):
+    assert profile.Rdc(2.5, 50) == pytest.approx(profile.Rxp(2.5, 50), abs=EPSILON)
+
+def test_Rmrk_aliases(profile):
+    assert profile.Rmrk1() == profile.Rmr1()
+    assert profile.Rmrk2() == profile.Rmr2()
+
+def test_Rpkx_geq_Rpk(profile):
+    assert profile.Rpkx() >= profile.Rpk()
+    assert profile.Rvkx() >= profile.Rvk()
+
+def test_general_volume_parameters_reduce_to_special_cases(profile):
+    assert profile.Vmp() == pytest.approx(profile.Vm(10), abs=EPSILON)
+    assert profile.Vvv() == pytest.approx(profile.Vv(80), abs=EPSILON)
+    assert profile.Vmc() == pytest.approx(profile.Vm(80) - profile.Vm(10), abs=EPSILON)
+    assert profile.Vvc() == pytest.approx(profile.Vv(10) - profile.Vv(80), abs=EPSILON)
+
 def test_period(profile):
     assert profile.period() == pytest.approx(5.0, abs=0.1)
 

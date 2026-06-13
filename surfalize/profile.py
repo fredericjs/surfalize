@@ -51,8 +51,8 @@ class Profile(BaseTopography):
     length_um : float | None, default None
         Length of the profile in µm. If None, the length is calculated from the number of datapoints and the stepsize.
     """
-    ISO_PARAMETERS = ('Ra', 'Rq', 'Rp', 'Rv', 'Rz', 'Rsk', 'Rku', 'Rdq', 'Rk', 'Rpk', 'Rvk', 'Rmr1', 'Rmr2', 'Rxp',
-                      'Vmp', 'Vmc', 'Vvv', 'Vvc')
+    ISO_PARAMETERS = ('Ra', 'Rq', 'Rp', 'Rv', 'Rz', 'Rsk', 'Rku', 'Rdq', 'Rk', 'Rpk', 'Rvk', 'Rpkx', 'Rvkx', 'Rak1',
+                      'Rak2', 'Rmr1', 'Rmr2', 'Rxp', 'Rdc', 'Vmp', 'Vmc', 'Vvv', 'Vvc')
     # Non-standard parameters that are not defined by the profile roughness standards but can still be evaluated
     NON_ISO_PARAMETERS = ('Rt', 'period')
     AVAILABLE_PARAMETERS = ISO_PARAMETERS + NON_ISO_PARAMETERS
@@ -476,6 +476,50 @@ class Profile(BaseTopography):
         """
         return self.get_abbott_firestone_curve().vk()
 
+    def Rpkx(self):
+        """
+        Calculates the maximum peak height Rpkx in µm, the height of the highest point above the core profile before
+        the reduction process.
+
+        Returns
+        -------
+        Rpkx : float
+        """
+        return self.get_abbott_firestone_curve().pkx()
+
+    def Rvkx(self):
+        """
+        Calculates the maximum pit depth Rvkx in µm, the depth of the deepest point below the core profile before the
+        reduction process.
+
+        Returns
+        -------
+        Rvkx : float
+        """
+        return self.get_abbott_firestone_curve().vkx()
+
+    def Rak1(self):
+        """
+        Calculates the area of the hills Rak1 in %·µm, the area of the triangle obtained during the reduction process
+        of the protruding hills.
+
+        Returns
+        -------
+        Rak1 : float
+        """
+        return self.get_abbott_firestone_curve().ak1()
+
+    def Rak2(self):
+        """
+        Calculates the area of the dales Rak2 in %·µm, the area of the triangle obtained during the reduction process
+        of the protruding dales.
+
+        Returns
+        -------
+        Rak2 : float
+        """
+        return self.get_abbott_firestone_curve().ak2()
+
     def Rmr1(self):
         """
         Calculates the material ratio Rmr1 according to ISO 13565-2 in %.
@@ -495,6 +539,26 @@ class Profile(BaseTopography):
         Rmr2 : float
         """
         return self.get_abbott_firestone_curve().mr2()
+
+    def Rmrk1(self):
+        """
+        Calculates Rmrk1 in %, the material ratio of the hills. This is the parameter formerly named Rmr1.
+
+        Returns
+        -------
+        Rmrk1 : float
+        """
+        return self.Rmr1()
+
+    def Rmrk2(self):
+        """
+        Calculates Rmrk2 in %, the material ratio of the dales. This is the parameter formerly named Rmr2.
+
+        Returns
+        -------
+        Rmrk2 : float
+        """
+        return self.Rmr2()
 
     def Rmr(self, c):
         """
@@ -542,6 +606,24 @@ class Profile(BaseTopography):
         Height difference : float
         """
         return self.Rmc(p) - self.Rmc(q)
+
+    def Rdc(self, p=2.5, q=50):
+        """
+        Calculates the material ratio height difference Rdc, the difference in height between the p and q material
+        ratio with p < q. This generalizes Rxp; the default values of p and q match Rxp.
+
+        Parameters
+        ----------
+        p : float, default 2.5
+            material ratio p in %.
+        q : float, default 50
+            material ratio q in %.
+
+        Returns
+        -------
+        Height difference : float
+        """
+        return self.get_abbott_firestone_curve().dc(p, q)
 
     # Plotting #########################################################################################################
 

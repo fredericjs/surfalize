@@ -490,6 +490,40 @@ class BaseTopography(CachedInstance):
         """
         return self.get_abbott_firestone_curve().vvc(p=p, q=q)
 
+    @batch_method('parameter')
+    def Vm(self, p):
+        """
+        Calculates the material volume per unit area at a given material ratio p (Vm(p)) according to ISO 25178-2.
+        Vmp and Vmc are special cases of this general parameter.
+
+        Parameters
+        ----------
+        p : float
+            material ratio in %.
+
+        Returns
+        -------
+        Vm : float
+        """
+        return self.get_abbott_firestone_curve().Vm(p)
+
+    @batch_method('parameter')
+    def Vv(self, p):
+        """
+        Calculates the void volume per unit area at a given material ratio p (Vv(p)) according to ISO 25178-2.
+        Vvv and Vvc are special cases of this general parameter.
+
+        Parameters
+        ----------
+        p : float
+            material ratio in %.
+
+        Returns
+        -------
+        Vv : float
+        """
+        return self.get_abbott_firestone_curve().Vv(p)
+
     def roughness_parameters(self, parameters=None):
         """
         Computes multiple roughness parameters at once and returns them in a dictionary.

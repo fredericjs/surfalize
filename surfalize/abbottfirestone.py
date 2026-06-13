@@ -201,6 +201,106 @@ class AbbottFirestoneCurve(CachedInstance):
         return vk
 
     @cache
+    def pkx(self):
+        """
+        Calculates the maximum peak height before the reduction process (Spkx for surfaces, Rpkx for profiles), i.e.
+        the height of the highest point above the upper limit of the core surface.
+
+        Returns
+        -------
+        float
+        """
+        return self._obj.data.max() - self._yupper
+
+    @cache
+    def vkx(self):
+        """
+        Calculates the maximum pit depth before the reduction process (Svkx for surfaces, Rvkx for profiles), i.e.
+        the depth of the deepest point below the lower limit of the core surface.
+
+        Returns
+        -------
+        float
+        """
+        return self._ylower - self._obj.data.min()
+
+    @cache
+    def ak1(self):
+        """
+        Calculates the area of the hills (Sak1 for surfaces, Rak1 for profiles), the triangle obtained during the
+        reduction process of the protruding hills with height pk and base mr1.
+
+        Returns
+        -------
+        float
+        """
+        return 0.5 * self.pk() * self.mr1()
+
+    @cache
+    def ak2(self):
+        """
+        Calculates the area of the dales (Sak2 for surfaces, Rak2 for profiles), the triangle obtained during the
+        reduction process of the protruding dales with depth vk and base 100 % - mr2.
+
+        Returns
+        -------
+        float
+        """
+        return 0.5 * self.vk() * (100 - self.mr2())
+
+    def dc(self, p, q):
+        """
+        Calculates the material ratio height difference (Sdc for surfaces, Rdc for profiles), the difference in height
+        between the p and q material ratio, with p < q.
+
+        Parameters
+        ----------
+        p : float
+            material ratio in %.
+        q : float
+            material ratio in %.
+
+        Returns
+        -------
+        float
+        """
+        return self.mc(p) - self.mc(q)
+
+    @cache
+    def Vm(self, p):
+        """
+        Calculates the material volume at material ratio p (Vm(p)).
+
+        Parameters
+        ----------
+        p : float
+            material ratio in %.
+
+        Returns
+        -------
+        float
+        """
+        idx = argclosest(self.mc(p), self._height)
+        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx])) / 100
+
+    @cache
+    def Vv(self, p):
+        """
+        Calculates the void volume at material ratio p (Vv(p)).
+
+        Parameters
+        ----------
+        p : float
+            material ratio in %.
+
+        Returns
+        -------
+        float
+        """
+        idx = argclosest(self.mc(p), self._height)
+        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100
+
+    @cache
     def vmp(self, p=10):
         """
         Calculates the peak material volume at material ratio p (Vmp).
@@ -209,8 +309,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        idx = argclosest(self.mc(p), self._height)
-        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx]) / 100)
+        return self.Vm(p)
 
     @cache
     def vmc(self, p=10, q=80):
@@ -221,8 +320,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        idx = argclosest(self.mc(q), self._height)
-        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx])) / 100 - self.vmp(p)
+        return self.Vm(q) - self.Vm(p)
 
     @cache
     def vvv(self, q=80):
@@ -233,8 +331,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        idx = argclosest(self.mc(q), self._height)
-        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100
+        return self.Vv(q)
 
     @cache
     def vvc(self, p=10, q=80):
@@ -245,8 +342,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        idx = argclosest(self.mc(p), self._height)
-        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:])) / 100 - self.vvv(q)
+        return self.Vv(p) - self.Vv(q)
 
     def plot(self, nbars=20, ax=None):
         if ax is None:
