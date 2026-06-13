@@ -15,13 +15,12 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.linalg import lstsq
 from scipy.interpolate import griddata
 import scipy.ndimage as ndimage
-from sklearn.cluster import KMeans
 
 # Custom imports
 from .file import FileHandler
 from .utils import approximately_equal
 from .cache import cache
-from .mathutils import Sinusoid, argclosest, trapezoid
+from .mathutils import Sinusoid, argclosest, trapezoid, otsu_threshold
 from .autocorrelation import AutocorrelationFunction
 from .base import BaseTopography, batch_method, no_nonmeasured_points
 from .profile import Profile
@@ -772,18 +771,16 @@ class Surface(BaseTopography):
     @cache
     def _stepheight_get_mask(self):
         """
-        Uses k-means algorithm to segment the upper and lower surface of a rectangular ablation cavity.
-        Returns a numpy array mask which is true for points that belong to the upper surface level.
+        Uses Otsu's method to segment the upper and lower surface of a rectangular ablation cavity by thresholding
+        the height values into two classes. Returns a numpy array mask which is true for points that belong to the
+        upper surface level.
 
         Returns
         -------
         np.array[bool]
         """
-        flattened_data = self.data.flatten().reshape(-1, 1)
-        kmeans = KMeans(n_clusters=2, random_state=42)
-        kmeans.fit(flattened_data)
-        cluster_labels = kmeans.labels_
-        mask = cluster_labels.reshape(self.size).astype('bool')
+        threshold = otsu_threshold(self.data)
+        mask = self.data > threshold
         if self.data[~mask].mean() > self.data[mask].mean():
             mask = ~mask
         return mask

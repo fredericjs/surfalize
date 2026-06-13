@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_array_almost_equal
 import pytest
-from surfalize.mathutils import argclosest, closest, interp1d, _sinusoid, Sinusoid
+from surfalize.mathutils import argclosest, closest, interp1d, _sinusoid, Sinusoid, otsu_threshold
 
 np.random.seed(0)
 
@@ -36,6 +36,17 @@ def test_interp1d(array):
     assert float(f2(0)) == pytest.approx(0)
     assert float(f2(10)) == pytest.approx(20)
     assert float(f2(1)) == pytest.approx(2)
+
+def test_otsu_threshold():
+    # Two well-separated clusters around 0 and 10 -> threshold must fall between them
+    values = np.concatenate([np.full(500, 0.0), np.full(500, 10.0)])
+    threshold = otsu_threshold(values)
+    assert 0 < threshold < 10
+    # The threshold must correctly separate the two clusters
+    assert (values > threshold).sum() == 500
+    # Non-finite values must be ignored
+    values_with_nan = np.concatenate([values, np.full(50, np.nan)])
+    assert otsu_threshold(values_with_nan) == pytest.approx(threshold)
 
 def test_sinusoid(expected_sinusoid_result):
     assert _sinusoid(0, 1, 2, 0, 0) == pytest.approx(0)

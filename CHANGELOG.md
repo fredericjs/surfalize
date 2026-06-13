@@ -29,6 +29,9 @@
 - `AVAILABLE_PARAMETERS` is now derived from `ISO_PARAMETERS + NON_ISO_PARAMETERS` on both `Surface` and `Profile`,
   removing the duplicated parameter names. A test now guards against registry drift by asserting every registered
   parameter resolves to a callable method.
+- Removed the `scikit-learn` dependency. The two-level segmentation used by `stepheight`, `stepheight_level` and
+  `cavity_volume` now uses a built-in Otsu threshold (`surfalize.mathutils.otsu_threshold`) instead of k-means, which
+  is deterministic and removes the heaviest transitive dependency.
 ## v0.16.8
 - Fixed missing call of `on_file_complete` callback in single-threaded batch processing
 ## v0.16.7

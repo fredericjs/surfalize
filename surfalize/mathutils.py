@@ -110,6 +110,41 @@ def closest(x, data):
     return data.ravel()[argclosest(x, data.ravel())]
 
 
+def otsu_threshold(values, nbins=256):
+    """
+    Computes the optimal threshold that separates the values into two classes using Otsu's method, which maximizes
+    the between-class variance. For one-dimensional two-class segmentation this yields the global optimum and is a
+    fast, deterministic alternative to a two-cluster k-means.
+
+    Parameters
+    ----------
+    values : array_like
+        Input values. Non-finite values (NaN, inf) are ignored.
+    nbins : int, default 256
+        Number of histogram bins used to evaluate the threshold.
+
+    Returns
+    -------
+    threshold : float
+        Value separating the two classes. Values greater than the threshold belong to the upper class.
+    """
+    values = np.asarray(values).ravel()
+    values = values[np.isfinite(values)]
+    counts, bin_edges = np.histogram(values, bins=nbins)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    counts = counts.astype(float)
+    # Cumulative class weights for every possible threshold position
+    weight1 = np.cumsum(counts)
+    weight2 = np.cumsum(counts[::-1])[::-1]
+    # Cumulative class means
+    mean1 = np.cumsum(counts * bin_centers) / weight1
+    mean2 = (np.cumsum((counts * bin_centers)[::-1]) / weight2[::-1])[::-1]
+    # Between-class variance for a threshold placed between bin i and i+1
+    variance12 = weight1[:-1] * weight2[1:] * (mean1[:-1] - mean2[1:]) ** 2
+    idx = np.argmax(variance12)
+    return bin_centers[idx]
+
+
 def argmax_all(arr):
     """
     Returns all indices where the array reaches its maximum value.

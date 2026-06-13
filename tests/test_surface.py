@@ -99,6 +99,29 @@ def test_rsub(surface):
     assert np.allclose((5 - surface).data, 5 - surface.data)
     assert np.allclose((surface - 5).data, surface.data - 5)
 
+@pytest.fixture
+def stepheight_surface():
+    # Flat upper surface at height 5 with a central rectangular cavity at height 0
+    np.random.seed(0)
+    data = np.full((200, 200), 5.0)
+    data[50:150, 50:150] = 0.0
+    data += np.random.normal(scale=0.01, size=data.shape)
+    return Surface(data, 1, 1)
+
+def test_stepheight(stepheight_surface):
+    assert stepheight_surface.stepheight() == pytest.approx(5.0, abs=0.05)
+
+def test_stepheight_mask_segments_two_levels(stepheight_surface):
+    mask = stepheight_surface._stepheight_get_mask()
+    # The upper level covers the whole surface except the 100x100 cavity
+    assert mask.sum() == pytest.approx(200 * 200 - 100 * 100, abs=10)
+    # The upper level (mask True) must have the higher mean height
+    assert stepheight_surface.data[mask].mean() > stepheight_surface.data[~mask].mean()
+
+def test_cavity_volume(stepheight_surface):
+    # Cavity is 100x100 px at depth 5 -> volume approx 100*100*5
+    assert stepheight_surface.cavity_volume() == pytest.approx(100 * 100 * 5, rel=0.02)
+
 def test_fill_nonmeasured(noisy_surface):
     surface_with_missing_points = noisy_surface.remove_outliers()
     assert not bool(np.any(np.isnan(surface_with_missing_points.fill_nonmeasured().data)))
