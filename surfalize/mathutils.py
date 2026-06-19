@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, least_squares
 from scipy.signal import find_peaks
 import scipy.ndimage as ndimage
 from .exceptions import FittingError
@@ -340,3 +340,170 @@ class Sinusoid:
         # position of first peak for x >= 0
         xfp = x0e - (x0e // (self.period)) * self.period
         return xfp
+
+
+class Cylinder:
+    """
+    Representation of a cylinder in 3d space, defined by its rotation axis (a point on the axis and a unit direction
+    vector) and its radius.
+
+    The cylinder is the set of points at perpendicular distance ``radius`` from the axis line. This class provides the
+    geometry needed for cylinder form removal: computing the distance of points to the axis, fitting a cylinder to a
+    point cloud and intersecting vertical lines (along z) with the cylinder surface.
+
+    Parameters
+    ----------
+    point : array-like[float, float, float]
+        A point lying on the rotation axis.
+    direction : array-like[float, float, float]
+        Direction vector of the rotation axis. It is normalized internally and does not need to be a unit vector.
+    radius : float
+        Radius of the cylinder.
+    """
+    def __init__(self, point, direction, radius):
+        self.point = np.asarray(point, dtype=float)
+        direction = np.asarray(direction, dtype=float)
+        self.direction = direction / np.linalg.norm(direction)
+        self.radius = float(radius)
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}(point={self.point.tolist()}, '
+                f'direction={self.direction.tolist()}, radius={self.radius})')
+
+    def distance_to_axis(self, points):
+        """
+        Computes the perpendicular distance of one or more points to the rotation axis.
+
+        Parameters
+        ----------
+        points : ndarray
+            Array of shape (N, 3) containing the (x, y, z) coordinates of N points.
+
+        Returns
+        -------
+        ndarray
+            Array of shape (N,) containing the distance of each point to the axis.
+        """
+        points = np.asarray(points, dtype=float)
+        v = points - self.point
+        proj = v @ self.direction
+        perp = v - proj[:, None] * self.direction
+        return np.sqrt(np.einsum('ij,ij->i', perp, perp))
+
+    def residuals(self, points):
+        """
+        Computes the signed radial deviation of points from the cylinder surface, i.e. the distance to the axis minus
+        the radius.
+
+        Parameters
+        ----------
+        points : ndarray
+            Array of shape (N, 3) containing the (x, y, z) coordinates of N points.
+
+        Returns
+        -------
+        ndarray
+            Array of shape (N,) containing the radial deviation of each point.
+        """
+        return self.distance_to_axis(points) - self.radius
+
+    def intersect_vertical(self, x, y, z_reference):
+        """
+        Intersects vertical lines (parallel to the z-axis) at positions (x, y) with the cylinder surface and returns the
+        z-coordinate of the intersection. For each (x, y) position there are generally two intersections (the upper and
+        lower side of the cylinder); the one closest to ``z_reference`` is returned. Positions whose vertical line does
+        not intersect the cylinder yield NaN.
+
+        Parameters
+        ----------
+        x, y : ndarray
+            Coordinates at which to intersect.
+        z_reference : ndarray
+            Reference z-values used to select between the two intersection points (typically the measured heights).
+
+        Returns
+        -------
+        ndarray
+            z-coordinate of the cylinder surface at each (x, y) position.
+        """
+        cx, cy, cz = self.point
+        dx, dy, dz = self.direction
+        ax = np.asarray(x, dtype=float) - cx
+        ay = np.asarray(y, dtype=float) - cy
+        s = dx * ax + dy * ay
+        # Quadratic A*az**2 + B*az + C = 0 for az = z - cz, derived from distance_to_axis == radius
+        A = 1 - dz ** 2
+        B = -2 * s * dz
+        C = ax ** 2 + ay ** 2 - s ** 2 - self.radius ** 2
+        disc = B ** 2 - 4 * A * C
+        disc = np.where(disc < 0, np.nan, disc)
+        sqrt_disc = np.sqrt(disc)
+        z1 = cz + (-B + sqrt_disc) / (2 * A)
+        z2 = cz + (-B - sqrt_disc) / (2 * A)
+        return np.where(np.abs(z1 - z_reference) <= np.abs(z2 - z_reference), z1, z2)
+
+    @classmethod
+    def from_fit(cls, points, guess, radius=None):
+        """
+        Fits a cylinder to a point cloud by minimizing the sum of squared radial deviations from the cylinder surface
+        using scipy.optimize.least_squares.
+
+        The axis is parametrized minimally with respect to the dominant component of the initial guess direction to avoid
+        gauge freedom: the dominant direction component is fixed to one while the remaining two components are free, and
+        the axis point is constrained to the plane where the dominant coordinate is zero. This leaves four free
+        parameters for the axis (two for orientation, two for position), plus the radius if it is not fixed.
+
+        Parameters
+        ----------
+        points : ndarray
+            Array of shape (N, 3) containing the (x, y, z) coordinates of the point cloud.
+        guess : Cylinder
+            Initial guess for the cylinder. A good guess for the axis orientation, position and radius is required for
+            reliable convergence.
+        radius : float | None, default None
+            If provided, the radius is held fixed at this value and only the axis is optimized. If None, the radius is
+            optimized as well, starting from ``guess.radius``.
+
+        Returns
+        -------
+        Cylinder
+            The fitted cylinder.
+        """
+        points = np.asarray(points, dtype=float)
+        d0 = guess.direction
+        dom = int(np.argmax(np.abs(d0)))
+        free = [i for i in range(3) if i != dom]
+
+        # Initial free direction components relative to the dominant component fixed at 1
+        d_free0 = d0[free] / d0[dom]
+        # Move the guess point onto the plane where the dominant coordinate is zero
+        p_on = guess.point - (guess.point[dom] / d0[dom]) * d0
+        p_free0 = p_on[free]
+
+        def build(params):
+            point = np.zeros(3)
+            point[free] = params[0:2]
+            direction = np.zeros(3)
+            direction[dom] = 1.0
+            direction[free] = params[2:4]
+            return point, direction
+
+        if radius is None:
+            x0 = np.array([p_free0[0], p_free0[1], d_free0[0], d_free0[1], guess.radius])
+
+            def residual_function(params):
+                point, direction = build(params)
+                return cls(point, direction, params[4]).residuals(points)
+        else:
+            x0 = np.array([p_free0[0], p_free0[1], d_free0[0], d_free0[1]])
+
+            def residual_function(params):
+                point, direction = build(params)
+                return cls(point, direction, radius).residuals(points)
+
+        result = least_squares(residual_function, x0, method='lm')
+        if not result.success:
+            raise FittingError('Cylinder fitting was unsuccessful.')
+        point, direction = build(result.x)
+        fitted_radius = radius if radius is not None else result.x[4]
+        return cls(point, direction, fitted_radius)

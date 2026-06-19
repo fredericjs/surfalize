@@ -1,0 +1,23 @@
+/* Scope these overrides to notebook pages only: nbsphinx renders code cells as
+   .nbinput, which never appears on hand-written .rst pages. The :has() selector
+   therefore matches notebook pages exclusively, leaving the rest of the docs
+   untouched. */
+
+article[role="main"]:has(.nbinput) h1 {
+    font-size: 1.8em;
+}
+
+article[role="main"]:has(.nbinput) h2 {
+    font-size: 1.35em;
+}
+
+article[role="main"]:has(.nbinput) h3 {
+    font-size: 1.15em;
+}
+
+/* Tighten the spacing around the now-smaller section headings. */
+article[role="main"]:has(.nbinput) h2,
+article[role="main"]:has(.nbinput) h3 {
+    margin-top: 1.2em;
+    margin-bottom: 0.4em;
+}

@@ -23,13 +23,19 @@ master_doc = 'index'
 
 extensions = [
     'sphinx.ext.autodoc',
-    'numpydoc'
+    'numpydoc',
+    'nbsphinx',
 ]
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 
 numpydoc_class_members_toctree = False
+
+# Render the stored notebook outputs as-is; do not re-execute notebooks at build
+# time, since the examples rely on local measurement data that isn't available
+# in the docs environment.
+nbsphinx_execute = 'never'
 
 autodoc_mock_imports = [
     #'numpy',
@@ -49,3 +55,4 @@ html_theme_options = {
     "navigation_with_keys": True,
 }
 html_static_path = ['_static']
+html_css_files = ['custom.css']

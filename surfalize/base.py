@@ -33,6 +33,8 @@ def no_nonmeasured_points(function):
     def wrapper_function(self, *args, **kwargs):
         if self.has_missing_points:
             raise ValueError("Non-measured points must be filled before any other operation.")
+        if self.has_masked_points:
+            raise ValueError("This operation is not supported on masked surfaces. Clear the mask first.")
         return function(self, *args, **kwargs)
     return wrapper_function
 
@@ -144,6 +146,55 @@ class BaseTopography(CachedInstance):
         """
         return np.any(np.isnan(self.data))
 
+    @property
+    def has_masked_points(self):
+        """
+        Returns true if the topography contains masked points. The base implementation always returns False; subclasses
+        that support masking (such as `Surface`) override this.
+
+        Returns
+        -------
+        bool
+        """
+        return False
+
+    @property
+    def _invalid(self):
+        """
+        Boolean array marking points that are excluded from analysis, i.e. non-measured points. Subclasses that support
+        masking extend this to also include masked points.
+
+        Returns
+        -------
+        ndarray[bool]
+        """
+        return np.isnan(self._data)
+
+    def _analysis_data(self):
+        """
+        Returns the height data with all invalid points (non-measured and masked) set to NaN. This is the array that
+        reduction-style parameters (which ignore NaN) should operate on. If no point is invalid, the original data is
+        returned without copying.
+
+        Returns
+        -------
+        ndarray
+        """
+        invalid = self._invalid
+        if not invalid.any():
+            return self.data
+        return np.where(invalid, np.nan, self._data)
+
+    def _valid_values(self):
+        """
+        Returns a 1d array of the height values at all valid (non-invalid) points.
+
+        Returns
+        -------
+        ndarray
+        """
+        return self._data[~self._invalid]
+
     def min(self):
         """
         Computes the minimum height value, ignoring invalid points.
@@ -152,7 +203,7 @@ class BaseTopography(CachedInstance):
         -------
         float
         """
-        return np.nanmin(self.data)
+        return np.nanmin(self._analysis_data())
 
     def max(self):
         """
@@ -162,7 +213,7 @@ class BaseTopography(CachedInstance):
         -------
         float
         """
-        return np.nanmax(self.data)
+        return np.nanmax(self._analysis_data())
 
     def mean(self):
         """
@@ -172,7 +223,7 @@ class BaseTopography(CachedInstance):
         -------
         float
         """
-        return np.nanmean(self.data)
+        return np.nanmean(self._analysis_data())
 
     def median(self):
         """
@@ -182,7 +233,7 @@ class BaseTopography(CachedInstance):
         -------
         float
         """
-        return np.nanmedian(self.data)
+        return np.nanmedian(self._analysis_data())
 
     def std(self):
         """
@@ -192,7 +243,7 @@ class BaseTopography(CachedInstance):
         -------
         float
         """
-        return np.nanstd(self.data)
+        return np.nanstd(self._analysis_data())
 
     # Operations #######################################################################################################
 
@@ -211,7 +262,7 @@ class BaseTopography(CachedInstance):
         -------
         Surface | Profile
         """
-        data = self.data - np.nanmean(self.data)
+        data = self.data - np.nanmean(self._analysis_data())
         if inplace:
             self._set_data(data=data)
             return self
@@ -232,7 +283,7 @@ class BaseTopography(CachedInstance):
         -------
         Surface | Profile
         """
-        data = self.data - np.nanmin(self.data)
+        data = self.data - np.nanmin(self._analysis_data())
         if inplace:
             self._set_data(data=data)
             return self
@@ -253,7 +304,7 @@ class BaseTopography(CachedInstance):
         -------
         Surface | Profile
         """
-        data = self.data.min() + self.data.max() - self.data
+        data = self.min() + self.max() - self.data
         if inplace:
             self._set_data(data=data)
             return self
@@ -283,11 +334,12 @@ class BaseTopography(CachedInstance):
         -------
         Surface | Profile
         """
+        ad = self._analysis_data()
         data = self.data.copy()
         if method == 'mean':
-            data[np.abs(data - np.nanmean(data)) > n * np.nanstd(data)] = np.nan
+            data[np.abs(ad - np.nanmean(ad)) > n * np.nanstd(ad)] = np.nan
         elif method == 'median':
-            dist = np.abs(data - np.nanmedian(data))
+            dist = np.abs(ad - np.nanmedian(ad))
             data[dist > n * np.nanmedian(dist)] = np.nan
         else:
             raise ValueError("Invalid methode.")
@@ -318,7 +370,7 @@ class BaseTopography(CachedInstance):
         -------
         Surface | Profile
         """
-        y = np.sort(self.data[~np.isnan(self.data)])[::-1]
+        y = np.sort(self._valid_values())[::-1]
         x = np.arange(1, y.size + 1, 1) / y.size
         if is_list_like(threshold):
             threshold_upper, threshold_lower = threshold

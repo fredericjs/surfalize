@@ -121,6 +121,70 @@ These methods can be chained:
     surface.show()
 
 
+Masking regions
+===============
+
+Regions of a surface can be masked so that they are excluded from analysis while their height values are preserved.
+This is useful to keep artifacts, dust particles or otherwise invalid areas from influencing operations such as
+levelling or the calculation of height parameters. Masking is reversible, in contrast to non-measured points, which are
+stored as :code:`NaN` and irreversibly discard the height value.
+
+Every :code:`Surface` owns a :code:`Mask` object, accessible through the :code:`surface.mask` attribute. The mask is
+empty until a region is masked. Masked points are excluded from the height parameters (:code:`Sa`, :code:`Sq`,
+:code:`Sk`, ...), the statistical reductions (:code:`min`, :code:`max`, :code:`mean`, ...) and the levelling fit. The
+convention follows :code:`numpy.ma`, i.e. a value of :code:`True` marks a point that is masked (ignored).
+
+.. note::
+
+    Parameters that require a complete, gap-free grid (e.g. :code:`Sdr`, :code:`Sdq`, :code:`Sal`, :code:`Str`,
+    :code:`period`, :code:`orientation`) are not defined on a masked surface and will raise an error. Clear the mask
+    before computing them.
+
+Consistent with the other surface operations, the masking methods return a new :code:`Surface` by default and leave
+the original unchanged. Specify :code:`inplace=True` to modify the surface in place and return it, which also allows
+chaining.
+
+.. code:: python
+
+    # Returns a new Surface with the masked region, leaving the original untouched
+    masked = surface.mask.add_rectangle((0, 10, 0, 10))
+
+    # Modify the surface in place
+    surface.mask.add_circle((50, 50), radius=5, inplace=True)
+
+Several regions can be added or removed. The region methods interpret their coordinates in physical units (µm) by
+default, following the same convention as :code:`Surface.crop` where the y-axis is measured from the bottom. Passing
+:code:`in_units=False` switches to pixel indices.
+
+.. code:: python
+
+    # Mask by geometry (µm by default)
+    surface = surface.mask.add_rectangle((0, 10, 0, 10))     # (x0, x1, y0, y1)
+    surface = surface.mask.add_circle((50, 50), radius=5)
+    surface = surface.mask.subtract_circle((50, 50), radius=2)
+
+    # Mask by height value
+    surface = surface.mask.threshold(below=-1, above=5)
+
+    # Invert or clear the mask
+    surface = surface.mask.invert()
+    surface = surface.mask.clear()
+
+In addition to the region methods, the mask supports numpy-style indexing in pixel coordinates. Item assignment is
+always performed in place, since Python item assignment cannot return a value.
+
+.. code:: python
+
+    surface.mask[10:20, 5:15] = True      # mask a slice
+    surface.mask[surface.data > 5] = True  # mask by a boolean condition
+
+    has_mask = surface.has_masked_points   # True if any point is masked
+    mask_array = surface.mask.to_array()   # boolean array of the masked points
+
+The mask travels with the data through slicing and the :code:`crop`, :code:`zoom` and :code:`__getitem__` operations,
+and is preserved by levelling. A deep copy of a surface, including its mask, can be obtained with :code:`surface.copy()`.
+
+
 Plotting
 ========
 
@@ -132,7 +196,16 @@ invoked by Jupyter Notebook, it will automaticall call :code:`Surface.show()`.
 .. code:: python
 
     # Some arguments can be specified
-    surface.show(cmap='viridis', maskcolor='red')
+    # maskcolor sets the color of non-measured points
+    surface.show(cmap='viridis', maskcolor='black')
+
+Masked points are drawn as a translucent overlay on top of the topography so that the underlying height still shows
+through. Its color and opacity can be adjusted with the :code:`masked_color` and :code:`masked_alpha` arguments
+(defaults are :code:`'red'` and :code:`0.5`).
+
+.. code:: python
+
+    surface.show(masked_color='orange', masked_alpha=0.3)
 
 The Abbott-Firestone curve and Fourier Transform can be plotted using:
 

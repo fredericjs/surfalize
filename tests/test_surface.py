@@ -52,6 +52,52 @@ def test_detrend_polynomial(data):
     # output = Surface(np.random.uniform(size=(5, 5)) + x ** 5, 1, 1).detrend_polynomial(degree=5).data
     # assert_array_almost_equal(output, target['detrend_polynomial_deg=5'])
 
+@pytest.fixture
+def cylinder_surface():
+    # Surface measured on a cylinder of known radius with the axis along x, slightly tilted, plus a known texture.
+    radius = 500.0
+    ny, nx = 120, 200
+    y_idx, x_idx = np.mgrid[:ny, :nx]
+    direction = np.array([1.0, 0.02, 0.01])
+    direction /= np.linalg.norm(direction)
+    cx, cy, cz = 0.0, 60.0, -radius + 3.0
+    ax, ay = x_idx - cx, y_idx - cy
+    s = direction[0] * ax + direction[1] * ay
+    A = 1 - direction[2] ** 2
+    B = -2 * s * direction[2]
+    C = ax ** 2 + ay ** 2 - s ** 2 - radius ** 2
+    form = cz + (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
+    texture = 0.5 * np.sin(2 * np.pi * x_idx / 25) * np.cos(2 * np.pi * y_idx / 30)
+    return radius, texture, Surface(form + texture, 1, 1)
+
+def test_remove_cylinder_known_radius(cylinder_surface):
+    radius, texture, surface = cylinder_surface
+    detrended = surface.remove_cylinder(radius=radius)
+    # After form removal only the texture should remain
+    assert_array_almost_equal(detrended.data, texture, decimal=2)
+
+def test_remove_cylinder_fit_radius(cylinder_surface):
+    radius, texture, surface = cylinder_surface
+    detrended = surface.remove_cylinder()
+    assert_array_almost_equal(detrended.data, texture, decimal=2)
+
+def test_remove_cylinder_return_trend(cylinder_surface):
+    radius, texture, surface = cylinder_surface
+    detrended, trend = surface.remove_cylinder(radius=radius, return_trend=True)
+    # The trend plus the detrended surface must reconstruct the original data
+    assert_array_almost_equal(detrended.data + trend.data, surface.data)
+
+def test_remove_cylinder_preserves_nan(cylinder_surface):
+    radius, texture, surface = cylinder_surface
+    surface[5:10, 5:10] = np.nan
+    detrended = surface.remove_cylinder(radius=radius)
+    assert np.isnan(detrended.data[5:10, 5:10]).all()
+
+def test_remove_cylinder_invalid_axis(cylinder_surface):
+    radius, texture, surface = cylinder_surface
+    with pytest.raises(ValueError):
+        surface.remove_cylinder(axis='z')
+
 def test_has_missing_points(data):
     surface = Surface(data, 1, 1)
     assert surface.has_missing_points == False

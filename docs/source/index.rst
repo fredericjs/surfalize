@@ -20,4 +20,5 @@ replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion f
    batch_processing
    commandline
    sflz_format
+   examples/index
    apidoc

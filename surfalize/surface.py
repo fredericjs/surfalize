@@ -11,6 +11,7 @@ from collections import namedtuple
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+from matplotlib.colors import to_rgba
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.linalg import lstsq
 from scipy.interpolate import griddata
@@ -20,12 +21,14 @@ import scipy.ndimage as ndimage
 from .file import FileHandler
 from .utils import approximately_equal
 from .cache import cache
-from .mathutils import Sinusoid, trapezoid, otsu_threshold
+from .mathutils import Sinusoid, Cylinder, trapezoid, otsu_threshold
+from .exceptions import FittingError
 from .autocorrelation import AutocorrelationFunction
 from .fourier import FourierTransform
 from .base import BaseTopography, batch_method, no_nonmeasured_points
 from .profile import Profile
 from .image import Image
+from .mask import Mask
 
 
 size = namedtuple('Size', ['y', 'x'])
@@ -107,7 +110,7 @@ class Surface(BaseTopography):
     NON_ISO_PARAMETERS = ('period', 'depth', 'aspect_ratio', 'homogeneity', 'stepheight', 'cavity_volume')
     AVAILABLE_PARAMETERS = ISO_PARAMETERS + NON_ISO_PARAMETERS
     
-    def __init__(self, height_data, step_x, step_y, metadata=None, image_layers=None):
+    def __init__(self, height_data, step_x, step_y, metadata=None, image_layers=None, mask=None):
         super().__init__() # Initialize cached instance
         if not approximately_equal(step_x, step_y):
             warnings.warn(
@@ -116,8 +119,13 @@ class Surface(BaseTopography):
 
         self.step_x = step_x
         self.step_y = step_y
+        # The mask is created before the data is assigned so that the data setter can consult it. It is empty until a
+        # region is masked, so no array is allocated here.
+        self.mask = Mask(self)
         # Assigning through the data property stores the array, recomputes width_um/height_um and clears the cache
         self.data = height_data
+        if mask is not None:
+            self.mask.set(mask, inplace=True)
 
         self.metadata = metadata if metadata is not None else {}
         self.image_layers = image_layers if image_layers is not None else {}
@@ -142,6 +150,11 @@ class Surface(BaseTopography):
         self._data = value
         self.width_um = (value.shape[1] - 1) * self.step_x
         self.height_um = (value.shape[0] - 1) * self.step_y
+        # A mask of a different shape becomes meaningless when the data is replaced, so it is reset.
+        mask = getattr(self, 'mask', None)
+        if mask is not None and not mask.is_empty and mask._array.shape != value.shape:
+            warnings.warn('The mask was cleared because the new data has a different shape.')
+            mask.clear(inplace=True)
         self.clear_cache()
 
     @property
@@ -167,7 +180,7 @@ class Surface(BaseTopography):
         """
         return size(*self.data.shape)
             
-    def _set_data(self, data=None, step_x=None, step_y=None):
+    def _set_data(self, data=None, step_x=None, step_y=None, mask=None):
         """
         Overwrites the data of the surface. Used to modify surfaces inplace and recalculate the width_um and height_um
         attributes as well as clear the cache on all lru_cached methods. This method should be used by any method
@@ -181,13 +194,22 @@ class Surface(BaseTopography):
             Interval between two datapoints in x-axis (horizontal axis, second array dimension).
         step_y : float
             Interval between two datapoints in y-axis (vertical axis, first array dimension).
+        mask : ndarray[bool] | None
+            New mask array. Must be provided by shape-changing operations (crop, zoom, rotate) so that the mask stays
+            consistent with the new data shape. If None, the existing mask is kept.
 
         Returns
         -------
         None
         """
         if data is not None:
+            # Clear the mask before assigning new data so the shape-mismatch guard in the data setter does not warn and
+            # discard a mask that the caller is about to replace anyway.
+            if mask is not None:
+                self.mask.clear(inplace=True)
             self.data = data
+        if mask is not None:
+            self.mask.set(mask, inplace=True)
         if step_x is not None:
             self.step_x = step_x
         if step_y is not None:
@@ -196,8 +218,48 @@ class Surface(BaseTopography):
         self.height_um = (self.size.y - 1) * self.step_y
         self.clear_cache() # Calls method from parent class
 
-    def _with_data(self, data):
-        return Surface(data, self.step_x, self.step_y)
+    def _with_data(self, data, mask=None):
+        if mask is None and not self.mask.is_empty:
+            mask = self.mask.to_array()
+        return Surface(data, self.step_x, self.step_y, metadata=self.metadata, image_layers=self.image_layers,
+                       mask=mask)
+
+    def copy(self):
+        """
+        Returns a deep copy of the surface. The height data and the mask are copied, while metadata and image layers
+        are shallow-copied.
+
+        Returns
+        -------
+        surface : surfalize.Surface
+        """
+        mask = None if self.mask.is_empty else self.mask.to_array().copy()
+        return Surface(self._data.copy(), self.step_x, self.step_y, metadata=dict(self.metadata),
+                       image_layers=dict(self.image_layers), mask=mask)
+
+    @property
+    def has_masked_points(self):
+        """
+        Returns true if the surface contains masked points.
+
+        Returns
+        -------
+        bool
+        """
+        return not self.mask.is_empty
+
+    @property
+    def _invalid(self):
+        """
+        Boolean array marking points excluded from analysis: non-measured points (NaN) and masked points.
+
+        Returns
+        -------
+        ndarray[bool]
+        """
+        if self.mask.is_empty:
+            return np.isnan(self._data)
+        return np.isnan(self._data) | self.mask.to_array()
 
     def _arithmetic_operation(self, other, func):
         """
@@ -217,9 +279,12 @@ class Surface(BaseTopography):
         if isinstance(other, Surface):
             if self.step_x != other.step_x or self.step_y != other.step_y or self.size != other.size:
                 raise ValueError('Surface objects must have same dimensions and stepsize.')
-            return Surface(func(self.data, other.data), self.step_x, self.step_y)
+            mask = None
+            if not self.mask.is_empty or not other.mask.is_empty:
+                mask = self.mask.to_array() | other.mask.to_array()
+            return Surface(func(self.data, other.data), self.step_x, self.step_y, mask=mask)
         elif isinstance(other, (int, float)):
-            return Surface(func(self.data, other), self.step_x, self.step_y)
+            return self._with_data(func(self.data, other))
         raise ValueError(f'Adding of {type(other)} not supported.')
     def __add__(self, other):
         return self._arithmetic_operation(other, lambda a, b: a+b)
@@ -268,7 +333,8 @@ class Surface(BaseTopography):
                 step_y = item[0].step * self.step_y
             if isinstance(item[1], slice) and item[1].step is not None:
                 step_x = item[1].step * self.step_x
-        return Surface(self._data.__getitem__(item), step_x, step_y)
+        mask = None if self.mask.is_empty else self.mask.to_array().__getitem__(item)
+        return Surface(self._data.__getitem__(item), step_x, step_y, mask=mask)
 
     @classmethod
     def load(cls, path_or_buffer, format=None, encoding='auto', read_image_layers=False):
@@ -570,11 +636,11 @@ class Surface(BaseTopography):
         y_flat = y.flatten()
         z_flat = self.data.flatten()
 
-        # Create mask for non-NaN values
-        mask = ~np.isnan(z_flat)
-        x_valid = x_flat[mask]
-        y_valid = y_flat[mask]
-        z_valid = z_flat[mask]
+        # Exclude invalid points (non-measured and masked) from the fit
+        valid = ~self._invalid.flatten()
+        x_valid = x_flat[valid]
+        y_valid = y_flat[valid]
+        z_valid = z_flat[valid]
 
         # Create design matrix with cross-terms
         A = np.ones((len(x_valid), 1))
@@ -599,7 +665,106 @@ class Surface(BaseTopography):
             self._set_data(data=detrended)
             return_surface = self
         else:
-            return_surface = Surface(detrended, self.step_x, self.step_y)
+            return_surface = self._with_data(detrended)
+
+        if return_trend:
+            return return_surface, Surface(trend, self.step_x, self.step_y)
+        return return_surface
+
+    @batch_method('operation', fixed={'inplace': True, 'return_trend': False})
+    def remove_cylinder(self, radius=None, axis='auto', inplace=False, return_trend=False):
+        """
+        Removes a cylindrical form from the surface. This is intended for surfaces measured on a cylindrical part, where
+        the dominant form is the curvature of the cylinder. A cylinder is fitted to the height data in 3d space by
+        treating the position and orientation of the rotation axis (and optionally the radius) as free parameters, and
+        the cylinder form is subtracted from the height data.
+
+        The cylinder is fitted by minimizing the squared radial deviations of the measured points from the cylinder
+        surface. The form is then removed by subtracting, at each lateral position, the z-height of the fitted cylinder
+        directly below or above the measured point, so that the returned surface retains the original lateral grid and
+        positive features remain positive.
+
+        If the radius of the cylinder is known (e.g. from the part diameter), it should be passed via the ``radius``
+        argument. In that case only the position and orientation of the axis are optimized, which is more robust. If no
+        radius is provided, it is estimated from the data and optimized alongside the axis.
+
+        Parameters
+        ----------
+        radius : float | None, default None
+            Known radius of the cylinder in the same lateral units as the surface (typically µm). If provided, the
+            radius is held fixed during the fit. If None, the radius is estimated and optimized.
+        axis : {'auto', 'x', 'y'}, default 'auto'
+            Approximate orientation of the cylinder's rotation axis in the lateral plane, used as the starting point for
+            the fit. With 'auto', the axis orientation is inferred from the direction of lowest curvature. The fit
+            refines the orientation from this starting point, so small tilts of the axis relative to the chosen
+            direction are accounted for.
+        inplace : bool, default False
+            If False, create and return new Surface object with processed data. If True, changes data inplace and
+            return self.
+        return_trend : bool, default False
+            Return the trend (the fitted cylinder form) as a Surface object alongside the detrended surface if True.
+
+        Returns
+        -------
+        Surface or tuple of Surfaces
+        """
+        if axis not in ('auto', 'x', 'y'):
+            raise ValueError("Invalid axis specified. Must be one of 'auto', 'x' or 'y'.")
+
+        y_idx, x_idx = np.mgrid[:self.size.y, :self.size.x]
+        X = x_idx * self.step_x
+        Y = y_idx * self.step_y
+        Z = self.data
+
+        # Reduce the surface to mean profiles along each lateral axis and fit a parabola to estimate the curvature.
+        # The cylinder axis is oriented along the direction of lowest curvature (smallest sagitta).
+        x_coords = np.arange(self.size.x) * self.step_x
+        y_coords = np.arange(self.size.y) * self.step_y
+        profile_x = np.nanmean(Z, axis=0)
+        profile_y = np.nanmean(Z, axis=1)
+        poly_x = np.polyfit(x_coords, profile_x, 2)
+        poly_y = np.polyfit(y_coords, profile_y, 2)
+        sagitta_x = np.abs(poly_x[0]) * (x_coords[-1] - x_coords[0]) ** 2
+        sagitta_y = np.abs(poly_y[0]) * (y_coords[-1] - y_coords[0]) ** 2
+
+        if axis == 'auto':
+            axis = 'x' if sagitta_y >= sagitta_x else 'y'
+
+        # The curvature occurs perpendicular to the axis. Use the parabola along the curved direction to estimate the
+        # radius and the position/height of the axis.
+        if axis == 'x':
+            a, b, _ = poly_y
+            curved_coords = y_coords
+        else:
+            a, b, _ = poly_x
+            curved_coords = x_coords
+        if a == 0:
+            raise FittingError('Could not estimate the cylinder curvature from the data. The surface appears flat '
+                               'along the curved direction.')
+        vertex = -b / (2 * a)
+        vertex_height = np.polyval((a, b, poly_y[2] if axis == 'x' else poly_x[2]), vertex)
+        radius_guess = radius if radius is not None else 1 / (2 * np.abs(a))
+        # For a convex (bulging) surface a < 0 and the axis lies below the apex, for a concave surface a > 0 above it.
+        axis_height = vertex_height - radius_guess if a < 0 else vertex_height + radius_guess
+
+        if axis == 'x':
+            guess = Cylinder(point=(0, vertex, axis_height), direction=(1, 0, 0), radius=radius_guess)
+        else:
+            guess = Cylinder(point=(vertex, 0, axis_height), direction=(0, 1, 0), radius=radius_guess)
+
+        valid = ~self._invalid
+        points = np.column_stack((X[valid], Y[valid], Z[valid]))
+        cylinder = Cylinder.from_fit(points, guess, radius=radius)
+
+        # Build the trend by intersecting vertical lines with the fitted cylinder at every lateral position.
+        trend = cylinder.intersect_vertical(X, Y, Z)
+        detrended = np.where(np.isnan(Z), np.nan, Z - trend)
+
+        if inplace:
+            self._set_data(data=detrended)
+            return_surface = self
+        else:
+            return_surface = self._with_data(detrended)
 
         if return_trend:
             return return_surface, Surface(trend, self.step_x, self.step_y)
@@ -679,11 +844,14 @@ class Surface(BaseTopography):
         """
         y, x = self.size
         xn, yn = int(x / factor), int(y / factor)
-        data = self.data[int((y - yn) / 2):yn + int((y - yn) / 2) + 1, int((x - xn) / 2):xn + int((x - xn) / 2) + 1]
+        sy = slice(int((y - yn) / 2), yn + int((y - yn) / 2) + 1)
+        sx = slice(int((x - xn) / 2), xn + int((x - xn) / 2) + 1)
+        data = self.data[sy, sx]
+        mask = None if self.mask.is_empty else self.mask.to_array()[sy, sx]
         if inplace:
-            self._set_data(data=data)
+            self._set_data(data=data, mask=mask)
             return self
-        return Surface(data, self.step_x, self.step_y)
+        return Surface(data, self.step_x, self.step_y, mask=mask)
 
     @batch_method('operation')
     def crop(self, box, in_units=True, inplace=False):
@@ -714,10 +882,11 @@ class Surface(BaseTopography):
             raise ValueError('Box is out of bounds!')
 
         data = self.data[y0:y1 + 1, x0:x1 + 1]
+        mask = None if self.mask.is_empty else self.mask.to_array()[y0:y1 + 1, x0:x1 + 1]
         if inplace:
-            self._set_data(data=data)
+            self._set_data(data=data, mask=mask)
             return self
-        return Surface(data, self.step_x, self.step_y)
+        return Surface(data, self.step_x, self.step_y, mask=mask)
 
     @batch_method('operation')
     def align(self, axis='y', method='fft_refined', inplace=False):
@@ -866,22 +1035,25 @@ class Surface(BaseTopography):
     # Height parameters ################################################################################################
 
     @cache
-    @no_nonmeasured_points
     def height_parameters(self):
         """
         Calculates the roughness parameters from the height parameter family.
-        Returns a dictionary of the height parameters.
+        Returns a dictionary of the height parameters. Masked points are excluded from the calculation.
 
         Returns
         -------
         dict[str: float]
         """
-        mean = self.data.mean()
-        centered_data = self.data - mean
+        if self.has_missing_points:
+            raise ValueError("Non-measured points must be filled before any other operation.")
+        # Use only valid (non-masked) height values. With no mask present this is equivalent to the full data.
+        centered_data = self._valid_values()
+        mean = centered_data.mean()
+        centered_data = centered_data - mean
         abs_centered_data = np.abs(centered_data)
         centered_data_sq = abs_centered_data ** 2
 
-        size = self.data.size
+        size = centered_data.size
         sa = np.sum(abs_centered_data) / size
         sq = np.sqrt(np.sum(centered_data_sq) / size)
         sv = np.abs(centered_data.min())
@@ -1713,7 +1885,7 @@ class Surface(BaseTopography):
         return self.get_fourier_transform().plot_angular_power_spectrum(ax=ax, angle_step=angle_step)
 
     def plot_2d(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, vmin=None, vmax=None,
-                show_cbar=None, save_to=None):
+                show_cbar=None, save_to=None, masked_color='red', masked_alpha=0.5):
         """
         Creates a 2D-plot of the surface using matplotlib.
 
@@ -1722,7 +1894,7 @@ class Surface(BaseTopography):
         cmap : str | mpl.cmap, default 'jet'
             Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
         maskcolor : str, default 'Black'
-            Color for masked values.
+            Color for non-measured points.
         layer : str, default Topography
             Indicate the layer to plot, by default the topography layer is shown. Alternatively, the label of an image
             layer can be indicated.
@@ -1737,6 +1909,10 @@ class Surface(BaseTopography):
             and omitted for image data.
         save_to : str | pathlib.Path | None
             Path to where the plot should be saved.
+        masked_color : str, default 'red'
+            Color of the translucent overlay drawn over masked points on the topography layer.
+        masked_alpha : float, default 0.5
+            Opacity of the masked-point overlay, between 0 (invisible) and 1 (opaque).
 
         Returns
         -------
@@ -1771,9 +1947,20 @@ class Surface(BaseTopography):
             cax.axis('off')
         ax.set_xlabel('x [µm]')
         ax.set_ylabel('y [µm]')
-        if layer == 'Topography' and self.has_missing_points:
-            handles = [plt.plot([], [], marker='s', c=maskcolor, ls='')[0]]
-            ax.legend(handles, ['non-measured points'], loc='lower right', fancybox=False, framealpha=1, fontsize=6)
+        if layer == 'Topography' and self.has_masked_points:
+            # Translucent overlay so the underlying height still shows through the masked region.
+            overlay = np.zeros((self.size.y, self.size.x, 4))
+            overlay[self.mask.to_array()] = to_rgba(masked_color, masked_alpha)
+            ax.imshow(overlay, extent=(0, self.width_um, 0, self.height_um), interpolation='nearest')
+        if layer == 'Topography' and (self.has_missing_points or self.has_masked_points):
+            handles, labels = [], []
+            if self.has_missing_points:
+                handles.append(plt.plot([], [], marker='s', c=maskcolor, ls='')[0])
+                labels.append('non-measured points')
+            if self.has_masked_points:
+                handles.append(plt.plot([], [], marker='s', c=to_rgba(masked_color, masked_alpha), ls='')[0])
+                labels.append('masked points')
+            ax.legend(handles, labels, loc='lower right', fancybox=False, framealpha=1, fontsize=6)
         if save_to:
             fig.savefig(save_to, dpi=300, bbox_inches='tight')
         return fig, ax
@@ -1855,7 +2042,7 @@ class Surface(BaseTopography):
             image.save(save_to)
         return image
 
-    def show(self, cmap='jet', maskcolor='black', layer='Topography', ax=None):
+    def show(self, cmap='jet', maskcolor='black', layer='Topography', ax=None, masked_color='red', masked_alpha=0.5):
         """
         Shows a 2D-plot of the surface using matplotlib.
 
@@ -1864,16 +2051,21 @@ class Surface(BaseTopography):
         cmap : str | mpl.cmap, default 'jet'
             Colormap to apply on the topography layer. Argument has no effect if an image layer is selected.
         maskcolor : str, default 'Black'
-            Color for masked values.
+            Color for non-measured points.
         layer : str, default Topography
             Indicate the layer to plot, by default the topography layer is shown. Alternatively, the label of an image
             layer can be indicated.
         ax : matplotlib axis, default None
             If specified, the plot will be drawn the specified axis.
+        masked_color : str, default 'red'
+            Color of the translucent overlay drawn over masked points on the topography layer.
+        masked_alpha : float, default 0.5
+            Opacity of the masked-point overlay, between 0 (invisible) and 1 (opaque).
 
         Returns
         -------
         None.
         """
-        self.plot_2d(cmap=cmap, maskcolor=maskcolor, layer=layer, ax=ax)
+        self.plot_2d(cmap=cmap, maskcolor=maskcolor, layer=layer, ax=ax, masked_color=masked_color,
+                     masked_alpha=masked_alpha)
         plt.show()

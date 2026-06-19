@@ -165,3 +165,4 @@ dimensional periodic structures. The following parameters can be calculated:
 | Outlier removal | Removes outliers outside n standard deviation from the mean        |
 | Thresholding    | Thresholding based on areal material ratio                         |
 | Filtering       | Applies a Gaussian highpass, lowpass or bandpass filter            |
+| Masking         | Excludes rectangular, circular or thresholded regions from analysis |

@@ -8,6 +8,7 @@ API Documentation
 
    api/surface
    api/profile
+   api/mask
    api/base
    api/batch
    api/autocorrelation

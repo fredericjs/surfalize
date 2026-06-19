@@ -28,6 +28,8 @@ class AbbottFirestoneCurve(CachedInstance):
                              "Abbott-Firestone curve can be instantiated.") from None
         super().__init__()
         self._obj = obj
+        # Flat array of valid height values, excluding masked points. With no mask this is simply the full data.
+        self._values = obj._valid_values()
         self._nbins = nbins
         self._calculate_curve()
 
@@ -40,7 +42,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         height, material_ratio : tuple[ndarray[float], ndarray[float]]
         """
-        hist, height = np.histogram(self._obj.data, bins=self._nbins)
+        hist, height = np.histogram(self._values, bins=self._nbins)
         hist = hist[::-1]  # sort descending
         height = height[::-1]  # sort descending
         material_ratio = np.append(1, np.cumsum(hist))  # prepend 1 for first bin edge after cumsum
@@ -210,7 +212,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        return self._obj.data.max() - self._yupper
+        return self._values.max() - self._yupper
 
     @cache
     def vkx(self):
@@ -222,7 +224,7 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        return self._ylower - self._obj.data.min()
+        return self._ylower - self._values.min()
 
     @cache
     def ak1(self):
@@ -349,7 +351,7 @@ class AbbottFirestoneCurve(CachedInstance):
             fig, ax = plt.subplots()
         else:
             fig = ax.figure
-        dist_bars, bins_bars = np.histogram(self._obj.data, bins=nbars)
+        dist_bars, bins_bars = np.histogram(self._values, bins=nbars)
         dist_bars = np.flip(dist_bars)
         bins_bars = np.flip(bins_bars)
 
@@ -361,10 +363,10 @@ class AbbottFirestoneCurve(CachedInstance):
         ax2.set_xlabel('Material ratio (%)')
         ax.set_box_aspect(1)
         ax2.set_xlim(0, 100)
-        ax.set_ylim(self._obj.data.min(), self._obj.data.max())
+        ax.set_ylim(self._values.min(), self._values.max())
 
         ax.barh(bins_bars[:-1] + np.diff(bins_bars) / 2, dist_bars / dist_bars.cumsum().max() * 100,
-                height=(self._obj.data.max() - self._obj.data.min()) / nbars, edgecolor='k', color='lightblue')
+                height=(self._values.max() - self._values.min()) / nbars, edgecolor='k', color='lightblue')
         ax2.plot(material_ratio, height, c='r', clip_on=True)
 
         return fig, (ax, ax2)
