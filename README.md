@@ -52,8 +52,11 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 
 | Manufacturer           | Format                 | Reading         | Writing |
 |------------------------|------------------------|-----------------|---------|
-| Keyence                | *.vk4*, *.vk6*, *.vk7* | Yes             | No      | 
+| Keyence                | *.vk3*, *.vk4*, *.vk6*, *.vk7* | Yes      | No      | 
 | Keyence                | *.cag*                 | Only extraction | No      | 
+| Keyence                | *.zon*                 | Yes             | No      | 
+| Olympus                | *.lext*                | Yes             | No      | 
+| Olympus                | *.oir*, *.poir*        | Yes             | No      | 
 | Leica                  | *.plu*                 | Yes             | No      | 
 | Sensofar               | *.plu*, *.plux*        | Yes             | No      | 
 | Digital Surf           | *.sur*                 | Yes             | Yes     | 

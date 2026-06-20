@@ -19,4 +19,5 @@ replace software packages such as MountainsMap, MultiFileAnalyzer and Gwyddion f
    plotting
    batch_processing
    commandline
+   sflz_format
    apidoc

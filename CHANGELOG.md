@@ -1,3 +1,22 @@
+## v0.18.0
+- Fixed and extended the native SFLZ (`.sflz`) file format and added a format specification to the documentation.
+  Metadata is now actually written and read (as a JSON document that round-trips strings, numbers and timestamps),
+  non-measured points (`NaN`) survive integer quantization via a reserved sentinel, signed storage dtypes are
+  dequantized correctly, lossless storage is available by choosing a floating point dtype, the lateral spacing and
+  height values carry an explicit length unit (micrometers by default), and arrays returned by the reader are
+  writable
+- Added reading support for the Keyence VK3 (`.vk3`) file format. VK3 and VK4 share the same structure, so the
+  existing VK4 reader handles both (the only difference, an additional 4-byte entry after the offset table in VK4, is
+  irrelevant because the reader seeks to absolute offsets)
+- Added reading support for the Olympus OIR (`.oir`) and packed OIR (`.poir`) file formats, including the height
+  channel as well as the intensity, invalid and color (RGB) image layers and the acquisition parameters as metadata
+- Added reading support for the Keyence ZON (`.zon`) file format, including the height channel, the invalid-pixel
+  mask (imported as NaN), the color (RGB) image layers and the acquisition parameters as metadata. Reading `.zon`
+  files requires zstd support, which is available in the Python standard library on Python 3.14+ and otherwise
+  provided by the `zstandard` dependency
+- Added reading support for the Olympus LEXT OLS4000 (`.lext`) file format, including the height channel as well as
+  the color (RGB) and intensity image layers and the acquisition parameters as metadata
+
 ## v0.17.0
 - Added new areal parameters introduced in ISO 25178-2:2021 that build on already-computed quantities: `Sdc` (material
   ratio height difference), `Spkx`/`Svkx` (maximum peak height / pit depth before reduction), `Sak1`/`Sak2` (area of

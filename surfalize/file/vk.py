@@ -155,8 +155,11 @@ def read_string_data(filehandle, offset, encoding='auto'):
     str_data['lens_name'] = decode(filehandle.read(size_lens_name), encoding)[::2]
     return str_data
 
-@FileHandler.register_reader(suffix='.vk4', magic=b'VK4_')
-def read_vk4(filehandle, read_image_layers=False, encoding='auto'):
+# VK3 and VK4 share the same structure. The only difference is that VK4 has an additional 4-byte entry
+# right after the offset table. Since we seek to the absolute offsets stored in the offset table rather
+# than reading the sections sequentially, that extra entry is irrelevant and the same reader handles both.
+@FileHandler.register_reader(suffix=('.vk3', '.vk4'), magic=(b'VK3_', b'VK4_'))
+def read_vk3_vk4(filehandle, read_image_layers=False, encoding='auto'):
     metadata = dict()
     header = filehandle.read(HEADER_SIZE)
     offset_table = LAYOUT_OFFSET_TABLE.read(filehandle)
@@ -193,4 +196,4 @@ def read_vk4(filehandle, read_image_layers=False, encoding='auto'):
 def read_vk6_vk7(filehandle, read_image_layers=False, encoding='utf-8'):
     with zipfile.ZipFile(filehandle) as archive:
         with archive.open('Vk4File') as vk4_filehandle:
-            return read_vk4(vk4_filehandle, read_image_layers=read_image_layers, encoding=encoding)
+            return read_vk3_vk4(vk4_filehandle, read_image_layers=read_image_layers, encoding=encoding)
