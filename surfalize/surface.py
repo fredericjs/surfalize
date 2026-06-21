@@ -24,6 +24,7 @@ from .cache import cache
 from .mathutils import Sinusoid, Cylinder, trapezoid, otsu_threshold
 from .exceptions import FittingError
 from .autocorrelation import AutocorrelationFunction
+from .feature import FeatureParameters
 from .fourier import FourierTransform
 from .base import BaseTopography, batch_method, no_nonmeasured_points
 from .profile import Profile
@@ -51,6 +52,7 @@ class Surface(BaseTopography):
     - Functional parameters: Sk, Svk, Spk, Smr1, Smr2, Sxp, Smr(c), Smc(mr)
     - Functional volume parameters: Vmc, Vmp, Vvc, Vvv
     - Spatial parameters: Sal, Str
+    - Feature parameters: Spd, Svd, Spc, Svc, S5p, S5v, S10z
 
     Periodic parameters:
     - Spatial period: computed from Frourier transform
@@ -105,7 +107,7 @@ class Surface(BaseTopography):
     """
     ISO_PARAMETERS = ('Sa', 'Sq', 'Sp', 'Sv', 'Sz', 'Ssk', 'Sku', 'Sdr', 'Sdq', 'Sal', 'Str', 'Ssw', 'Sk', 'Spk',
                             'Svk', 'Spkx', 'Svkx', 'Sak1', 'Sak2', 'Smr1', 'Smr2', 'Sxp', 'Sdc', 'Vmp', 'Vmc', 'Vvv',
-                            'Vvc')
+                            'Vvc', 'Spd', 'Svd', 'Spc', 'Svc', 'S5p', 'S5v', 'S10z')
     # Non-standard parameters that are not defined by ISO 25178 but can still be evaluated
     NON_ISO_PARAMETERS = ('period', 'depth', 'aspect_ratio', 'homogeneity', 'stepheight', 'cavity_volume')
     AVAILABLE_PARAMETERS = ISO_PARAMETERS + NON_ISO_PARAMETERS
@@ -1483,6 +1485,197 @@ class Surface(BaseTopography):
         Height difference : float
         """
         return self.get_abbott_firestone_curve().dc(p, q)
+
+    # Feature parameters ###############################################################################################
+
+    @batch_method('parameter')
+    @cache
+    @no_nonmeasured_points
+    def get_feature_parameters(self):
+        """
+        Instantiates and returns a FeatureParameters object, which performs the watershed segmentation and Wolf pruning
+        underlying the ISO 25178-2 feature parameters. The cache returns the same object on every call, so that the
+        segmentation is shared between all feature parameters that use the same pruning value.
+
+        Returns
+        -------
+        FeatureParameters
+        """
+        return FeatureParameters(self)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def Spd(self, pruning=5, exclude_edge=True):
+        """
+        Calculates the density of peaks Spd according to ISO 25178-2, the number of significant hills per unit area
+        (in 1/µm²). Significant hills are obtained by watershed segmentation followed by Wolf pruning.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz. The default value of 5 % follows ISO 25178-3.
+        exclude_edge : bool, default True
+            If True, hills whose region touches the border of the evaluation area are excluded, since such features are
+            incomplete. This matches the default behaviour of commercial software such as MountainsMap.
+
+        Returns
+        -------
+        Spd : float
+        """
+        return self.get_feature_parameters().Spd(pruning=pruning, exclude_edge=exclude_edge)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def Svd(self, pruning=5, exclude_edge=True):
+        """
+        Calculates the density of pits Svd according to ISO 25178-2, the number of significant dales per unit area
+        (in 1/µm²). Significant dales are obtained by watershed segmentation followed by Wolf pruning.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz. The default value of 5 % follows ISO 25178-3.
+        exclude_edge : bool, default True
+            If True, dales whose region touches the border of the evaluation area are excluded, since such features are
+            incomplete. This matches the default behaviour of commercial software such as MountainsMap.
+
+        Returns
+        -------
+        Svd : float
+        """
+        return self.get_feature_parameters().Svd(pruning=pruning, exclude_edge=exclude_edge)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def Spc(self, pruning=5, exclude_edge=True):
+        """
+        Calculates the arithmetic mean peak curvature Spc according to ISO 25178-2 (in 1/µm), the mean of the local
+        mean curvature at the peaks of the significant hills.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz. The default value of 5 % follows ISO 25178-3.
+        exclude_edge : bool, default True
+            If True, hills whose region touches the border of the evaluation area are excluded from the feature set.
+
+        Returns
+        -------
+        Spc : float
+        """
+        return self.get_feature_parameters().Spc(pruning=pruning, exclude_edge=exclude_edge)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def Svc(self, pruning=5, exclude_edge=True):
+        """
+        Calculates the arithmetic mean pit curvature Svc according to ISO 25178-2 (in 1/µm), the mean of the local
+        mean curvature at the pits of the significant dales. Pits are concave, so Svc is negative.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz. The default value of 5 % follows ISO 25178-3.
+        exclude_edge : bool, default True
+            If True, dales whose region touches the border of the evaluation area are excluded from the feature set.
+
+        Returns
+        -------
+        Svc : float
+        """
+        return self.get_feature_parameters().Svc(pruning=pruning, exclude_edge=exclude_edge)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def S5p(self, pruning=5, exclude_edge=True):
+        """
+        Calculates the five-point peak height S5p according to ISO 25178-2 (in µm), the mean of the heights of the five
+        highest significant peaks referenced to the mean plane. If fewer than five significant peaks are found, the mean
+        is taken over those available.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz. The default value of 5 % follows ISO 25178-3.
+        exclude_edge : bool, default True
+            If True, hills whose region touches the border of the evaluation area are excluded from the feature set.
+
+        Returns
+        -------
+        S5p : float
+        """
+        return self.get_feature_parameters().S5p(pruning=pruning, exclude_edge=exclude_edge)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def S5v(self, pruning=5, exclude_edge=True):
+        """
+        Calculates the five-point pit depth S5v according to ISO 25178-2 (in µm), the mean of the depths of the five
+        deepest significant pits referenced to the mean plane. If fewer than five significant pits are found, the mean
+        is taken over those available.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz. The default value of 5 % follows ISO 25178-3.
+        exclude_edge : bool, default True
+            If True, dales whose region touches the border of the evaluation area are excluded from the feature set.
+
+        Returns
+        -------
+        S5v : float
+        """
+        return self.get_feature_parameters().S5v(pruning=pruning, exclude_edge=exclude_edge)
+
+    @batch_method('parameter')
+    @no_nonmeasured_points
+    def S10z(self, pruning=5, exclude_edge=True):
+        """
+        Calculates the ten-point height S10z according to ISO 25178-2 (in µm), the sum of the five-point peak height
+        S5p and the five-point pit depth S5v.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz. The default value of 5 % follows ISO 25178-3.
+        exclude_edge : bool, default True
+            If True, features whose region touches the border of the evaluation area are excluded from the feature set.
+
+        Returns
+        -------
+        S10z : float
+        """
+        return self.get_feature_parameters().S10z(pruning=pruning, exclude_edge=exclude_edge)
+
+    def plot_feature_segmentation(self, kind='dale', pruning=5, exclude_edge=True, ax=None, cmap='jet', save_to=None):
+        """
+        Plots the watershed segmentation of the surface into significant motifs (hills or dales) used by the feature
+        parameters, together with the motif boundaries (ridge/course lines) and critical points (pits/peaks).
+
+        Parameters
+        ----------
+        kind : {'dale', 'hill'}, default 'dale'
+            Whether to plot the dale (pit) or hill (peak) segmentation.
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Sz.
+        exclude_edge : bool, default True
+            If True, motifs touching the border of the evaluation area are not marked as significant features.
+        ax : matplotlib axis, default None
+            If specified, the plot is drawn on the given axis.
+        cmap : str | mpl.cmap, default 'jet'
+            Colormap applied to the height data.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
+
+        Returns
+        -------
+        plt.Figure, plt.Axes
+        """
+        fig, ax = self.get_feature_parameters().plot_segmentation(kind=kind, pruning=pruning,
+                                                                  exclude_edge=exclude_edge, ax=ax, cmap=cmap)
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
 
     # Misc parameters ##################################################################################################
 

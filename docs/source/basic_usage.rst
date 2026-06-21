@@ -137,7 +137,8 @@ convention follows :code:`numpy.ma`, i.e. a value of :code:`True` marks a point 
 .. note::
 
     Parameters that require a complete, gap-free grid (e.g. :code:`Sdr`, :code:`Sdq`, :code:`Sal`, :code:`Str`,
-    :code:`period`, :code:`orientation`) are not defined on a masked surface and will raise an error. Clear the mask
+    :code:`period`, :code:`orientation`, and the feature parameters :code:`Spd`, :code:`Svd`, :code:`Spc`, :code:`Svc`,
+    :code:`S5p`, :code:`S5v`, :code:`S10z`) are not defined on a masked surface and will raise an error. Clear the mask
     before computing them.
 
 Consistent with the other surface operations, the masking methods return a new :code:`Surface` by default and leave

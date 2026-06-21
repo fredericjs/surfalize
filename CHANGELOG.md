@@ -1,4 +1,21 @@
 ## v0.18.0
+- Added the ISO 25178-2:2021 feature parameters: `Spd` (density of peaks), `Svd` (density of pits), `Spc`/`Svc`
+  (arithmetic mean peak/pit curvature), `S5p`/`S5v` (five-point peak height / pit depth) and `S10z` (ten-point height).
+  These are computed by segmenting the surface into hills and dales with a watershed and then applying Wolf pruning,
+  controlled by the `pruning` keyword argument (a percentage of `Sz`, default 5 % per ISO 25178-3).
+- By default, motifs whose region touches the border of the evaluation area are treated as incomplete and excluded
+  from the feature set, matching the default behaviour of MountainsMap. This can be switched off per parameter with the
+  `exclude_edge=False` keyword argument. The resulting peak/pit densities reproduce MountainsMap in both modes.
+- The segmentation engine lives in the new module `surfalize.feature` (class `FeatureParameters`), accessible via
+  `Surface.get_feature_parameters()`. It is cached per surface and per pruning/edge setting, so all feature parameters
+  that share the same settings trigger only a single segmentation of the hills and one of the dales. The watershed is a
+  vectorized NumPy steepest-descent flow routing, which is robust on smooth floating point data (no height
+  quantization) and adds no new dependencies.
+- Added `Surface.plot_feature_segmentation()` to visualize the segmentation into significant motifs together with the
+  motif boundaries (ridge/course lines) and the critical points (peaks/pits).
+- The feature parameters were added to `Surface.ISO_PARAMETERS`, so they are included by `Surface.roughness_parameters()`
+  and `Batch.roughness_parameters()` when no explicit parameter list is given. They expect a scale-limited (filtered)
+  surface; on heavily unfiltered/noisy data the segmentation is correspondingly slower.
 - Fixed and extended the native SFLZ (`.sflz`) file format and added a format specification to the documentation.
   Metadata is now actually written and read (as a JSON document that round-trips strings, numbers and timestamps),
   non-measured points (`NaN`) survive integer quantization via a reserved sentinel, signed storage dtypes are

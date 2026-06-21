@@ -112,11 +112,24 @@ are supported:
 |                     | Vvc             | Core void volume                  | MountainsMap                       |
 |                     | Vm(p)           | Material volume                   | -                                  |
 |                     | Vv(p)           | Void volume                       | -                                  |
+| Feature             | Spd             | Density of peaks                  | MountainsMap                       |
+|                     | Svd             | Density of pits                   | MountainsMap                       |
+|                     | Spc             | Arithmetic mean peak curvature    | MountainsMap                       |
+|                     | Svc             | Arithmetic mean pit curvature     | MountainsMap                       |
+|                     | S5p             | Five-point peak height            | MountainsMap                       |
+|                     | S5v             | Five-point pit depth              | MountainsMap                       |
+|                     | S10z            | Ten-point height                  | MountainsMap                       |
 
 <sup>1</sup> Per default, Sdr calculation uses the algorithm proposed by ISO 25178 and also used by MountainsMap
 By keyword argument, the Gwyddion algorithm can be used instead.\
 <sup>2</sup> Gwyddion does not support Sdr calculation directly, but calculates surface area and projected
 area. 
+
+The feature parameters are computed by watershed segmentation of the surface into hills and dales, followed by
+Wolf pruning at a threshold given by the `pruning` keyword argument (default 5 % of Sz, per ISO 25178-3). By default,
+motifs that touch the border of the evaluation area are treated as incomplete and excluded from the feature set,
+matching the default of MountainsMap; this can be switched off with the `exclude_edge=False` keyword argument. The
+segmentation can be visualized with `Surface.plot_feature_segmentation()`.
 
 ## Supported profile roughness parameters
 

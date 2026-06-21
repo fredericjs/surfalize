@@ -12,6 +12,7 @@ API Documentation
    api/base
    api/batch
    api/autocorrelation
+   api/feature
    api/abbottfirestone
    api/fourier
    api/filters

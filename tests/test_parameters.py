@@ -225,6 +225,113 @@ def test_analytic_period(sinusoidal_surface):
     # lambda = samples_per_period * step = 200 * 0.1 = 20.0
     assert sinusoidal_surface.period() == pytest.approx(20.0, abs=1e-2)
 
+# Feature parameters (ISO 25178-2:2021, clause 5) ####################################################################
+
+@pytest.fixture
+def bump_surface():
+    # A regular 4x3 grid of identical, well-separated Gaussian bumps on a flat field. Each bump is one hill with one
+    # peak, so the significant-feature counts are known exactly. Bumps are kept away from the border so the peak
+    # curvature can be evaluated, and the field is noise-free so Wolf pruning keeps exactly the twelve bumps. The bump
+    # counts below use exclude_edge=False, since every bump in this small grid lies in the outer ring.
+    step = 0.1
+    ny, nx = 300, 400
+    amplitude = 2.0
+    sigma_px = 8.0
+    y, x = np.mgrid[0:ny, 0:nx]
+    z = np.zeros((ny, nx))
+    centers = [(cy, cx) for cy in range(60, ny, 90) for cx in range(60, nx, 90)]
+    for cy, cx in centers:
+        z += amplitude * np.exp(-((x - cx) ** 2 + (y - cy) ** 2) / (2 * sigma_px ** 2))
+    surface = Surface(z, step, step)
+    surface._n_bumps = len(centers)
+    surface._sigma_um = sigma_px * step
+    surface._amplitude = amplitude
+    return surface
+
+
+def test_feature_peak_count(bump_surface):
+    # Spd is the number of significant hills (peaks) per unit area; recovering the count recovers each bump.
+    count = round(bump_surface.Spd(exclude_edge=False) * bump_surface.width_um * bump_surface.height_um)
+    assert count == bump_surface._n_bumps
+
+
+def test_feature_density_units(bump_surface):
+    # Density is count divided by the evaluation area, in 1/µm².
+    expected = bump_surface._n_bumps / (bump_surface.width_um * bump_surface.height_um)
+    assert bump_surface.Spd(exclude_edge=False) == pytest.approx(expected, rel=1e-9)
+
+
+def test_feature_edge_exclusion_reduces_count(bump_surface):
+    # Excluding incomplete (border-touching) motifs can only reduce the count. Every bump in this grid lies in the
+    # outer ring, so edge exclusion removes them all.
+    assert bump_surface.Spd(exclude_edge=True) < bump_surface.Spd(exclude_edge=False)
+
+
+def test_feature_peak_curvature_sign(bump_surface):
+    # Peaks are convex (Spc > 0); the surrounding dale is concave (Svc < 0).
+    assert bump_surface.Spc(exclude_edge=False) > 0
+    assert bump_surface.Svc(exclude_edge=False) < 0
+
+
+def test_feature_peak_curvature_value(bump_surface):
+    # For a Gaussian bump A*exp(-r²/2σ²) the mean curvature at the apex is A/σ², which the discrete second difference
+    # recovers to within a few percent.
+    expected = bump_surface._amplitude / bump_surface._sigma_um ** 2
+    assert bump_surface.Spc(exclude_edge=False) == pytest.approx(expected, rel=0.05)
+
+
+def test_feature_five_point_peak_height(bump_surface):
+    # All bumps are identical, so the five-point peak height equals the peak height of a single bump above the mean
+    # plane.
+    peak_height = bump_surface._amplitude - bump_surface.data.mean()
+    assert bump_surface.S5p(exclude_edge=False) == pytest.approx(peak_height, rel=1e-3)
+
+
+def test_feature_ten_point_height_is_sum(bump_surface):
+    assert bump_surface.S10z(exclude_edge=False) == pytest.approx(
+        bump_surface.S5p(exclude_edge=False) + bump_surface.S5v(exclude_edge=False), abs=EPSILON)
+
+
+def test_feature_pruning_is_monotonic(bump_surface):
+    # A larger pruning threshold can only remove features, never add them.
+    assert (bump_surface.Spd(pruning=20, exclude_edge=False)
+            <= bump_surface.Spd(pruning=5, exclude_edge=False))
+
+
+def test_feature_parameters_match_mountainsmap():
+    # Regression anchor against MountainsMap on the separable surface z = cos(x/3) + sin(y/3). The reference values
+    # were taken from MountainsMap (no S-filter, no F-operation) in both edge modes.
+    x = np.linspace(0, 94.399452, 2048)
+    y = np.linspace(0, 70.78806, 1536)
+    X, Y = np.meshgrid(x, y)
+    surface = Surface(np.cos(X / 3) + np.sin(Y / 3), 0.046116, 0.046116)
+    # Edge motifs excluded (MountainsMap default).
+    assert surface.Spd() == pytest.approx(0.001197, abs=1e-6)
+    assert surface.Svd() == pytest.approx(0.001347, abs=1e-6)
+    # Edge motifs included.
+    assert surface.Spd(exclude_edge=False) == pytest.approx(0.003592, abs=1e-6)
+    assert surface.Svd(exclude_edge=False) == pytest.approx(0.003741, abs=1e-6)
+    # Edge-independent parameters.
+    assert surface.Spc() == pytest.approx(0.1111, abs=1e-3)
+    assert surface.Svc() == pytest.approx(-0.1111, abs=1e-3)
+    assert surface.S5p() == pytest.approx(1.957, abs=1e-3)
+    assert surface.S5v() == pytest.approx(2.043, abs=1e-3)
+    assert surface.S10z() == pytest.approx(4.000, abs=1e-3)
+
+
+def test_feature_parameters_require_filled_surface():
+    data = np.ones((10, 10))
+    data[0, 0] = np.nan
+    surface = Surface(data, 1.0, 1.0)
+    with pytest.raises(ValueError):
+        surface.Spd()
+
+
+def test_feature_parameters_in_roughness_parameters(bump_surface):
+    results = bump_surface.roughness_parameters(['Spd', 'S5p', 'S10z'])
+    assert set(results.keys()) == {'Spd', 'S5p', 'S10z'}
+
+
 def test_available_parameters_are_callable():
     # Guards against registry drift: every registered parameter name must resolve to a callable method on the class.
     for name in Surface.AVAILABLE_PARAMETERS:
