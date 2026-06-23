@@ -34,6 +34,34 @@
 - Added reading support for the Olympus LEXT OLS4000 (`.lext`) file format, including the height channel as well as
   the color (RGB) and intensity image layers and the acquisition parameters as metadata
 
+## v0.17.1
+- Fixed the equivalent straight line used for the stratified functional parameters (`Sk`/`Rk`, `Spk`/`Rpk`,
+  `Svk`/`Rvk`, `Smr1`/`Rmr1`, `Smr2`/`Rmr2`, `Spkx`, `Svkx`, `Sak1`, `Sak2`). The 40 % central region was previously
+  used directly as the equivalent line via its secant, which made the line too steep. Per ISO 25178-2 Annex B.1, the
+  secant is now only used to locate the central region, and the equivalent line is computed as the least-squares fit
+  of the material ratio curve within that region. Volume parameters (`Vm`/`Vv` family) are unaffected.
+- The material ratio (Abbott-Firestone) curve is now sampled at material ratio classes that are equally spaced in
+  material ratio (uniform quantiles of the height distribution) instead of equal-height histogram bins. Because the
+  least-squares equivalent line is fitted in the height direction, equal-height binning over-weighted the densely
+  sampled plateau and left a systematic ~1 % bias in the stratified parameters that did not vanish with more bins.
+  The quantile sampling removes this bias and brings all functional parameters into agreement with commercial
+  software (e.g. MountainsMap) to ~4 significant figures, while leaving the integral-based volume parameters
+  essentially unchanged.
+- The autocorrelation function (used for `Sal` and `Str`) is now computed as the unbiased linear estimator instead of
+  the circular one. The previous implementation used a non-padded FFT, which implicitly tiles the surface periodically
+  and multiplies edge points against values wrapped in from the opposite edge. The new implementation zero-pads before
+  the FFT (so no wrap-around occurs) and normalizes each lag by the number of overlapping points. This removes a
+  directional bias that suppressed the autocorrelation along diagonal directions and brings `Sal`/`Str` into agreement
+  with commercial software (e.g. MountainsMap) and with the analytic autocorrelation of ideal periodic surfaces. The
+  decay threshold is now referenced to the central peak value rather than the global maximum for robustness. The
+  autocorrelation array now spans the full range of positive and negative lags (roughly twice the size per axis).
+- The angular spectrum used for the texture direction `Std` is now accumulated with a vectorized binning of the
+  Fourier amplitudes instead of building a full-array mask per angle, which speeds up `Std` by more than an order of
+  magnitude (seconds to tens of milliseconds on a megapixel surface). The frequencies are now calibrated in physical
+  units so the angle is correct for non-square pixels, and the mean is subtracted beforehand so the zero-frequency
+  component no longer biases the result towards 0 degrees. `Std` continues to use the angular power density, matching
+  MountainsMap.
+
 ## v0.17.0
 - Added new areal parameters introduced in ISO 25178-2:2021 that build on already-computed quantities: `Sdc` (material
   ratio height difference), `Spkx`/`Svkx` (maximum peak height / pit depth before reduction), `Sak1`/`Sak2` (area of

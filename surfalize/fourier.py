@@ -131,9 +131,46 @@ class FourierTransform(CachedInstance):
         return np.inf if radial_frequency == 0 else 1 / radial_frequency
 
     @cache
+    def _angular_spectrum(self, angle_step, squared):
+        """
+        Computes the angular spectrum by accumulating the (squared) amplitude of the 2d Fourier transform into angular
+        bins. With squared=False this yields the angular amplitude density fAAD, with squared=True the angular power
+        density fAPD as defined in ISO 25178-2 (3.2.15.2 and 3.2.15.3).
+
+        Parameters
+        ----------
+        angle_step : float
+            Angular resolution of the spectrum in degree.
+        squared : bool
+            If True, the squared amplitude (power) is accumulated, otherwise the amplitude.
+
+        Returns
+        -------
+        (angles, spectrum) : tuple[ndarray, ndarray]
+        """
+        surface = self._surface
+        N, M = surface.size.y, surface.size.x
+        # The mean is subtracted to remove the zero-frequency (DC) component, which would otherwise dominate the
+        # spectrum and be accumulated into the 0 degree bin for surfaces with a height offset.
+        amplitude = np.abs(np.fft.fft2(surface.data - surface.data.mean()))
+        weights = amplitude ** 2 if squared else amplitude
+        # Physical spatial frequencies (1/length) so that the angle is correct even when the sampling spacing differs
+        # between the x and y direction.
+        freq_y = np.fft.fftfreq(N, d=surface.height_um / N)
+        freq_x = np.fft.fftfreq(M, d=surface.width_um / M)
+        freq_y, freq_x = np.meshgrid(freq_y, freq_x, indexing='ij')
+        # The texture direction has no sign, so opposing frequencies are folded into the [0, 180) degree range.
+        theta = np.mod(np.rad2deg(np.arctan2(freq_y, freq_x)), 180.0)
+        angles = np.arange(0, 180, angle_step)
+        bin_idx = np.minimum((theta / angle_step).astype(int), angles.size - 1)
+        spectrum = np.bincount(bin_idx.ravel(), weights=weights.ravel(), minlength=angles.size)
+        return angles, spectrum
+
+    @cache
     def angular_power_spectrum(self, angle_step=1):
         """
-        Computes the angular power spectrum by integrating the power spectrum over angular bins.
+        Computes the angular power spectrum (angular power density fAPD) by integrating the squared amplitude of the
+        Fourier transform over angular bins.
 
         Parameters
         ----------
@@ -144,39 +181,28 @@ class FourierTransform(CachedInstance):
         -------
         (angles, spectrum) : tuple[ndarray, ndarray]
         """
-        surface = self._surface
-        fft_surface = np.fft.fft2(surface.data)
-        power_spectrum = np.abs(fft_surface) ** 2
-
-        freq_y, freq_x = np.fft.fftfreq(surface.size.y), np.fft.fftfreq(surface.size.x)
-        freq_y, freq_x = np.meshgrid(freq_y, freq_x, indexing='ij')
-
-        freq_theta = np.arctan2(freq_y, freq_x)
-
-        angles = np.deg2rad(np.arange(0, 180, angle_step))
-        spectrum = np.zeros_like(angles)
-
-        for i, angle in enumerate(angles):
-            mask = np.abs(freq_theta - angle) < np.deg2rad(angle_step / 2)
-            spectrum[i] = np.sum(power_spectrum[mask])
-
-        return np.arange(0, 180, angle_step), spectrum
+        return self._angular_spectrum(angle_step, squared=True)
 
     def Std(self, angle_step=0.5):
         """
-        Calculates the texture direction parameter, which is the angle at which the angular power spectrum is the
-        largest. It represents the lay of the surface texture.
+        Calculates the texture direction parameter Std, the angle at which the angular spectrum is the largest. It
+        represents the lay of the surface texture.
+
+        ISO 25178-2 (4.3.4) defines Std via the angular amplitude density fAAD. In practice the angular power density
+        fAPD (squared amplitude) is used here, which matches the behaviour of commercial software (e.g. MountainsMap).
+        The two only differ for surfaces with several competing lays of similar strength, where the texture direction
+        is intrinsically ambiguous; for a single dominant lay the result is identical.
 
         Parameters
         ----------
         angle_step : float
-            Angular resolution of the power spectrum in degree. Defaults to 0.5
+            Angular resolution of the spectrum in degree. Defaults to 0.5
 
         Returns
         -------
         float
         """
-        angles, spectrum = self.angular_power_spectrum(angle_step=angle_step)
+        angles, spectrum = self._angular_spectrum(angle_step, squared=True)
         return angles[np.argmax(spectrum)]
 
     def plot(self, ax=None, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,

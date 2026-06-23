@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.ndimage as ndimage
+from scipy.signal import fftconvolve
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -10,7 +11,9 @@ from .mathutils import interpolate_line_on_2d_array, argmin_all, argmax_all, arg
 class AutocorrelationFunction(CachedInstance):
     """
     Represents the 2d autocorrelation function of a Surface object and provides methods to calculate the autocorrelation
-    length Sal and texture aspect ratio Str.
+    length Sal and texture aspect ratio Str. The autocorrelation is computed as the unbiased linear (non-circular)
+    estimator, i.e. each lag is normalized by the number of overlapping points, which avoids both the edge wrap-around
+    of a circular estimator and the large-lag suppression of a biased (division by the total number of points) one.
 
     Parameters
     ----------
@@ -31,9 +34,21 @@ class AutocorrelationFunction(CachedInstance):
 
     def calculate_autocorrelation(self):
         data = self._surface.center().data
-        data_fft = np.fft.fft2(data)
-        # Compute ACF from FFT and normalize
-        acf_data = np.fft.fftshift(np.fft.ifft2(data_fft * np.conj(data_fft)).real / data.size)
+        ny, nx = data.shape
+        # Compute the linear (non-circular) autocorrelation via a zero-padded FFT. Correlating the data with a
+        # point-reflected copy of itself yields the autocorrelation with the zero lag located at index (ny-1, nx-1).
+        # In contrast to a plain (non-padded) fft2, the zero-padding prevents the surface from wrapping around its
+        # edges, so points are only ever multiplied with genuinely overlapping neighbours instead of with values
+        # tiled in from the opposite edge.
+        raw = fftconvolve(data, data[::-1, ::-1], mode='full')
+        # Apply the unbiased normalization: each lag is divided by the number of overlapping points rather than by
+        # the total number of points. Dividing by the total number of points (the biased estimator) systematically
+        # suppresses large lags, an effect that is strongest along diagonal directions where both lag components are
+        # non-zero, and which biases the autocorrelation length Sal and texture aspect ratio Str.
+        lag_y = np.abs(np.arange(-(ny - 1), ny))
+        lag_x = np.abs(np.arange(-(nx - 1), nx))
+        overlap_counts = np.outer(ny - lag_y, nx - lag_x)
+        acf_data = raw / overlap_counts
         return acf_data
 
     @cache
@@ -54,7 +69,11 @@ class AutocorrelationFunction(CachedInstance):
         -------
         None
         """
-        threshold = s * self.data.max()
+        # The threshold is referenced to the autocorrelation value at zero lag (the central peak), which is the
+        # maximum of a well-behaved autocorrelation function. Using the central value rather than the global maximum
+        # keeps the threshold robust against the larger statistical noise that the unbiased estimator exhibits at
+        # large lags, where only few points overlap.
+        threshold = s * self.data[self.center[0], self.center[1]]
 
         mask = self.data > threshold
         labels, _ = ndimage.label(mask)
@@ -142,12 +161,16 @@ class AutocorrelationFunction(CachedInstance):
             fig = ax.figure
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        im = ax.imshow(self.data, cmap=cmap, extent=(0, self._surface.width_um, 0, self._surface.height_um))
+        # The autocorrelation function is indexed by the lag relative to the central peak, so the axes span from the
+        # negative to the positive maximum lag in each direction.
+        extent_x = self.center[1] * self._surface.step_x
+        extent_y = self.center[0] * self._surface.step_y
+        im = ax.imshow(self.data, cmap=cmap, extent=(-extent_x, extent_x, -extent_y, extent_y))
         if show_cbar:
             fig.colorbar(im, cax=cax, label='z [µm²]')
         else:
             cax.axis('off')
-        ax.set_xlabel('x [µm]')
-        ax.set_ylabel('y [µm]')
+        ax.set_xlabel('lag x [µm]')
+        ax.set_ylabel('lag y [µm]')
 
         return fig, ax
