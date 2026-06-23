@@ -16,8 +16,10 @@ class AbbottFirestoneCurve(CachedInstance):
     obj : Surface | Profile
         Surface or Profile object from which to calculate the Abbott-Firestone curve.
     nbins : int, default 10000
-        Number of bins for the material density histogram. Large numbers result in longer computation time but increased
-        accuracy of results. The default value of 10000 represents a reasonable compromise.
+        Number of material ratio classes used to sample the material ratio curve. The classes are equally spaced in
+        material ratio (equivalent to sampling the empirical height distribution at uniform quantiles), so that the
+        class height widths adapt to the local data density. Large numbers result in longer computation time but
+        increased accuracy of results. The default value of 10000 represents a reasonable compromise.
     """
     # Width of the equivalence line in % as defined by ISO 25178-2 and ISO 13565-2
     EQUIVALENCE_LINE_WIDTH = 40
@@ -34,25 +36,33 @@ class AbbottFirestoneCurve(CachedInstance):
     @cache
     def _get_material_ratio_curve(self):
         """
-        Computes the height bins and cumulated material ratio.
+        Computes the material ratio curve, i.e. the height as a function of the (areal) material ratio.
+
+        The curve is sampled at material ratio classes that are equally spaced in material ratio rather than in
+        height. This is equivalent to evaluating the empirical height distribution at uniform quantiles, so the
+        height-class widths adapt to the local data density (narrow on densely populated plateaus, wide on sparse
+        peaks and dales). Compared to an equal-height histogram this matches the material ratio curve used by
+        commercial software and removes a systematic bias in the least-squares equivalent line, while leaving the
+        integral-based volume parameters essentially unchanged.
 
         Returns
         -------
         height, material_ratio : tuple[ndarray[float], ndarray[float]]
         """
-        hist, height = np.histogram(self._obj.data, bins=self._nbins)
-        hist = hist[::-1]  # sort descending
-        height = height[::-1]  # sort descending
-        material_ratio = np.append(1, np.cumsum(hist))  # prepend 1 for first bin edge after cumsum
-        material_ratio = material_ratio / material_ratio.max() * 100
+        # Material ratio is measured from the top of the surface, so material ratio p corresponds to the
+        # (1 - p) quantile of the height distribution (p = 0 % -> maximum height, p = 100 % -> minimum height).
+        material_ratio = np.linspace(0, 100, self._nbins)
+        height = np.quantile(self._obj.data, 1 - material_ratio / 100)
         return height, material_ratio
 
     # This is a bit hacky right now with the modified state. Maybe clean that up in the future
     def _calculate_curve(self):
         """
-        Performs the calculations necessary for evaluation of the functional parameters. First, the function finds
-        the 40% equivalence line and computes its slope as well as intercept with 0% and 100% material ratio.
-        The resulting values and a linear interpolator for mc and mr are saved in instance attributes.
+        Performs the calculations necessary for evaluation of the functional parameters. Following ISO 25178-2
+        Annex B.1, this is a two-step procedure: first the "central region" of the material ratio curve is located
+        as the 40% wide window whose secant has the smallest gradient; then the equivalent straight line is computed
+        as the least-squares fit of the curve points within that central region. The resulting line parameters and a
+        linear interpolator for mc and mr are saved in instance attributes.
 
         Returns
         -------
@@ -68,6 +78,9 @@ class AbbottFirestoneCurve(CachedInstance):
         # Interpolation function for bin_centers(cumsum)
         self._smc_fit = interp1d(material_ratio, height)
 
+        # Step 1: locate the central region. Per ISO 25178-2 B.1 the central region is found by sliding the
+        # secant of the material ratio curve over a 40% material ratio window and selecting the position where
+        # the secant gradient is smallest. The secant is only used to find the region, not as the final line.
         while True:
             # The width in material distribution % is 40, so we have to interpolate to find the index
             # where the distance to the starting value is 40
@@ -89,15 +102,19 @@ class AbbottFirestoneCurve(CachedInstance):
                 istart_final = istart
             istart += 1
 
-        self._slope = slope_min
-
-        # Intercept of the equivalence line
-        self._intercept = height[istart_final] - slope_min * material_ratio[istart_final]
+        # Step 2: compute the equivalent straight line as the least-squares fit of the material ratio curve
+        # points that fall within the 40% wide central region, minimizing deviation in the height (ordinate)
+        # direction as required by ISO 25178-2 B.1.
+        mr_start = material_ratio[istart_final]
+        iend = np.searchsorted(material_ratio, mr_start + self.EQUIVALENCE_LINE_WIDTH, side='right')
+        mr_region = material_ratio[istart_final:iend]
+        height_region = height[istart_final:iend]
+        self._slope, self._intercept = np.polyfit(mr_region, height_region, 1)
 
         # Intercept of the equivalence line at 0% ratio
         self._yupper = self._intercept
         # Intercept of the equivalence line at 100% ratio
-        self._ylower = slope_min * 100 + self._intercept
+        self._ylower = self._slope * 100 + self._intercept
 
         self._smr_fit = interp1d(height, material_ratio)
         self._height = height

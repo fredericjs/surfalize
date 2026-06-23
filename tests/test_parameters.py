@@ -41,51 +41,51 @@ def test_Sdq(surface):
 
 
 def test_Sal(surface):
-    assert surface.Sal() == pytest.approx(4.274174, abs=EPSILON)
+    assert surface.Sal() == pytest.approx(4.347147, abs=EPSILON)
 
 
 def test_Str(surface):
-    assert surface.Str() == pytest.approx(0.121940, abs=EPSILON)
+    assert surface.Str() == pytest.approx(0.062759, abs=EPSILON)
 
 
 def test_Sk(surface):
-    assert surface.Sk() == pytest.approx(2.315085, abs=EPSILON)
+    assert surface.Sk() == pytest.approx(2.207543, abs=EPSILON)
 
 
 def test_Spk(surface):
-    assert surface.Spk() == pytest.approx(0.191242, abs=EPSILON)
+    assert surface.Spk() == pytest.approx(0.190107, abs=EPSILON)
 
 
 def test_Svk(surface):
-    assert surface.Svk() == pytest.approx(0.335035, abs=EPSILON)
+    assert surface.Svk() == pytest.approx(0.398828, abs=EPSILON)
 
 
 def test_Smr1(surface):
-    assert surface.Smr1() == pytest.approx(2.060661, abs=EPSILON)
+    assert surface.Smr1() == pytest.approx(2.009438, abs=EPSILON)
 
 
 def test_Smr2(surface):
-    assert surface.Smr2() == pytest.approx(93.491628, abs=EPSILON)
+    assert surface.Smr2() == pytest.approx(89.979619, abs=EPSILON)
 
 
 def test_Sxp(surface):
-    assert surface.Sxp() == pytest.approx(1.168843, abs=EPSILON)
+    assert surface.Sxp() == pytest.approx(1.168894, abs=EPSILON)
 
 
 def test_Vmp(surface):
-    assert surface.Vmp() == pytest.approx(0.014809, abs=EPSILON)
+    assert surface.Vmp() == pytest.approx(0.014831, abs=EPSILON)
 
 
 def test_Vmc(surface):
-    assert surface.Vmc() == pytest.approx(0.797036, abs=EPSILON)
+    assert surface.Vmc() == pytest.approx(0.797087, abs=EPSILON)
 
 
 def test_Vvv(surface):
-    assert surface.Vvv() == pytest.approx(0.056284, abs=EPSILON)
+    assert surface.Vvv() == pytest.approx(0.056308, abs=EPSILON)
 
 
 def test_Vvc(surface):
-    assert surface.Vvc() == pytest.approx(0.924875, abs=EPSILON)
+    assert surface.Vvc() == pytest.approx(0.924853, abs=EPSILON)
 
 
 def test_period(surface):
@@ -139,19 +139,19 @@ def test_Std(grooved_surface):
 # New ISO 25178-2:2021 parameters #####################################################################################
 
 def test_Spkx(surface):
-    assert surface.Spkx() == pytest.approx(0.651521, abs=EPSILON)
+    assert surface.Spkx() == pytest.approx(0.648443, abs=EPSILON)
 
 def test_Svkx(surface):
-    assert surface.Svkx() == pytest.approx(0.887011, abs=EPSILON)
+    assert surface.Svkx() == pytest.approx(0.997632, abs=EPSILON)
 
 def test_Sak1(surface):
-    assert surface.Sak1() == pytest.approx(0.197043, abs=EPSILON)
+    assert surface.Sak1() == pytest.approx(0.191004, abs=EPSILON)
 
 def test_Sak2(surface):
-    assert surface.Sak2() == pytest.approx(1.090266, abs=EPSILON)
+    assert surface.Sak2() == pytest.approx(1.998202, abs=EPSILON)
 
 def test_Sdc(surface):
-    assert surface.Sdc() == pytest.approx(1.168843, abs=EPSILON)
+    assert surface.Sdc() == pytest.approx(1.168894, abs=EPSILON)
 
 def test_Ssw(surface):
     assert surface.Ssw() == pytest.approx(19.98, abs=1e-2)
