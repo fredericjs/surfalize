@@ -1,8 +1,11 @@
 import io
+from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image, ImageChops
 from scipy import ndimage
+
+MESH_EXTENSIONS = ('.vts', '.vtk', '.vtp', '.stl', '.ply', '.obj')
 
 def _create_colorbar(vmin, vmax, cmap, label='z (µm)', height=0.5):
     """
@@ -40,9 +43,38 @@ def _create_colorbar(vmin, vmax, cmap, label='z (µm)', height=0.5):
     plt.close()
     return Image.open(buffer)
 
+def _save_mesh(grid, path, scale=1):
+    """
+    Saves a pyvista structured grid to a 3d file.
+
+    Parameters
+    ----------
+    grid : pyvista.StructuredGrid
+        Grid to save.
+    path : str | pathlib.Path
+        Path of the file. The format is inferred from the extension.
+    scale : float
+        Vertical scaling factor applied to the saved mesh. Defaults to 1.
+    """
+    suffix = Path(path).suffix.lower()
+    if suffix not in MESH_EXTENSIONS:
+        raise ValueError(f'Unsupported 3d file format "{suffix}". Supported formats: {", ".join(MESH_EXTENSIONS)}.')
+    mesh = grid.copy()
+    mesh.points[:, 2] *= scale
+    if suffix in ('.vts', '.vtk'):
+        mesh.save(path)
+    else:
+        try:
+            surface = mesh.extract_surface(algorithm='dataset_surface')
+        except TypeError:
+            # pyvista versions without the algorithm keyword
+            surface = mesh.extract_surface()
+        surface.triangulate().save(path)
+
 def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
             light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
-            level_of_detail=100, interactive=False, window_title='surfalize', perspective_projection=False):
+            level_of_detail=100, interactive=False, window_title='surfalize', perspective_projection=False,
+            save_mesh_to=None):
     """
     Renders a surface object in 3d using pyvista.
 
@@ -85,6 +117,10 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
         The window title to show in interactive mode. Defaults to 'surfalize'.
     perspective_projection : bool
         Whether to use perspective or parallel projection. Default is True.
+    save_mesh_to : str | pathlib.Path | None
+        Path to which the rendered 3d mesh is saved, at the same resolution as the render. The file format is inferred
+        from the extension: .vts, .vtk, .vtp (keep the height values), .stl, .ply or .obj. The vertical scaling factor
+        is applied to the saved mesh. Defaults to None.
 
     Returns
     -------
@@ -113,6 +149,9 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
     # Create a PyVista grid
     grid = pv.StructuredGrid(x, y, z)
     grid.point_data["height"] = z.T.ravel()
+
+    if save_mesh_to is not None:
+        _save_mesh(grid, save_mesh_to, scale)
 
     # Initialize the PyVista plotter
     plotter = pv.Plotter(off_screen=not interactive, window_size=None if interactive else (1920, 1080))
