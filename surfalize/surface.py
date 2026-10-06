@@ -404,11 +404,14 @@ class Surface(BaseTopography):
         binary : bool
             Only for SDF format. Specifies whether to save in the binary version of the format of the ascii version.
         comment : str
-            Only for SUR format. Specifies a comment to add to the file header.
+            Only for SUR, TMD and X3P format. Specifies a comment to add to the file header.
         compressed : bool
             Only for SUR format. Specifies whether to use the compressed format. Default is False.
         compression: {'none', 'zlib', 'lzma'}
             Only for SFLZ format. Specifies the type of compression, either none, zlib or lzma.
+        dtype : {'D', 'F'}
+            Only for X3P format. Data type of the height values, either 64-bit ('D', default, lossless) or 32-bit
+            ('F') floating point.
 
         Returns
         -------

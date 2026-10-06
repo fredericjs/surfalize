@@ -4,6 +4,11 @@
   that the vendor software applies on export (the configured processing steps are available as metadata). The
   remaining layers (e.g. confidence, phase and amplitude) are imported as image layers and the acquisition and camera
   parameters as metadata.
+- Added an X3P file format writer (OpenGPS, ISO 25178-72), so surfaces can now be saved as `.x3p` for exchange with
+  other software such as Gwyddion or MountainsMap. Heights are written as double precision floats in meters by
+  default, which preserves the data without quantization; single precision can be selected with `dtype='F'`.
+  Non-measured points are stored as `NaN`, the MD5 checksums of `main.xml` and the point data are written, and
+  Record2 metadata read from an X3P file (date, instrument, probing system, comment) is written back.
 
 ## v0.18.3
 - `Surface.Str` (and `AutocorrelationFunction.Str`) gained an `on_undefined` keyword to control the behaviour when
