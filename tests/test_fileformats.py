@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime
 import hashlib
 import io
+import re
 import zipfile
 import xml.etree.ElementTree as ElementTree
 import numpy as np
@@ -76,6 +77,72 @@ def test_sur_encoding(testfile_dir):
     surface.load(buffer, format='.sur', encoding='latin-1')
     buffer.seek(0)
     surface.load(buffer, format='.sur', encoding='auto')
+
+
+# SDF interoperability samples from the sdfio project (see THIRD_PARTY_TEST_FILES.md). The MountainsMap 11 binary
+# re-exports contain the same surface as the ISO-2.0 ASCII input file written by sdfio.
+SDF_INTEROP_INPUT = 'sdfio_input_iso2_ascii.sdf'
+SDF_INTEROP_EXPORTS = ['sdfio_mm11_iso2_binary_binary64.sdf', 'sdfio_mm11_iso1_binary_binary64.sdf']
+
+def _load_modified_sdf_input(testfile_dir, transform):
+    contents = (testfile_dir / SDF_INTEROP_INPUT).read_bytes().decode('ascii')
+    return Surface.load(io.BytesIO(transform(contents).encode('ascii')), format='.sdf')
+
+def test_sdf_iso2_ascii_reading(testfile_dir):
+    surface = Surface.load(testfile_dir / SDF_INTEROP_INPUT)
+    assert surface.size == (20, 30)
+    assert surface.step_x == surface.step_y == pytest.approx(1)
+    assert np.isnan(surface.data).sum() == 1
+    assert surface.metadata['ManufacID'] == 'Test'
+    assert surface.metadata['CreateDate'] == datetime(2026, 9, 23, 19, 59)
+    # Additional metadata from the trailer record in "Name = Value" format
+    assert surface.metadata['OperatorName'] == 'Tester'
+    assert surface.metadata['PartName'] == 'Sample'
+
+@pytest.mark.parametrize('filename', SDF_INTEROP_EXPORTS)
+def test_sdf_binary_interop_samples_match_input(testfile_dir, filename):
+    reference = Surface.load(testfile_dir / SDF_INTEROP_INPUT)
+    surface = Surface.load(testfile_dir / filename)
+    assert surface.size == reference.size
+    assert surface.step_x == pytest.approx(reference.step_x)
+    assert surface.step_y == pytest.approx(reference.step_y)
+    # Binary64 files mark non-measured points with the most negative double, which must be imported as NaN
+    assert np.array_equal(np.isnan(surface.data), np.isnan(reference.data))
+    # MountainsMap alters the values slightly on export
+    np.testing.assert_allclose(surface.data, reference.data, rtol=0, atol=1e-8)
+    # MountainsMap NUL-terminates the ManufacID and leaves leftover bytes behind it
+    assert surface.metadata['ManufacID'] == 'test'
+    assert surface.metadata['CreateDate'] == datetime(2026, 9, 23, 19, 59)
+
+def test_sdf_ascii_unset_date(testfile_dir):
+    surface = _load_modified_sdf_input(
+        testfile_dir, lambda contents: re.sub(r'(CreateDate\s*=\s*)\d{12}', r'\g<1>000000000000', contents))
+    assert surface.metadata['CreateDate'] is None
+    assert surface.metadata['ModDate'] == datetime(2026, 9, 23, 19, 59)
+
+def test_sdf_ascii_without_trailer(testfile_dir):
+    surface = _load_modified_sdf_input(testfile_dir, lambda contents: '*'.join(contents.split('*')[:2]) + '*\r\n')
+    assert surface.size == (20, 30)
+    assert 'OperatorName' not in surface.metadata
+
+def test_sdf_binary_stores_invalid_points_as_minimum_double():
+    data = np.arange(12, dtype=float).reshape(3, 4)
+    data[1, 2] = np.nan
+    buffer = io.BytesIO()
+    Surface(data, 1, 1).save(buffer, format='.sdf', binary=True)
+    stored = np.frombuffer(buffer.getvalue()[-data.size * 8:], dtype='<f8')
+    assert stored[6] == np.finfo(np.float64).min
+    assert not np.isnan(stored).any()
+    buffer.seek(0)
+    assert np.array_equal(np.isnan(Surface.load(buffer, format='.sdf').data), np.isnan(data))
+
+# The parametrized round-trip tests above only exercise each writer's default keyword arguments, so the SDF ASCII writer
+# (binary=False) gets dedicated round-trip coverage here.
+@pytest.mark.parametrize('write_kwargs', [{'binary': True}, {'binary': False}])
+def test_sdf_roundtrip_binary_and_ascii(surface, write_kwargs):
+    buffer = io.BytesIO()
+    surface.save(buffer, format='.sdf', **write_kwargs)
+    assert almost_equal(Surface.load(buffer), surface)
 
 
 def test_hdat_reading(testfile_dir):

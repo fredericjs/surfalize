@@ -9,6 +9,17 @@
   default, which preserves the data without quantization; single precision can be selected with `dtype='F'`.
   Non-measured points are stored as `NaN`, the MD5 checksums of `main.xml` and the point data are written, and
   Record2 metadata read from an X3P file (date, instrument, probing system, comment) is written back.
+- Added reading support for the ISO-2.0 dialect of the SDF (`.sdf`) format (ISO 25178-71) in its ASCII and binary
+  variants, including the additional data types INT8 and BINARY32 (contributed by Thomas Ascher, #34). Further SDF
+  fixes from the same contribution: non-measured points in binary files are now detected for all data types (for
+  BINARY64 data they were never detected, since the sentinel was compared against NaN) and the binary writer stores
+  them as the minimum double value defined by the standard instead of NaN, a NUL-terminated `ManufacID` as written by
+  MountainsMap is tolerated, an all-zero `CreateDate`/`ModDate` is read as `None` instead of raising, ASCII files
+  without a trailer record can be read, and the ASCII writer no longer collapses the header into a single line and
+  writes the trailer in `Name = Value` format.
+- The SDF reader now parses the dates of binary files into `datetime` objects like for ASCII files (malformed dates are
+  kept as string instead of raising) and imports the `Name = Value` (and tagged) entries of the ASCII trailer record as
+  metadata. Malformed ASCII files raise a `CorruptedFileError`.
 
 ## v0.18.3
 - `Surface.Str` (and `AutocorrelationFunction.Str`) gained an `on_undefined` keyword to control the behaviour when

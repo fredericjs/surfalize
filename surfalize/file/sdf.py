@@ -1,3 +1,4 @@
+import re
 import struct
 from datetime import datetime
 import numpy as np
@@ -19,6 +20,9 @@ MANUFACID_SIZE = 10
 # is undocumented, vendor-specific practice observed in real files for a date that was never
 # recorded.
 UNSET_DATE = '0' * 12
+# The trailer record holds additional metadata as "Name = Value" lines. The ISO 25178-71 ASCII example instead uses
+# xml-like tags that may contain whitespace, e.g. "< OperatorName > Tom Jones < / OperatorName >".
+TAGGED_TRAILER_PATTERN = re.compile(r'< ?\b(\w+)\b ?>(.*)< ?/ ?\b\1\b ?>')
 
 # Used for writing; write_sdf only supports ISO-1.0.
 LAYOUT_HEADER = Layout(
@@ -98,7 +102,23 @@ BINARY_INVALID_VALUE_MAP = {
 def _parse_date(value):
     if value == UNSET_DATE:
         return None
-    return datetime.strptime(value, ASCII_DATE_FORMAT)
+    try:
+        return datetime.strptime(value, ASCII_DATE_FORMAT)
+    except ValueError:
+        # Keep a malformed date as the raw string instead of rendering the whole file unreadable
+        return value
+
+def _parse_trailer(trailer):
+    metadata = {}
+    for line in trailer.splitlines():
+        match = TAGGED_TRAILER_PATTERN.search(line)
+        if match:
+            metadata[match.group(1)] = match.group(2).strip()
+            continue
+        name, sep, value = line.partition('=')
+        if sep and name.strip():
+            metadata[name.strip()] = value.strip()
+    return metadata
 
 def _decode_manufacturer_id(raw, encoding):
     # The standard requires this field to be space-padded, but some real-world writers (e.g.
@@ -120,9 +140,9 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
     elif len(parts) == 4:
         header_section, data_section, trailer_section, end = parts
     else:
-        raise ValueError
+        raise CorruptedFileError(f'Expected 2 or 3 "*" record delimiters, found {len(parts) - 1}.')
     if end.strip() != '':
-        raise ValueError
+        raise CorruptedFileError('Unexpected content after the trailer record.')
 
     header = dict()
     for line in header_section.lstrip().splitlines():
@@ -146,6 +166,9 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
     step_x = header['Xscale'] * CONVERSION_FACTOR
     step_y = header['Yscale'] * CONVERSION_FACTOR
     metadata = header
+    # Trailer entries must not overwrite the header fields
+    for name, value in _parse_trailer(trailer_section).items():
+        metadata.setdefault(name, value)
 
     return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=None)
 
@@ -153,6 +176,8 @@ def read_binary_sdf(filehandle, magic, encoding="utf-8"):
     manufacturer_id = _decode_manufacturer_id(filehandle.read(MANUFACID_SIZE), encoding)
     header = LAYOUT_BINARY_HEADER[magic].read(filehandle)
     header['ManufacID'] = manufacturer_id
+    header['CreateDate'] = _parse_date(header['CreateDate'])
+    header['ModDate'] = _parse_date(header['ModDate'])
     num_points = header["NumPoints"]
     num_profiles = header["NumProfiles"]
     data_type = header["DataType"]
