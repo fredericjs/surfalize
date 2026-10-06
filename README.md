@@ -44,9 +44,45 @@ pip install .
 ```
 While earlier versions used Cython, the current version is pure Python and can be installed without a C-compiler.
 
+## Getting started
+
+All topographies are represented by the `Surface` class. The following example loads a measurement, prepares it for
+analysis, calculates a few roughness parameters and saves the result in another file format. Surface operations return
+a new `Surface` object, so they can be chained.
+
+```python
+from surfalize import Surface
+
+# Load a measurement, the file format is determined from the file suffix
+surface = Surface.load('measurement.vk4')
+
+# Interpolate non-measured points, level the surface and apply a Gaussian bandpass filter (cutoffs in µm)
+surface = surface.fill_nonmeasured().level().filter(filter_type='bandpass', cutoff=0.8, cutoff2=10)
+surface.show()
+
+# Calculate roughness parameters according to ISO 25178
+sa = surface.Sa()
+parameters = surface.roughness_parameters(['Sa', 'Sq', 'Sz'])
+
+# Save the processed surface in another file format
+surface.save('measurement.sur')
+```
+
+More examples, e.g. on masking, profiles, texture analysis and batch processing of many files, can be found in the
+[basic usage guide](https://surfalize.readthedocs.io/en/latest/basic_usage.html) and the
+[examples](https://surfalize.readthedocs.io/en/latest/examples/index.html) of the documentation.
+
 ## Documentation
 
 The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en/latest/).
+
+## Contributing
+
+Contributions are welcome, whether as bug reports, feature requests, sample files for new file formats or pull
+requests. Please open an [issue](https://github.com/fredericjs/surfalize/issues) to report a problem or discuss an
+idea. If you want to contribute code, have a look at the
+[contributing guide](https://github.com/fredericjs/surfalize/blob/main/CONTRIBUTING.md), which explains how to set up
+a development environment, which branch to target and what a pull request should include.
 
 ## Currently supported file formats
 
