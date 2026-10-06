@@ -1,19 +1,26 @@
 import struct
-import re
 from datetime import datetime
 import numpy as np
-from .common import RawSurface, get_unit_conversion, Entry, Layout, FileHandler, write_array
+from .common import RawSurface, get_unit_conversion, Entry, Layout, FileHandler, write_array, decode
 from ..exceptions import CorruptedFileError, UnsupportedFileFormatError
 
-# File format specifications taken from ISO 25178-71
-MAGIC_ASCII = b'aISO-1.0'
-MAGIC_BINARY = b'bISO-1.0'
+# File format specification taken from ISO 25178-71. Supports the ISO-1.0 and ISO-2.0 dialects.
+MAGIC_ASCII_ISO1 = b'aISO-1.0'
+MAGIC_BINARY_ISO1 = b'bISO-1.0'
+MAGIC_ASCII_ISO2 = b'aISO-2.0'
+MAGIC_BINARY_ISO2 = b'bISO-2.0'
 
 FIXED_UNIT = 'm'
 CONVERSION_FACTOR = get_unit_conversion(FIXED_UNIT, 'um')
 ASCII_DATE_FORMAT = "%d%m%Y%H%M"
 ASCII_FLOAT_PRECISION = 10
+MANUFACID_SIZE = 10
+# Neither version of the standard defines an "unknown date" convention, but this all-zero value
+# is undocumented, vendor-specific practice observed in real files for a date that was never
+# recorded.
+UNSET_DATE = '0' * 12
 
+# Used for writing; write_sdf only supports ISO-1.0.
 LAYOUT_HEADER = Layout(
     Entry("ManufacID", "10s"),
     Entry("CreateDate", "12s"),
@@ -28,6 +35,31 @@ LAYOUT_HEADER = Layout(
     Entry("DataType", "B"),
     Entry("CheckType", "B"),
 )
+
+# Used for reading. ManufacID is read separately (see _decode_manufacturer_id) rather than
+# through a Layout entry, since it needs custom NUL-tolerant decoding. NumPoints/NumProfiles are
+# 16-bit for ISO-1.0 and 32-bit for ISO-2.0, so the ISO-2.0 layout just swaps those two entries.
+_BINARY_HEADER_ENTRIES_ISO1 = [
+    Entry("CreateDate", "12s"),
+    Entry("ModDate", "12s"),
+    Entry("NumPoints", "H"),
+    Entry("NumProfiles", "H"),
+    Entry("Xscale", "d"),
+    Entry("Yscale", "d"),
+    Entry("Zscale", "d"),
+    Entry("Zresolution", "d"),
+    Entry("Compression", "B"),
+    Entry("DataType", "B"),
+    Entry("CheckType", "B"),
+]
+_BINARY_HEADER_ENTRIES_ISO2 = list(_BINARY_HEADER_ENTRIES_ISO1)
+_BINARY_HEADER_ENTRIES_ISO2[2] = Entry("NumPoints", "I")
+_BINARY_HEADER_ENTRIES_ISO2[3] = Entry("NumProfiles", "I")
+
+LAYOUT_BINARY_HEADER = {
+    MAGIC_BINARY_ISO1: Layout(*_BINARY_HEADER_ENTRIES_ISO1),
+    MAGIC_BINARY_ISO2: Layout(*_BINARY_HEADER_ENTRIES_ISO2),
+}
 
 ASCII_HEADER_TYPES = {
     "ManufacID": str,
@@ -45,6 +77,8 @@ ASCII_HEADER_TYPES = {
 }
 
 DTYPE_MAP = {
+    3: "f",  # BINARY32
+    4: "b",  # INT8
     5: "h",  # INT16
     6: "i",  # INT32
     7: "d",  # DOUBLE
@@ -52,15 +86,41 @@ DTYPE_MAP = {
 
 ASCII_INVALID_VALUE = 'BAD'
 
+# The standard's invalid-point sentinel is each type's minimum representable value.
 BINARY_INVALID_VALUE_MAP = {
-    5: -2**15,
-    6: -2**31,
-    7: np.nan
+    3: np.finfo(np.float32).min,
+    4: np.iinfo(np.int8).min,
+    5: np.iinfo(np.int16).min,
+    6: np.iinfo(np.int32).min,
+    7: np.finfo(np.float64).min,
 }
+
+def _parse_date(value):
+    if value == UNSET_DATE:
+        return None
+    return datetime.strptime(value, ASCII_DATE_FORMAT)
+
+def _decode_manufacturer_id(raw, encoding):
+    # The standard requires this field to be space-padded, but some real-world writers (e.g.
+    # MountainsMap) NUL-terminate it instead and leave leftover memory content after the NUL,
+    # which must be discarded rather than decoded.
+    trimmed = raw.split(b'\x00', 1)[0]
+    if encoding == 'auto':
+        return decode(trimmed, encoding).strip()
+    return trimmed.decode(encoding, errors='replace').strip()
 
 def read_ascii_sdf(filehandle, encoding="utf-8"):
     contents = filehandle.read().decode('ascii').lstrip()
-    header_section, data_section, trailer_section, end = contents.split('*')
+    # Handles files that omit the trailer record entirely, ending right after the data's
+    # closing "*" and leaving only 2 delimiters instead of the usual 3.
+    parts = contents.split('*')
+    if len(parts) == 3:
+        header_section, data_section, trailer_section = parts
+        end = ''
+    elif len(parts) == 4:
+        header_section, data_section, trailer_section, end = parts
+    else:
+        raise ValueError
     if end.strip() != '':
         raise ValueError
 
@@ -76,9 +136,9 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
         raise CorruptedFileError(f"Unsupported DataType in SDF file: {header['DataType']}")
 
     if 'CreateDate' in header:
-        header['CreateDate'] = datetime.strptime(header['CreateDate'], ASCII_DATE_FORMAT)
+        header['CreateDate'] = _parse_date(header['CreateDate'])
     if 'ModDate' in header:
-        header['ModDate'] = datetime.strptime(header['ModDate'], ASCII_DATE_FORMAT)
+        header['ModDate'] = _parse_date(header['ModDate'])
 
     data_section = data_section.replace(ASCII_INVALID_VALUE, 'NAN')
     data = np.fromstring(data_section, sep=' ', dtype='d').reshape(header['NumProfiles'], header['NumPoints'])
@@ -86,17 +146,13 @@ def read_ascii_sdf(filehandle, encoding="utf-8"):
     step_x = header['Xscale'] * CONVERSION_FACTOR
     step_y = header['Yscale'] * CONVERSION_FACTOR
     metadata = header
-    # This regex matches xml tags that may contain whitespace characters
-    # E.g. the ISO 25178-71 ASII SDF example contains this exemplary line: < OperatorName > Tom Jones < / OperatorName >
-    # If we want to parse this as xml, we need to clean it up first with a regex anyway, so we may as well use it
-    # to parse it, even though it is an evil thing to do
-    pattern = r'< ?\b(\w+)\b ?>(.*)< ?/ ?\b\1\b ?>'
-    metadata.update({k: v.strip() for k, v in re.findall(pattern, data_section)})
 
     return RawSurface(data, step_x, step_y, metadata=metadata, image_layers=None)
 
-def read_binary_sdf(filehandle, encoding="utf-8"):
-    header = LAYOUT_HEADER.read(filehandle, encoding=encoding)
+def read_binary_sdf(filehandle, magic, encoding="utf-8"):
+    manufacturer_id = _decode_manufacturer_id(filehandle.read(MANUFACID_SIZE), encoding)
+    header = LAYOUT_BINARY_HEADER[magic].read(filehandle)
+    header['ManufacID'] = manufacturer_id
     num_points = header["NumPoints"]
     num_profiles = header["NumProfiles"]
     data_type = header["DataType"]
@@ -117,21 +173,22 @@ def read_binary_sdf(filehandle, encoding="utf-8"):
     missing_value = BINARY_INVALID_VALUE_MAP[data_type]
     invalid_mask = (data == missing_value)
 
-    data = data.astype('float64') * header["Zscale"] * CONVERSION_FACTOR
+    data = data.astype('float64')
     data[invalid_mask] = np.nan
+    data = data * header["Zscale"] * CONVERSION_FACTOR
     data = data.reshape((num_profiles, num_points))
 
     step_x = header["Xscale"] * CONVERSION_FACTOR
     step_y = header["Yscale"] * CONVERSION_FACTOR
     return RawSurface(data, step_x, step_y, metadata=header)
 
-@FileHandler.register_reader(suffix='.sdf', magic=(MAGIC_ASCII, MAGIC_BINARY))
+@FileHandler.register_reader(suffix='.sdf', magic=(MAGIC_ASCII_ISO1, MAGIC_BINARY_ISO1, MAGIC_ASCII_ISO2, MAGIC_BINARY_ISO2))
 def read_sdf(filehandle, read_image_layers=False, encoding="utf-8"):
     magic = filehandle.read(8)
-    if magic == MAGIC_ASCII:
+    if magic in (MAGIC_ASCII_ISO1, MAGIC_ASCII_ISO2):
         return read_ascii_sdf(filehandle, encoding=encoding)
-    elif magic == MAGIC_BINARY:
-        return read_binary_sdf(filehandle, encoding=encoding)
+    elif magic in (MAGIC_BINARY_ISO1, MAGIC_BINARY_ISO2):
+        return read_binary_sdf(filehandle, magic, encoding=encoding)
     else:
         raise CorruptedFileError(f'Invalid file magic "{magic.decode()}" detected.')
 
@@ -178,15 +235,16 @@ def write_sdf(filehandle, surface, encoding='utf-8', binary=True):
 
     # Write in binary mode
     if binary:
-        filehandle.write(MAGIC_BINARY) # write magic identifier
+        filehandle.write(MAGIC_BINARY_ISO1) # write magic identifier
         LAYOUT_HEADER.write(filehandle, header)
-        write_array(data, filehandle)
+        binary_data = np.where(np.isnan(data), BINARY_INVALID_VALUE_MAP[7], data)
+        write_array(binary_data, filehandle)
     # Write in ascii mode
     else:
-        CRLF = '\n'.encode('ascii')
-        filehandle.write(MAGIC_ASCII + CRLF)
+        CRLF = '\r\n'.encode('ascii')
+        filehandle.write(MAGIC_ASCII_ISO1 + CRLF)
         for k, v in header.items():
-            filehandle.write(f'{k} = {v}{CRLF}'.encode('ascii'))
+            filehandle.write(f'{k} = {v}\r\n'.encode('ascii'))
         filehandle.write('*'.encode('ascii') + CRLF)
         line_values = []
         for i, value in enumerate(data.flatten()):
@@ -199,5 +257,5 @@ def write_sdf(filehandle, surface, encoding='utf-8', binary=True):
                 line_values = []
 
         filehandle.write('*'.encode('ascii') + CRLF)
-        filehandle.write('<ExportedBy>Surfalize</ExportedBy>'.encode('ascii') + CRLF)
+        filehandle.write('ExportedBy = Surfalize'.encode('ascii') + CRLF)
         filehandle.write('*'.encode('ascii') + CRLF)
