@@ -20,6 +20,8 @@
 - The SDF reader now parses the dates of binary files into `datetime` objects like for ASCII files (malformed dates are
   kept as string instead of raising) and imports the `Name = Value` (and tagged) entries of the ASCII trailer record as
   metadata. Malformed ASCII files raise a `CorruptedFileError`.
+- Fixed the compressed SUR writer (`compressed=True`) producing files that could not be read: it wrote `0` as
+  compressed data size into the header, which the reader validates against the actual size of the compressed data.
 
 ## v0.18.3
 - `Surface.Str` (and `AutocorrelationFunction.Str`) gained an `on_undefined` keyword to control the behaviour when

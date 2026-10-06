@@ -136,12 +136,19 @@ def test_sdf_binary_stores_invalid_points_as_minimum_double():
     buffer.seek(0)
     assert np.array_equal(np.isnan(Surface.load(buffer, format='.sdf').data), np.isnan(data))
 
-# The parametrized round-trip tests above only exercise each writer's default keyword arguments, so the SDF ASCII writer
-# (binary=False) gets dedicated round-trip coverage here.
+# The parametrized round-trip tests above only exercise each writer's default keyword arguments. The SDF ASCII writer
+# (binary=False) and the compressed SUR writer (compressed=True) are separate code paths that produced files their own
+# readers could not parse, so they get dedicated round-trip coverage here.
 @pytest.mark.parametrize('write_kwargs', [{'binary': True}, {'binary': False}])
 def test_sdf_roundtrip_binary_and_ascii(surface, write_kwargs):
     buffer = io.BytesIO()
     surface.save(buffer, format='.sdf', **write_kwargs)
+    assert almost_equal(Surface.load(buffer), surface)
+
+@pytest.mark.parametrize('write_kwargs', [{'compressed': False}, {'compressed': True}])
+def test_sur_roundtrip_uncompressed_and_compressed(surface, write_kwargs):
+    buffer = io.BytesIO()
+    surface.save(buffer, format='.sur', **write_kwargs)
     assert almost_equal(Surface.load(buffer), surface)
 
 

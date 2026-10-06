@@ -376,6 +376,17 @@ def write_sur(filehandle, surface, encoding='utf-8', compressed=False, comment='
 
     comment = comment.encode(encoding)
 
+    # For the compressed format we need to know the size of the data section before writing the header, since it is
+    # stored in the header's compressed_data_size field. The reader recomputes this same value as
+    # 4 (directory count) + 8 (single directory: two uint32) + len(compressed stream) and rejects the file if it
+    # does not match, so a placeholder of 0 (as previously written) makes surfalize unable to read its own output.
+    if compressed:
+        uncompressed_data = data.tobytes()
+        compressed_data = zlib.compress(uncompressed_data)
+        compressed_data_size = 4 + 8 + len(compressed_data)
+    else:
+        compressed_data_size = 0
+
     header = {
         'code': MAGIC_CLASSIC if not compressed else MAGIC_COMPRESSED,
         'format': 0,  # PC Format
@@ -422,7 +433,7 @@ def write_sur(filehandle, surface, encoding='utf-8', compressed=False, comment='
         'year': timestamp.year,
         'week_day': timestamp.weekday(),
         'measurement_duration': 0,
-        'compressed_data_size': 0,
+        'compressed_data_size': compressed_data_size,
         'length_comment': len(comment),
         'length_private': 0,
         'client_zone': 'Exported by surfalize',
@@ -442,8 +453,6 @@ def write_sur(filehandle, surface, encoding='utf-8', compressed=False, comment='
         write_array(data, filehandle)
         return
     else:
-        uncompressed_data = data.tobytes()
-        compressed_data = zlib.compress(uncompressed_data)
         # Write directory count = 1 and the length of a single data stream containing all the compressed data
         filehandle.write(struct.pack('<3I', 1, len(uncompressed_data), len(compressed_data)))
         filehandle.write(compressed_data)
