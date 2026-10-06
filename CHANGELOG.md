@@ -1,3 +1,10 @@
+## Unreleased
+- Added reading support for the Heliotis (`.hdat`) file format written by Heliotis H8 white light interferometers. The
+  height channel is imported as stored, i.e. as absolute scanner position and without the outlier removal and leveling
+  that the vendor software applies on export (the configured processing steps are available as metadata). The
+  remaining layers (e.g. confidence, phase and amplitude) are imported as image layers and the acquisition and camera
+  parameters as metadata.
+
 ## v0.18.3
 - `Surface.Str` (and `AutocorrelationFunction.Str`) gained an `on_undefined` keyword to control the behaviour when
   `Str` is undefined because the autocorrelation function does not decay below the threshold within the evaluation

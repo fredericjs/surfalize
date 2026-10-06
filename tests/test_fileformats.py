@@ -72,3 +72,14 @@ def test_sur_encoding(testfile_dir):
     surface.load(buffer, format='.sur', encoding='latin-1')
     buffer.seek(0)
     surface.load(buffer, format='.sur', encoding='auto')
+def test_hdat_reading(testfile_dir):
+    surface = Surface.load(testfile_dir / 'test_1.hdat', read_image_layers=True)
+    assert surface.size == (542, 512)
+    assert surface.step_x == surface.step_y == pytest.approx(0.24)
+    # Heights are stored as absolute scanner positions in micrometers
+    assert np.nanmean(surface.data) == pytest.approx(-20742.07, abs=0.01)
+    assert set(surface.image_layers) == {'Confidence', 'pZenvelope', 'pP', 'Phase', 'Amplitude'}
+    # Phase is stored as fixpoint integer with a scaling factor that maps it onto radians
+    assert surface.image_layers['Phase'].data.max() == pytest.approx(2 * np.pi, abs=1e-2)
+    assert surface.metadata['scanner/scanner type'] == 'heliInspectH8'
+    assert surface.metadata['timestamp'].year == 2026

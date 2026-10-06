@@ -56,6 +56,7 @@ The documentation is hosted on [readthedocs](https://surfalize.readthedocs.io/en
 | Keyence                | *.cag*                 | Only extraction | No      | 
 | Keyence                | *.zon*                 | Yes             | No      | 
 | Olympus                | *.lext*                | Yes             | No      | 
+| Heliotis               | *.hdat*                | Yes             | No      | 
 | Olympus                | *.oir*, *.poir*        | Yes             | No      | 
 | Leica                  | *.plu*                 | Yes             | No      | 
 | Sensofar               | *.plu*, *.plux*        | Yes             | No      | 
