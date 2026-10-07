@@ -1,4 +1,4 @@
-## Unreleased
+## v0.19.0
 - Added reading support for the Heliotis (`.hdat`) file format written by Heliotis H8 white light interferometers. The
   height channel is imported as stored, i.e. as absolute scanner position and without the outlier removal and leveling
   that the vendor software applies on export (the configured processing steps are available as metadata). The
