@@ -32,7 +32,8 @@ class Profile(BaseTopography):
     n_sections=1.
 
     The feature parameters of ISO 21920-2 (Rpd, Rvd, Rmpc, Rmvc, R5p, R5v, R10z) are computed with
-    `featurecharacterization2d` with the default settings of ISO 21920-3. See `surfalize.profile_feature.ProfileFeatureParameters` for details.
+    `featurecharacterization2d` with the default settings of ISO 21920-3. See
+    `surfalize.profile_feature.ProfileFeatureParameters` for details.
 
     Overview of data operations:
 
@@ -650,6 +651,11 @@ class Profile(BaseTopography):
         """
         Calculates Rpd in 1/cm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         Rpd : float
@@ -660,6 +666,11 @@ class Profile(BaseTopography):
     def Rvd(self, pruning=5):
         """
         Calculates Rvd in 1/cm.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
 
         Returns
         -------
@@ -672,6 +683,11 @@ class Profile(BaseTopography):
         """
         Calculates Rmpc in 1/µm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         Rmpc : float
@@ -682,6 +698,11 @@ class Profile(BaseTopography):
     def Rmvc(self, pruning=5):
         """
         Calculates Rmvc in 1/µm.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
 
         Returns
         -------
@@ -694,6 +715,11 @@ class Profile(BaseTopography):
         """
         Calculates R5p in µm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         R5p : float
@@ -705,6 +731,11 @@ class Profile(BaseTopography):
         """
         Calculates R5v in µm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         R5v : float
@@ -715,6 +746,11 @@ class Profile(BaseTopography):
     def R10z(self, pruning=5):
         """
         Calculates R10z in µm.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
 
         Returns
         -------

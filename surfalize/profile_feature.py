@@ -18,7 +18,8 @@ from .feature import DEFAULT_PRUNING, _N_FIVE_POINT
 
 class ProfileFeatureParameters(CachedInstance):
     """
-    Computes the ISO 21920-2:2021 (default settings of ISO 21920-3:2021) profile feature parameters of a `Profile` by watershed segmentation and Wolf pruning.
+    Computes the ISO 21920-2:2021 (default settings of ISO 21920-3:2021)
+    profile feature parameters of a `Profile` by watershed segmentation and Wolf pruning.
 
     - ``Rpd`` / ``Rvd``: FC; P (V); Wolfprune 5 %; All; Count; Density, in 1/cm
     - ``Rmpc`` / ``Rmvc``: FC; P (V); Wolfprune 5 %; All; Curvature; Mean, in 1/µm
@@ -88,6 +89,11 @@ class ProfileFeatureParameters(CachedInstance):
         """
         Calculates Rpd in 1/cm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         Rpd : float
@@ -99,6 +105,11 @@ class ProfileFeatureParameters(CachedInstance):
     def Rvd(self, pruning=DEFAULT_PRUNING):
         """
         Calculates Rvd in 1/cm.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
 
         Returns
         -------
@@ -112,6 +123,11 @@ class ProfileFeatureParameters(CachedInstance):
         """
         Calculates Rmpc in 1/µm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         Rmpc : float
@@ -123,6 +139,11 @@ class ProfileFeatureParameters(CachedInstance):
     def Rmvc(self, pruning=DEFAULT_PRUNING):
         """
         Calculates Rmvc in 1/µm.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
 
         Returns
         -------
@@ -136,6 +157,11 @@ class ProfileFeatureParameters(CachedInstance):
         """
         Calculates R5p in µm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         R5p : float
@@ -148,6 +174,11 @@ class ProfileFeatureParameters(CachedInstance):
         """
         Calculates R5v in µm.
 
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+
         Returns
         -------
         R5v : float
@@ -159,6 +190,11 @@ class ProfileFeatureParameters(CachedInstance):
     def R10z(self, pruning=DEFAULT_PRUNING):
         """
         Calculates R10z in µm.
+
+        Parameters
+        ----------
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
 
         Returns
         -------
