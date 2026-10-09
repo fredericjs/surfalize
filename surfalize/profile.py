@@ -4,6 +4,7 @@ from scipy.interpolate import griddata
 
 from .base import BaseTopography, no_nonmeasured_points
 from .cache import cache
+from .feature import DEFAULT_PRUNING
 from .profile_feature import ProfileFeatureParameters
 from .mathutils import get_period_fft_1d
 
@@ -648,7 +649,7 @@ class Profile(BaseTopography):
         return ProfileFeatureParameters(self)
 
     @no_nonmeasured_points
-    def Rpd(self, pruning=5):
+    def Rpd(self, pruning=DEFAULT_PRUNING):
         """
         Calculates Rpd in 1/cm.
 
@@ -664,7 +665,7 @@ class Profile(BaseTopography):
         return self.get_feature_parameters().Rpd(pruning=pruning)
 
     @no_nonmeasured_points
-    def Rvd(self, pruning=5):
+    def Rvd(self, pruning=DEFAULT_PRUNING):
         """
         Calculates Rvd in 1/cm.
 
@@ -680,7 +681,7 @@ class Profile(BaseTopography):
         return self.get_feature_parameters().Rvd(pruning=pruning)
 
     @no_nonmeasured_points
-    def Rmpc(self, pruning=5):
+    def Rmpc(self, pruning=DEFAULT_PRUNING):
         """
         Calculates Rmpc in 1/µm.
 
@@ -696,7 +697,7 @@ class Profile(BaseTopography):
         return self.get_feature_parameters().Rmpc(pruning=pruning)
 
     @no_nonmeasured_points
-    def Rmvc(self, pruning=5):
+    def Rmvc(self, pruning=DEFAULT_PRUNING):
         """
         Calculates Rmvc in 1/µm.
 
@@ -712,7 +713,7 @@ class Profile(BaseTopography):
         return self.get_feature_parameters().Rmvc(pruning=pruning)
 
     @no_nonmeasured_points
-    def R5p(self, pruning=5):
+    def R5p(self, pruning=DEFAULT_PRUNING):
         """
         Calculates R5p in µm.
 
@@ -728,7 +729,7 @@ class Profile(BaseTopography):
         return self.get_feature_parameters().R5p(pruning=pruning)
 
     @no_nonmeasured_points
-    def R5v(self, pruning=5):
+    def R5v(self, pruning=DEFAULT_PRUNING):
         """
         Calculates R5v in µm.
 
@@ -744,7 +745,7 @@ class Profile(BaseTopography):
         return self.get_feature_parameters().R5v(pruning=pruning)
 
     @no_nonmeasured_points
-    def R10z(self, pruning=5):
+    def R10z(self, pruning=DEFAULT_PRUNING):
         """
         Calculates R10z in µm.
 
@@ -759,7 +760,7 @@ class Profile(BaseTopography):
         """
         return self.get_feature_parameters().R10z(pruning=pruning)
 
-    def plot_feature_segmentation(self, kind='dale', pruning=5, ax=None, save_to=None):
+    def plot_feature_segmentation(self, kind='dale', pruning=DEFAULT_PRUNING, ax=None, save_to=None):
         """
         Plots the watershed segmentation of the profile into significant motifs (hills or dales) used by the feature
         parameters, together with the motif boundaries (enclosing peaks or pits) and critical points (pits/peaks).
