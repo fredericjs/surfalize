@@ -1,3 +1,9 @@
+## Unreleased
+- Added the ISO 21920-2 profile feature parameters `Rpd`, `Rvd`, `Rmpc`, `Rmvc`, `R5p`, `R5v` and `R10z` to `Profile`,
+  computed by a wrapper around `featurecharacterization2d`, the reference implementation of the profile feature
+  characterization (Müller et al., 2025).
+- New dependency `featurecharacterization2d`, which requires `numpy>=2.0`, `scipy>=1.13` and `matplotlib>=3.9`.
+
 ## v0.19.0
 - Added reading support for the Heliotis (`.hdat`) file format written by Heliotis H8 white light interferometers. The
   height channel is imported as stored, i.e. as absolute scanner position and without the outlier removal and leveling

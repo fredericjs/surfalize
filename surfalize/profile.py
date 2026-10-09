@@ -4,6 +4,7 @@ from scipy.interpolate import griddata
 
 from .base import BaseTopography, no_nonmeasured_points
 from .cache import cache
+from .profile_feature import ProfileFeatureParameters
 from .mathutils import get_period_fft_1d
 
 class Profile(BaseTopography):
@@ -21,6 +22,7 @@ class Profile(BaseTopography):
     - Hybrid parameters: Rdq
     - Functional parameters: Rk, Rpk, Rvk, Rmr1, Rmr2, Rxp, Rmr(c), Rmc(mr)
     - Functional volume parameters: Vmp, Vmc, Vvv, Vvc
+    - Feature parameters: Rpd, Rvd, Rmpc, Rmvc, R5p, R5v, R10z
 
     Contrary to areal parameters, which are always evaluated over the entire definition area, several profile
     parameters (Rp, Rv, Rz) are defined by ISO 4287 on a sampling length and averaged over the number of sampling
@@ -28,6 +30,9 @@ class Profile(BaseTopography):
     argument that controls the number of sampling lengths the evaluation length is divided into, which defaults to 5
     according to ISO 4287/ISO 4288. To evaluate these parameters on the entire evaluation length instead, specify
     n_sections=1.
+
+    The feature parameters of ISO 21920-2 (Rpd, Rvd, Rmpc, Rmvc, R5p, R5v, R10z) are computed with
+    `featurecharacterization2d` with the default settings of ISO 21920-3. See `surfalize.profile_feature.ProfileFeatureParameters` for details.
 
     Overview of data operations:
 
@@ -52,7 +57,8 @@ class Profile(BaseTopography):
         Length of the profile in µm. If None, the length is calculated from the number of datapoints and the stepsize.
     """
     ISO_PARAMETERS = ('Ra', 'Rq', 'Rp', 'Rv', 'Rz', 'Rsk', 'Rku', 'Rdq', 'Rk', 'Rpk', 'Rvk', 'Rpkx', 'Rvkx', 'Rak1',
-                      'Rak2', 'Rmr1', 'Rmr2', 'Rxp', 'Rdc', 'Vmp', 'Vmc', 'Vvv', 'Vvc')
+                      'Rak2', 'Rmr1', 'Rmr2', 'Rxp', 'Rdc', 'Vmp', 'Vmc', 'Vvv', 'Vvc', 'Rpd', 'Rvd', 'Rmpc', 'Rmvc',
+                      'R5p', 'R5v', 'R10z')
     # Non-standard parameters that are not defined by the profile roughness standards but can still be evaluated
     NON_ISO_PARAMETERS = ('Rt', 'period')
     AVAILABLE_PARAMETERS = ISO_PARAMETERS + NON_ISO_PARAMETERS
@@ -625,6 +631,122 @@ class Profile(BaseTopography):
         """
         return self.get_abbott_firestone_curve().dc(p, q)
 
+    @cache
+    @no_nonmeasured_points
+    def get_feature_parameters(self):
+        """
+        Instantiates and returns a ProfileFeatureParameters object, which performs the watershed segmentation and Wolf
+        pruning underlying the ISO 21920-2 feature parameters. The cache returns the same object on every call, so that
+        the segmentation is shared between all feature parameters that use the same pruning value.
+
+        Returns
+        -------
+        ProfileFeatureParameters
+        """
+        return ProfileFeatureParameters(self)
+
+    @no_nonmeasured_points
+    def Rpd(self, pruning=5):
+        """
+        Calculates Rpd in 1/cm.
+
+        Returns
+        -------
+        Rpd : float
+        """
+        return self.get_feature_parameters().Rpd(pruning=pruning)
+
+    @no_nonmeasured_points
+    def Rvd(self, pruning=5):
+        """
+        Calculates Rvd in 1/cm.
+
+        Returns
+        -------
+        Rvd : float
+        """
+        return self.get_feature_parameters().Rvd(pruning=pruning)
+
+    @no_nonmeasured_points
+    def Rmpc(self, pruning=5):
+        """
+        Calculates Rmpc in 1/µm.
+
+        Returns
+        -------
+        Rmpc : float
+        """
+        return self.get_feature_parameters().Rmpc(pruning=pruning)
+
+    @no_nonmeasured_points
+    def Rmvc(self, pruning=5):
+        """
+        Calculates Rmvc in 1/µm.
+
+        Returns
+        -------
+        Rmvc : float
+        """
+        return self.get_feature_parameters().Rmvc(pruning=pruning)
+
+    @no_nonmeasured_points
+    def R5p(self, pruning=5):
+        """
+        Calculates R5p in µm.
+
+        Returns
+        -------
+        R5p : float
+        """
+        return self.get_feature_parameters().R5p(pruning=pruning)
+
+    @no_nonmeasured_points
+    def R5v(self, pruning=5):
+        """
+        Calculates R5v in µm.
+
+        Returns
+        -------
+        R5v : float
+        """
+        return self.get_feature_parameters().R5v(pruning=pruning)
+
+    @no_nonmeasured_points
+    def R10z(self, pruning=5):
+        """
+        Calculates R10z in µm.
+
+        Returns
+        -------
+        R10z : float
+        """
+        return self.get_feature_parameters().R10z(pruning=pruning)
+
+    def plot_feature_segmentation(self, kind='dale', pruning=5, ax=None, save_to=None):
+        """
+        Plots the watershed segmentation of the profile into significant motifs (hills or dales) used by the feature
+        parameters, together with the motif boundaries (enclosing peaks or pits) and critical points (pits/peaks).
+
+        Parameters
+        ----------
+        kind : {'dale', 'hill'}, default 'dale'
+            Whether to plot the dale (pit) or hill (peak) segmentation.
+        pruning : float, default 5
+            Wolf pruning threshold as a percentage of Rz.
+        ax : matplotlib axis, default None
+            If specified, the plot is drawn on the given axis.
+        save_to : str | pathlib.Path | None
+            Path to where the plot should be saved.
+
+        Returns
+        -------
+        plt.Figure, plt.Axes
+        """
+        fig, ax = self.get_feature_parameters().plot_segmentation(kind=kind, pruning=pruning, ax=ax)
+        if save_to:
+            fig.savefig(save_to, dpi=300, bbox_inches='tight')
+        return fig, ax
+
     # Plotting #########################################################################################################
 
     def plot_2d(self, ax=None):
@@ -645,9 +767,9 @@ class Profile(BaseTopography):
         else:
             fig = ax.figure
         ax.set_xlim(0, self.length_um)
-        ax.set_xlabel('x [µm]')
-        ax.set_ylabel('z [µm]')
-        ax.plot(np.linspace(0, self.length_um, self.data.size), self.data, c='k', lw=1)
+        ax.set_xlabel('x / µm')
+        ax.set_ylabel('z / µm')
+        ax.plot(np.arange(self._data.size) * self.step, self.data, c='k', lw=1)
         return fig, ax
 
     def show(self):

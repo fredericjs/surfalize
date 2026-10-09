@@ -35,7 +35,8 @@ dependencies = [
     "python-dateutil",
     "pillow",
     "chardet",
-    "zstandard; python_version < '3.14'"
+    "zstandard; python_version < '3.14'",
+    "featurecharacterization2d>=1.2.0"
 ]
 
 [project.optional-dependencies]
