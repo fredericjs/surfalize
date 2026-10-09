@@ -7,6 +7,7 @@ from .cache import cache
 from .profile_feature import ProfileFeatureParameters
 from .mathutils import get_period_fft_1d
 
+
 class Profile(BaseTopography):
     """
     Representation of a 1D-profile characterised by a 1d array of height data and an associated stepsize along the
