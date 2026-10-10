@@ -1,3 +1,16 @@
+"""
+Reader and writer for the X3P file format (``.x3p``), the XML based format for surface topography data.
+
+The reader supports both revisions of ISO 25178-72, which share the structure of the file:
+
+- ISO 25178-72:2017, named ``ISO5436 - 2000`` in the Revision element after the ISO 5436-2 format of the openGPS
+  project (https://open-gps.sourceforge.net/).
+- ISO 25178-72:2017/Amd 1:2020, named ``ISO25178-72:2017/DAM1`` in the Revision element.
+
+A file is a zip archive with ``main.xml``, a file with its MD5 checksum and, unless the values are stored as text, the
+binary heights (``bindata/data.bin``) and for integer data a validity file (``bindata/valid.bin``). Surfaces on a
+regular grid with all data types of the standard are supported. The writer writes ISO 25178-72:2017.
+"""
 import hashlib
 import zipfile
 import xml.etree.ElementTree as ElementTree
@@ -15,8 +28,8 @@ CONVERSION_FACTOR = get_unit_conversion(UNIT, 'um')
 MAGIC = b'PK\x03\x04\x14'
 
 DTYPE_MAP = {
-    "I": "<u2",
-    "L": "<u4",
+    "I": "<i2",
+    "L": "<i4",
     "F": "f4",
     "D": "f8",
 }
@@ -208,6 +221,14 @@ def write_x3p(filehandle, surface, encoding='utf-8', dtype='D', comment=None):
 
 @FileHandler.register_reader(suffix='.x3p', magic=MAGIC)
 def read_x3p(filehandle, read_image_layers=False, encoding='utf-8'):
+    """
+    Reads a surface from an X3P file (ISO 25178-72) of either revision.
+
+    Surfaces on a regular grid are read with all data types (int16, int32, float32, float64), stored in binary files
+    or as text in the DataList. The stored heights are multiplied by the increment of the z axis. Points that the
+    validity file (``bindata/valid.bin``) marks as invalid, infinite values and empty Datum elements are NaN.
+    Profiles, point clouds, files of several layers and surfaces with absolute x or y axes are not supported.
+    """
     with zipfile.ZipFile(filehandle) as archive:
         contents = archive.namelist()
         if 'main.xml' not in contents:
@@ -247,10 +268,15 @@ def read_x3p(filehandle, read_image_layers=False, encoding='utf-8'):
         cy = axes.find("CY")
         cz = axes.find("CZ")
 
+        if 'A' in (cx.find("AxisType").text, cy.find("AxisType").text):
+            raise UnsupportedFileFormatError('Surfaces with absolute x or y axes are not supported.') from None
+
         dtype = DTYPE_MAP[cz.find("DataType").text]
 
         step_x = float(cx.find("Increment").text) * CONVERSION_FACTOR
         step_y = float(cy.find("Increment").text) * CONVERSION_FACTOR
+        increment_z = cz.find("Increment")
+        step_z = float(increment_z.text) if increment_z is not None else 1.0
 
         matrix_dimensions = record3.find('MatrixDimension')
         nx = int(matrix_dimensions.find('SizeX').text)
@@ -260,12 +286,31 @@ def read_x3p(filehandle, read_image_layers=False, encoding='utf-8'):
         if nz != 1:
             raise UnsupportedFileFormatError('Multilayer or volumetric file format is not supported.') from None
 
-        bin_path = record3.find('DataLink/PointDataLink').text
-        if bin_path is None:
-            raise CorruptedFileError('Binary file containing topographical data not found.') from None
+        valid = None
+        if record3.find('DataLink') is not None:
+            bin_path = record3.find('DataLink/PointDataLink').text
+            if bin_path is None:
+                raise CorruptedFileError('Binary file containing topographical data not found.') from None
 
-        with archive.open(bin_path, 'r') as data_file:
-            data = read_array(data_file, dtype=dtype).reshape(ny, nx) * CONVERSION_FACTOR
+            with archive.open(bin_path, 'r') as data_file:
+                values = read_array(data_file, dtype=dtype)
+
+            valid_link = record3.find('DataLink/ValidPointsLink')
+            if valid_link is not None:
+                with archive.open(valid_link.text, 'r') as valid_file:
+                    bits = read_array(valid_file, dtype='u1')
+                # One bit per point, least significant bit first; a set bit is a valid point.
+                valid = np.unpackbits(bits, count=nx * ny, bitorder='little').astype(bool)
+        else:
+            datums = record3.findall('DataList/Datum')
+            values = np.array([float(datum.text) if datum.text and datum.text.strip() else np.nan
+                               for datum in datums])
+
+        heights = values.astype(np.float64) * step_z
+        if valid is not None:
+            heights[~valid] = np.nan
+        heights[np.isinf(heights)] = np.nan
+        data = heights.reshape(ny, nx) * CONVERSION_FACTOR
 
         metadata = {}
         if record2 is not None:
