@@ -28,3 +28,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+The files `test_files/test_int16.x3p` and `test_files/test_text.x3p` are small synthetic X3P samples, written by x3pio
+(https://github.com/aschet/x3pio) from the formula in `test_fileformats.py`. They are dedicated to the public domain
+under CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/).

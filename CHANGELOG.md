@@ -1,3 +1,7 @@
+## Unreleased
+- Fixed the X3P reader for integer data and the z increment. It now reads the validity file, heights stored as text and
+  both revisions of the standard.
+
 ## v0.19.0
 - Added reading support for the Heliotis (`.hdat`) file format written by Heliotis H8 white light interferometers. The
   height channel is imported as stored, i.e. as absolute scanner position and without the outlier removal and leveling
