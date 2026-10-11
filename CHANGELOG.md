@@ -1,6 +1,6 @@
-## Unreleased
+## v0.19.1
 - Fixed the X3P reader for integer data and the z increment. It now reads the validity file, heights stored as text and
-  both revisions of the standard.
+  both revisions of the standard. (contributed by [aschet](https://github.com/aschet))
 
 ## v0.19.0
 - Added reading support for the Heliotis (`.hdat`) file format written by Heliotis H8 white light interferometers. The
@@ -34,7 +34,7 @@
   `NaN` with a warning), `'bound'` (return the shortest length over the measured longest length as an upper bound on
   `Str`, with a warning; note this bound depends on the evaluation-area size) or `'exception'` (raise a
   `CalculationError`). `Surface.Sal` accepts the same keyword for the fully-undersampled case, where `'bound'` behaves
-  like `'nan'` since `Sal` has no bounded fallback.
+  like `'nan'` since `Sal` has no bounded fallback. (contributed in part by [maxfERDC](https://github.com/maxfERDC))
 
 ## v0.18.2
 - Fixed the texture aspect ratio `Str` occasionally exceeding 1. The shortest and longest autocorrelation decay
