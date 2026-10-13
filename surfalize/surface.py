@@ -1298,9 +1298,10 @@ class Surface(BaseTopography):
         dz_y = np.diff(self.data, axis=0)
         dz_x = np.diff(self.data, axis=1)
 
-        # Calculate cross products
-        cross_x = self.step_y * dz_y[:, :-1]
-        cross_y = self.step_x * dz_x[:-1, :]
+        # Calculate cross products: the triangle is spanned by (step_x, 0, dz_x) and (0, step_y, dz_y), whose normal is
+        # (-step_y * dz_x, -step_x * dz_y, step_x * step_y)
+        cross_x = self.step_y * dz_x[:-1, :]
+        cross_y = self.step_x * dz_y[:, :-1]
         cross_z = self.step_x * self.step_y
 
         # Calculate areas using vectorized operations

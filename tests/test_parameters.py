@@ -247,6 +247,10 @@ def test_analytic_Sdr_plane():
     a, b = PLANE_SLOPE
     assert tilted_plane(0.5, 0.5).Sdr() == pytest.approx((np.sqrt(1 + a**2 + b**2) - 1) * 100, rel=1e-9)
 
+def test_analytic_Sdr_plane_non_square_pixels():
+    a, b = PLANE_SLOPE
+    assert tilted_plane(0.5, 0.25).Sdr() == pytest.approx((np.sqrt(1 + a**2 + b**2) - 1) * 100, rel=1e-9)
+
 # Feature parameters (ISO 25178-2:2021, clause 5) ####################################################################
 
 @pytest.fixture
