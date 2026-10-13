@@ -33,7 +33,7 @@ def test_Sku(surface):
 
 
 def test_Sdr(surface):
-    assert surface.Sdr() == pytest.approx(276.112693, abs=EPSILON)
+    assert surface.Sdr() == pytest.approx(275.198671, abs=EPSILON)
 
 
 def test_Sdq(surface):
@@ -228,6 +228,24 @@ def test_analytic_Sp_Sv_Sz(sinusoidal_surface):
 def test_analytic_period(sinusoidal_surface):
     # lambda = samples_per_period * step = 200 * 0.1 = 20.0
     assert sinusoidal_surface.period() == pytest.approx(20.0, abs=1e-2)
+
+# A tilted plane z = a*x + b*y has a constant gradient, so its hybrid parameters are exact for any sampling:
+# Sdq = sqrt(a^2 + b^2) and Sdr = (sqrt(1 + a^2 + b^2) - 1) * 100.
+PLANE_SLOPE = (0.03, -0.02)
+
+def tilted_plane(step_x, step_y, nx=100, ny=80):
+    a, b = PLANE_SLOPE
+    x = np.arange(nx) * step_x
+    y = np.arange(ny) * step_y
+    x, y = np.meshgrid(x, y)
+    return Surface(a * x + b * y, step_x, step_y)
+
+def test_analytic_Sdr_flat():
+    assert Surface(np.zeros((50, 60)), 0.1, 0.1).Sdr() == pytest.approx(0, abs=1e-12)
+
+def test_analytic_Sdr_plane():
+    a, b = PLANE_SLOPE
+    assert tilted_plane(0.5, 0.5).Sdr() == pytest.approx((np.sqrt(1 + a**2 + b**2) - 1) * 100, rel=1e-9)
 
 # Feature parameters (ISO 25178-2:2021, clause 5) ####################################################################
 

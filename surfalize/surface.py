@@ -1279,7 +1279,8 @@ class Surface(BaseTopography):
         -------
         projected area : float
         """
-        return (self.width_um - self.step_x) * (self.height_um - self.step_y)
+        # The area covered by the (nx-1)(ny-1) grid cells that surface_area sums over
+        return self.width_um * self.height_um
 
     @batch_method('parameter')
     @no_nonmeasured_points
