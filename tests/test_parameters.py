@@ -93,19 +93,19 @@ def test_Vvc(surface):
 
 
 def test_period(surface):
-    assert surface.period() == pytest.approx(19.98, abs=EPSILON)
+    assert surface.period() == pytest.approx(20.0, abs=EPSILON)
 
 
 def test_depth(surface):
-    assert surface.depth() == pytest.approx((1.870294, 0.058398), abs=EPSILON)
+    assert surface.depth() == pytest.approx((1.874714, 0.057617), abs=EPSILON)
 
 
 def test_aspect_ratio(surface):
-    assert surface.aspect_ratio() == pytest.approx(0.093608, abs=EPSILON)
+    assert surface.aspect_ratio() == pytest.approx(0.093736, abs=EPSILON)
 
 
 def test_homogeneity(surface):
-    assert surface.homogeneity() == pytest.approx(0.9985, abs=EPSILON)
+    assert surface.homogeneity() == pytest.approx(0.9986, abs=EPSILON)
 
 
 # Orientation and texture direction ###################################################################################
@@ -158,7 +158,7 @@ def test_Sdc(surface):
     assert surface.Sdc() == pytest.approx(1.168894, abs=EPSILON)
 
 def test_Ssw(surface):
-    assert surface.Ssw() == pytest.approx(19.98, abs=1e-2)
+    assert surface.Ssw() == pytest.approx(20.0, abs=EPSILON)
 
 def test_Sak1_equals_triangle_area(surface):
     assert surface.Sak1() == pytest.approx(0.5 * surface.Spk() * surface.Smr1(), abs=EPSILON)
@@ -226,8 +226,12 @@ def test_analytic_Sp_Sv_Sz(sinusoidal_surface):
     assert sinusoidal_surface.Sz() == pytest.approx(2 * ANALYTIC_AMPLITUDE, abs=1e-3)
 
 def test_analytic_period(sinusoidal_surface):
-    # lambda = samples_per_period * step = 200 * 0.1 = 20.0
-    assert sinusoidal_surface.period() == pytest.approx(20.0, abs=1e-2)
+    # lambda = samples_per_period * step = 200 * 0.1 = 20.0. The sinusoid has whole periods, so its frequency falls
+    # exactly on a DFT bin and the result is exact.
+    assert sinusoidal_surface.period() == pytest.approx(20.0, rel=1e-12)
+
+def test_analytic_Ssw(sinusoidal_surface):
+    assert sinusoidal_surface.Ssw() == pytest.approx(20.0, rel=1e-12)
 
 # A tilted plane z = a*x + b*y has a constant gradient, so its hybrid parameters are exact for any sampling:
 # Sdq = sqrt(a^2 + b^2) and Sdr = (sqrt(1 + a^2 + b^2) - 1) * 100.
