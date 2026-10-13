@@ -43,8 +43,8 @@ class FourierTransform(CachedInstance):
         fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
         N, M = surface.size
         # Calculate the frequency values for the x and y axes
-        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=surface.width_um / M))  # Frequency values for the x-axis
-        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=surface.height_um / N))  # Frequency values for the y-axis
+        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=surface.step_x))  # Frequency values for the x-axis
+        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=surface.step_y))  # Frequency values for the y-axis
         # Sort in descending order by computing sorting indices
         idx_y, idx_x = np.unravel_index(np.argsort(fft.flatten())[::-1], fft.shape)
         # Transform into spatial frequencies in length units
@@ -124,8 +124,8 @@ class FourierTransform(CachedInstance):
         data = surface.data - surface.data.mean()
         fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
         N, M = surface.size
-        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=surface.width_um / M))
-        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=surface.height_um / N))
+        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=surface.step_x))
+        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=surface.step_y))
         iy, ix = np.unravel_index(np.argmax(fft), fft.shape)
         radial_frequency = np.hypot(freq_x[ix], freq_y[iy])
         return np.inf if radial_frequency == 0 else 1 / radial_frequency
@@ -156,8 +156,8 @@ class FourierTransform(CachedInstance):
         weights = amplitude ** 2 if squared else amplitude
         # Physical spatial frequencies (1/length) so that the angle is correct even when the sampling spacing differs
         # between the x and y direction.
-        freq_y = np.fft.fftfreq(N, d=surface.height_um / N)
-        freq_x = np.fft.fftfreq(M, d=surface.width_um / M)
+        freq_y = np.fft.fftfreq(N, d=surface.step_y)
+        freq_x = np.fft.fftfreq(M, d=surface.step_x)
         freq_y, freq_x = np.meshgrid(freq_y, freq_x, indexing='ij')
         # The texture direction has no sign, so opposing frequencies are folded into the [0, 180) degree range.
         theta = np.mod(np.rad2deg(np.arctan2(freq_y, freq_x)), 180.0)
@@ -255,8 +255,8 @@ class FourierTransform(CachedInstance):
         fft = np.abs(np.fft.fftshift(np.fft.fft2(data)))
 
         # Calculate the frequency values for the x and y axes
-        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=surface.width_um / M))  # Frequency values for the x-axis
-        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=surface.height_um / N))  # Frequency values for the y-axis
+        freq_x = np.fft.fftshift(np.fft.fftfreq(M, d=surface.step_x))  # Frequency values for the x-axis
+        freq_y = np.fft.fftshift(np.fft.fftfreq(N, d=surface.step_y))  # Frequency values for the y-axis
 
         if log:
             # We add a small offset to avoid ln(0)
