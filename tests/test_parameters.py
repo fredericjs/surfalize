@@ -166,6 +166,15 @@ def test_Sak1_equals_triangle_area(surface):
 def test_Sak2_equals_triangle_area(surface):
     assert surface.Sak2() == pytest.approx(0.5 * surface.Svk() * (100 - surface.Smr2()), abs=EPSILON)
 
+def test_empty_peak_and_valley_zones():
+    # Uniformly distributed heights give a straight Abbott-Firestone curve: the core spans the whole curve, so the
+    # peak and valley zones are empty and their areas and reduced heights are 0 rather than 0 / 0 = NaN
+    ramp = Surface(np.linspace(0, 1, 100 * 200).reshape(100, 200), 1, 1)
+    assert ramp.Smr1() == pytest.approx(0, abs=1e-9)
+    assert ramp.Smr2() == pytest.approx(100, abs=1e-9)
+    for name in ('Sak1', 'Sak2', 'Spk', 'Svk'):
+        assert getattr(ramp, name)() == pytest.approx(0, abs=1e-9), name
+
 def test_Sdc_equals_Sxp_at_defaults(surface):
     assert surface.Sdc(2.5, 50) == pytest.approx(surface.Sxp(2.5, 50), abs=EPSILON)
 
