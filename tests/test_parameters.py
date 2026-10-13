@@ -37,7 +37,7 @@ def test_Sdr(surface):
 
 
 def test_Sdq(surface):
-    assert surface.Sdq() == pytest.approx(4.079605, abs=EPSILON)
+    assert surface.Sdq() == pytest.approx(4.082066, abs=EPSILON)
 
 
 def test_Sal(surface):
@@ -250,6 +250,10 @@ def test_analytic_Sdr_plane():
 def test_analytic_Sdr_plane_non_square_pixels():
     a, b = PLANE_SLOPE
     assert tilted_plane(0.5, 0.25).Sdr() == pytest.approx((np.sqrt(1 + a**2 + b**2) - 1) * 100, rel=1e-9)
+
+def test_analytic_Sdq_plane():
+    a, b = PLANE_SLOPE
+    assert tilted_plane(0.5, 0.25).Sdq() == pytest.approx(np.sqrt(a**2 + b**2), rel=1e-9)
 
 # Feature parameters (ISO 25178-2:2021, clause 5) ####################################################################
 
