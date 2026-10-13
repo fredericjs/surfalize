@@ -1334,10 +1334,10 @@ class Surface(BaseTopography):
         -------
         Sdq : float
         """
-        A = self.size.y * self.size.x
+        # Each direction is averaged over its own differences: ny * (nx - 1) along x and (ny - 1) * nx along y
         diff_x = np.diff(self.data, axis=1) / self.step_x
         diff_y = np.diff(self.data, axis=0) / self.step_y
-        return np.sqrt((np.sum(diff_x**2) + np.sum(diff_y**2)) / A)
+        return np.sqrt(np.mean(diff_x**2) + np.mean(diff_y**2))
 
     # Spatial parameters ###############################################################################################
     @batch_method('parameter')
