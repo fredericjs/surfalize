@@ -1,3 +1,24 @@
+## Unreleased
+- Fixed `Sdr`: the projected area was computed over one pixel less in each direction than the surface area, so a flat
+  surface had Sdr ≈ 200/n % instead of 0 (2 % on 100 × 100 pixels, about 100 % on a surface with three rows). The
+  projected area is now `width_um * height_um`.
+- Fixed the surface area (and therefore `Sdr`) for non-square pixels: each step was paired with the height difference
+  along the other axis.
+- Fixed `Sdq`: the squared slopes were divided by the number of points instead of the number of differences, which
+  biased it low by a factor of about √((n − 1)/n).
+- Fixed `rotate()` changing the lateral calibration: the rotated surface is resampled on the original pixel pitch, but
+  the step was recomputed from the rotated bounding box (−0.56 % after a 30° rotation of a 201 × 201 px surface), so
+  every length, slope and spatial parameter after a rotation was biased.
+- Fixed the frequency axis of the Fourier analysis being stretched by N/(N − 1) (the sample spacing was taken as
+  `width_um / N` instead of `step_x`). `Ssw`, `period`, `depth`, `aspect_ratio` and `homogeneity` change slightly;
+  a sinusoid with a 20 µm period on 2000 pixels now gives exactly 20 µm instead of 19.99 µm.
+- `Sak1`/`Sak2` (`Rak1`/`Rak2`) are no longer NaN when the peak or valley zone is empty (Smr1 = 0 % or Smr2 = 100 %):
+  the areas are returned directly instead of being computed from `Spk`/`Svk`, which now return 0 for an empty zone
+  instead of 0 / 0.
+
+These defects were found with an analytic soft-gauge validation suite (closed-form test surfaces with exact reference
+values).
+
 ## v0.19.1
 - Fixed the X3P reader for integer data and the z increment. It now reads the validity file, heights stored as text and
   both revisions of the standard. (contributed by [aschet](https://github.com/aschet))
