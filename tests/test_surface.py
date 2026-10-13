@@ -254,6 +254,19 @@ def test_rotate(surface):
     assert rotated.size.x * rotated.size.y < surface.size.x * surface.size.y
     assert not rotated.has_missing_points
 
+def test_rotate_keeps_lateral_calibration():
+    # Rotating a plane of slope 0.04 must keep the pixel step and the magnitude of the gradient
+    step = 0.5
+    x, y = np.meshgrid(np.arange(201) * step, np.arange(201) * step)
+    rotated = Surface(0.04 * x, step, step).rotate(30)
+    assert rotated.step_x == pytest.approx(step, rel=1e-12)
+    assert rotated.step_y == pytest.approx(step, rel=1e-12)
+    ny, nx = rotated.data.shape
+    xr, yr = np.meshgrid(np.arange(nx) * rotated.step_x, np.arange(ny) * rotated.step_y)
+    design = np.column_stack([xr.ravel(), yr.ravel(), np.ones(xr.size)])
+    gx, gy, _ = np.linalg.lstsq(design, rotated.data.ravel(), rcond=None)[0]
+    assert np.hypot(gx, gy) == pytest.approx(0.04, rel=1e-6)
+
 @pytest.fixture
 def grooved_surface():
     # Sinusoidal grooves with wavefronts rotated by 30 degrees

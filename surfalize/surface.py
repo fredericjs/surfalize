@@ -930,10 +930,10 @@ class Surface(BaseTopography):
         xmax = int(nx - (nx - w)/2) - 1
         
         rotated_cropped = rotated[ymin:ymax+1, xmin:xmax+1]
-        width_um = (self.width_um * pre_comp_cos + self.height_um * pre_comp_sin) * w / nx
-        height_um = (self.width_um * pre_comp_sin + self.height_um * pre_comp_cos) * h / ny
-        step_y = height_um / rotated_cropped.shape[0]
-        step_x = width_um / rotated_cropped.shape[1]
+        # ndimage.rotate resamples in pixel space, so one output pixel spans one input pixel along the rotated axes.
+        # For square pixels the step is unchanged.
+        step_x = np.hypot(self.step_x * pre_comp_cos, self.step_y * pre_comp_sin)
+        step_y = np.hypot(self.step_x * pre_comp_sin, self.step_y * pre_comp_cos)
 
         if inplace:
             self._set_data(data=rotated_cropped, step_x=step_x, step_y=step_y)
