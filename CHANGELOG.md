@@ -1,3 +1,6 @@
+## unreleased changes
+- Added vmin and vmax arguments to plot_3d and Surface.plot_3d, allowing users to customize the scalar color limits of 3D surface plots, like plot_2d. (contributed by [taki-climb](https://github.com/taki-climb))
+
 ## v0.19.1
 - Fixed the X3P reader for integer data and the z increment. It now reads the validity file, heights stored as text and
   both revisions of the standard. (contributed by [aschet](https://github.com/aschet))

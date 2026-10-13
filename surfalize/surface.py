@@ -2292,10 +2292,10 @@ class Surface(BaseTopography):
             fig.savefig(save_to, dpi=300, bbox_inches='tight')
         return fig, ax
 
-    def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
-                light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
-                level_of_detail=100, save_to=None, interactive=False, window_title='surfalize',
-                perspective_projection=True):
+    def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', vmin=None, vmax=None,
+                colorbar=True, show_grid=True, light=0.3, light_position=None, crop_white=True,
+                cbar_pad=50, cbar_height=0.5, scale=1, level_of_detail=100, save_to=None,
+                interactive=False, window_title='surfalize', perspective_projection=True):
         """
         Renders a surface object in 3d using pyvista.
 
@@ -2309,6 +2309,10 @@ class Surface(BaseTopography):
             Zoom factor of the surface render. Defaults to 1. Decreasing the value will zoom out the render.
         cmap : str
             Matplotlib colormap name. Defaults to jet.
+        vmin : float, default None
+            Minimum value of the colormap. If None, defaults to the minimum of the surface data.
+        vmax : float, default None
+            Maximum value of the colormap. If None, defaults to the maximum of the surface data.
         colorbar : bool
             Whether to show a colorbar. Defaults to True.
         show_grid : bool
@@ -2352,6 +2356,8 @@ class Surface(BaseTopography):
             horizontal_angle=horizontal_angle,
             zoom=zoom,
             cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
             colorbar=colorbar,
             show_grid=show_grid,
             light=light,
