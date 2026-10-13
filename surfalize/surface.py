@@ -1,7 +1,8 @@
 # Standard imports
 import logging
+from pathlib import Path
 
-from .plotting import plot_3d
+from .plotting import plot_3d, MESH_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 import warnings
@@ -2330,7 +2331,9 @@ class Surface(BaseTopography):
             Level of detail in % by which the topography is downsampled for the 3d plot. A value of 50 will downsample the
             number of points in each axis by a factor of 2. Defaults to 100.
         save_to : str | pathlib.Path | None
-            Path to where the plot should be saved.
+            Path to where the plot should be saved. The format is inferred from the extension. Image extensions
+            (e.g. .png, .jpg) save the static render. 3d extensions (.vts, .vtk, .vtp, .stl, .ply, .obj) save the
+            rendered mesh at the same resolution as the render, also in interactive mode.
         interactive : bool
             Specifies whether the plot should be shown in an interactive window. Does not currently work for jupyter.
             Defaults to False.
@@ -2343,9 +2346,10 @@ class Surface(BaseTopography):
         -------
         PIL.Image
         """
-        if interactive and save_to:
-            raise ValueError('Argument "save_to" can only be set for static plots. '
-                             'For interactive plots, use the widget save button.')
+        save_mesh = save_to is not None and Path(save_to).suffix.lower() in MESH_EXTENSIONS
+        if interactive and save_to and not save_mesh:
+            raise ValueError('Argument "save_to" can only be set to an image file for static plots. '
+                             'For interactive plots, use the widget save button or a 3d file format.')
         image = plot_3d(
             self,
             vertical_angle=vertical_angle,
@@ -2363,9 +2367,10 @@ class Surface(BaseTopography):
             level_of_detail=level_of_detail,
             interactive=interactive,
             window_title=window_title,
-            perspective_projection=perspective_projection
+            perspective_projection=perspective_projection,
+            save_mesh_to=save_to if save_mesh else None
         )
-        if save_to:
+        if save_to and not save_mesh:
             image.save(save_to)
         return image
 
