@@ -32,3 +32,7 @@ SOFTWARE.
 The files `test_files/test_int16.x3p` and `test_files/test_text.x3p` are small synthetic X3P samples, written by x3pio
 (https://github.com/aschet/x3pio) from the formula in `test_fileformats.py`. They are dedicated to the public domain
 under CC0 1.0 (https://creativecommons.org/publicdomain/zero/1.0/).
+
+The file `test_files/test_2.al3d` is a small synthetic AL3D sample with an odd width, a disc of invalid depths and a
+repeatability map, saved with Bruker Alicona MetMaX 2026.1. It is dedicated to the public domain under CC0 1.0
+(https://creativecommons.org/publicdomain/zero/1.0/).
