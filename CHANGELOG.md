@@ -1,4 +1,5 @@
 ## unreleased changes
+- Fixed the AL3D reader and writer for odd image widths and invalid pixels, and added masking of non-repeatable points.
 - Added vmin and vmax arguments to plot_3d and Surface.plot_3d, allowing users to customize the scalar color limits of 3D surface plots, like plot_2d. (contributed by [taki-climb](https://github.com/taki-climb))
 
 ## v0.19.1
