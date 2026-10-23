@@ -135,7 +135,8 @@ class FourierTransform(CachedInstance):
         """
         Computes the angular spectrum by accumulating the (squared) amplitude of the 2d Fourier transform into angular
         bins. With squared=False this yields the angular amplitude density fAAD, with squared=True the angular power
-        density fAPD as defined in ISO 25178-2 (3.2.15.2 and 3.2.15.3).
+        density fAPD as defined in ISO 25178-2 (3.2.15.2 and 3.2.15.3). The angle is measured from the +x axis,
+        counter-clockwise on the displayed map, i.e. with y pointing up (ISO 25178-2:2021, 3.2.15.1).
 
         Parameters
         ----------
@@ -159,8 +160,9 @@ class FourierTransform(CachedInstance):
         freq_y = np.fft.fftfreq(N, d=surface.step_y)
         freq_x = np.fft.fftfreq(M, d=surface.step_x)
         freq_y, freq_x = np.meshgrid(freq_y, freq_x, indexing='ij')
-        # The texture direction has no sign, so opposing frequencies are folded into the [0, 180) degree range.
-        theta = np.mod(np.rad2deg(np.arctan2(freq_y, freq_x)), 180.0)
+        # Row 0 is the top of the map, so the row frequency points down: negate it for an angle counter-clockwise from
+        # +x with y up. The texture direction has no sign, so opposing frequencies are folded into [0, 180) degree.
+        theta = np.mod(np.rad2deg(np.arctan2(-freq_y, freq_x)), 180.0)
         angles = np.arange(0, 180, angle_step)
         bin_idx = np.minimum((theta / angle_step).astype(int), angles.size - 1)
         spectrum = np.bincount(bin_idx.ravel(), weights=weights.ravel(), minlength=angles.size)

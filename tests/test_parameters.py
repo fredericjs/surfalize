@@ -136,8 +136,20 @@ def test_orientation_invalid_method(grooved_surface):
         grooved_surface.orientation(method='nonsense')
 
 def test_Std(grooved_surface):
-    # Texture direction is the angle of maximum angular amplitude density
-    assert grooved_surface.Std() == pytest.approx(30, abs=2)
+    # Texture direction is the angle of maximum angular amplitude density. The wave vector points 30 degrees from +x
+    # towards increasing row index, i.e. down the map; counter-clockwise with y up (ISO 25178-2, 3.2.15.1) that is
+    # 150 degrees.
+    assert grooved_surface.Std() == pytest.approx(150, abs=2)
+
+def test_analytic_Std_orientation():
+    # A wave vector of (16, 16) cycles per field sits exactly on a DFT bin. It points towards +x and increasing row
+    # index (down the map), so its direction counter-clockwise from +x with y up is 135 degrees, and 45 degrees once
+    # the rows are flipped.
+    n = 256
+    x, y = np.meshgrid(np.arange(n), np.arange(n))
+    z = np.sin(2 * np.pi * 16 * (x + y) / n)
+    assert Surface(z, 1, 1).Std() == pytest.approx(135, abs=0.25)
+    assert Surface(z[::-1].copy(), 1, 1).Std() == pytest.approx(45, abs=0.25)
 
 
 # New ISO 25178-2:2021 parameters #####################################################################################
