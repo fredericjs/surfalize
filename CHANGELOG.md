@@ -1,6 +1,8 @@
-## unreleased changes
+## v0.19.2
 - Fixed the AL3D reader and writer for odd image widths and invalid pixels, and added masking of non-repeatable points. (contributed by [aschet](https://github.com/aschet))
 - Added vmin and vmax arguments to plot_3d and Surface.plot_3d, allowing users to customize the scalar color limits of 3D surface plots, like plot_2d. (contributed by [taki-climb](https://github.com/taki-climb))
+These defects were found with an analytic soft-gauge validation suite (closed-form test surfaces with exact reference
+values):
 - Fixed `Sdr`: the projected area was computed over one pixel less in each direction than the surface area, so a flat
   surface had Sdr ≈ 200/n % instead of 0 (2 % on 100 × 100 pixels, about 100 % on a surface with three rows). The
   projected area is now `width_um * height_um`.
@@ -26,9 +28,6 @@
 - `Sak1`/`Sak2` (`Rak1`/`Rak2`) are no longer NaN when the peak or valley zone is empty (Smr1 = 0 % or Smr2 = 100 %):
   the areas are returned directly instead of being computed from `Spk`/`Svk`, which now return 0 for an empty zone
   instead of 0 / 0.
-
-These defects were found with an analytic soft-gauge validation suite (closed-form test surfaces with exact reference
-values).
 
 ## v0.19.1
 - Fixed the X3P reader for integer data and the z increment. It now reads the validity file, heights stored as text and
