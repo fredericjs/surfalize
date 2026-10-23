@@ -8,7 +8,7 @@ version_file = "surfalize/_version.py"
 [project]
 name = "surfalize"
 authors = [
-    {name = "Frederic Schell", email = "frederic.schell@iws.fraunhofer.de"}
+    {name = "Frederic Schell", email = "frederic.schell@inspire.ch"}
 ]
 dynamic = ["version"]
 description = "A python module to analyze surface roughness"
