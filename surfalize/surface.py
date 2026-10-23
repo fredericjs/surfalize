@@ -1287,8 +1287,8 @@ class Surface(BaseTopography):
     @cache
     def surface_area(self):
         """
-        Calculates the surface area of the surface according to the method proposed by ISO 25178 and used by
-        MountainsMap, whereby two triangles are spanned between four corner points.
+        Calculates the surface area of the surface according to ISO 25178-2:2021, D.3, eq. (D.15): each cell ABCD
+        is split into two triangles along both diagonals (ABC + ADC and ABD + CBD) and the two areas are averaged.
 
         Returns
         -------
@@ -1298,17 +1298,20 @@ class Surface(BaseTopography):
         dz_y = np.diff(self.data, axis=0)
         dz_x = np.diff(self.data, axis=1)
 
-        # Calculate cross products: the triangle is spanned by (step_x, 0, dz_x) and (0, step_y, dz_y), whose normal is
-        # (-step_y * dz_x, -step_x * dz_y, step_x * step_y)
-        cross_x = self.step_y * dz_x[:-1, :]
-        cross_y = self.step_x * dz_y[:, :-1]
-        cross_z = self.step_x * self.step_y
+        # The triangle at a cell corner is spanned by its x edge (step_x, 0, dz_x) and its y edge (0, step_y, dz_y),
+        # whose normal is (-step_y * dz_x, -step_x * dz_y, step_x * step_y). Each cell has two x edges (bottom, top)
+        # and two y edges (left, right); every corner pairs one of each.
+        cross_x_bottom = (self.step_y * dz_x[:-1, :]) ** 2
+        cross_x_top = (self.step_y * dz_x[1:, :]) ** 2
+        cross_y_left = (self.step_x * dz_y[:, :-1]) ** 2
+        cross_y_right = (self.step_x * dz_y[:, 1:]) ** 2
+        cross_z = (self.step_x * self.step_y) ** 2
 
-        # Calculate areas using vectorized operations
-        areas = 0.5 * np.sqrt(cross_x ** 2 + cross_y ** 2 + cross_z ** 2)
-
-        # Sum up all areas
-        total_area = 2 * np.sum(areas)  # Multiply by 2 for both triangles in each quad
+        # Each corner triangle has half the area of its normal, and the cell is the mean of the two triangulations,
+        # i.e. half the sum of the four corner triangles.
+        corners = (np.sqrt(cross_x_bottom + cross_y_left + cross_z) + np.sqrt(cross_x_bottom + cross_y_right + cross_z)
+                   + np.sqrt(cross_x_top + cross_y_right + cross_z) + np.sqrt(cross_x_top + cross_y_left + cross_z))
+        total_area = 0.25 * np.sum(corners)
 
         return total_area
 

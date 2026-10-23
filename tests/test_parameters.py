@@ -33,7 +33,7 @@ def test_Sku(surface):
 
 
 def test_Sdr(surface):
-    assert surface.Sdr() == pytest.approx(275.198671, abs=EPSILON)
+    assert surface.Sdr() == pytest.approx(275.201045, abs=EPSILON)
 
 
 def test_Sdq(surface):
@@ -263,6 +263,23 @@ def test_analytic_Sdr_plane():
 def test_analytic_Sdr_plane_non_square_pixels():
     a, b = PLANE_SLOPE
     assert tilted_plane(0.5, 0.25).Sdr() == pytest.approx((np.sqrt(1 + a**2 + b**2) - 1) * 100, rel=1e-9)
+
+def test_analytic_Sdr_twisted_cell():
+    # A single cell with corner heights 0, 0, 0, 1 is not planar. Its two triangulations (ISO 25178-2 eq. D.15) have
+    # the areas 1/2 + sqrt(3)/2 (diagonal AC) and sqrt(2) (diagonal BD); the cell area is their mean.
+    expected = ((0.5 + np.sqrt(3) / 2 + np.sqrt(2)) / 2 - 1) * 100
+    assert Surface(np.array([[0., 0.], [0., 1.]]), 1, 1).Sdr() == pytest.approx(expected, rel=1e-12)
+
+def test_analytic_Sdr_saddle():
+    # On the saddle z = k*x*y every cell is twisted, but z is linear along every grid line, so every edge difference
+    # is exact: the triangle at a corner has area 1/2*dx*dy*sqrt(1 + |grad z|^2) with the gradient (k*y, k*x) at that
+    # corner. Summed over the cells, D.15 gives the trapezoid-weighted mean of sqrt(1 + k^2*(x^2 + y^2)) over the
+    # grid points.
+    k, nx, ny, dx, dy = 0.05, 41, 81, 0.5, 0.25
+    x, y = np.meshgrid(np.arange(nx) * dx, np.arange(ny) * dy)
+    w = np.outer(np.r_[0.5, np.ones(ny - 2), 0.5], np.r_[0.5, np.ones(nx - 2), 0.5])
+    expected = (np.sum(w * np.sqrt(1 + k**2 * (x**2 + y**2))) / ((nx - 1) * (ny - 1)) - 1) * 100
+    assert Surface(k * x * y, dx, dy).Sdr() == pytest.approx(expected, rel=1e-12)
 
 def test_analytic_Sdq_plane():
     a, b = PLANE_SLOPE
