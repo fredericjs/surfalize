@@ -151,6 +151,18 @@ def test_analytic_Std_orientation():
     assert Surface(z, 1, 1).Std() == pytest.approx(135, abs=0.25)
     assert Surface(z[::-1].copy(), 1, 1).Std() == pytest.approx(45, abs=0.25)
 
+def test_analytic_Std_amplitude_density():
+    # Two lays: one sinusoid of amplitude 1 with its wave vector along x (0 degrees), and nine sinusoids of amplitude
+    # 0.3 along y (90 degrees), all on DFT bins. The amplitude density (fAAD, which defines Std) is 1 against
+    # 9 * 0.3 = 2.7, the power density (fAPD) 1 against 9 * 0.3^2 = 0.81, so the two disagree.
+    n = 256
+    x, y = np.meshgrid(np.arange(n), np.arange(n))
+    z = np.sin(2 * np.pi * 16 * x / n) + sum(0.3 * np.sin(2 * np.pi * m * y / n) for m in range(10, 19))
+    s = Surface(z, 1, 1)
+    assert s.Std() == pytest.approx(90, abs=0.25)
+    angles, spectrum = s.get_fourier_transform().angular_power_spectrum()
+    assert angles[np.argmax(spectrum)] == pytest.approx(0, abs=0.25)
+
 
 # New ISO 25178-2:2021 parameters #####################################################################################
 

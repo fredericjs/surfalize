@@ -1820,8 +1820,9 @@ class Surface(BaseTopography):
 
     def Std(self, angle_step=0.5):
         """
-        Calculates the texture direction parameter, which is the angle at which the angular power spectrum is the
-        largest. It represents the lay of the surface texture.
+        Calculates the texture direction parameter, which is the angle at which the angular amplitude density (fAAD,
+        ISO 25178-2, 4.3.4) is the largest, counter-clockwise from the +x axis with y pointing up the map. It
+        represents the lay of the surface texture.
 
         Parameters
         ----------

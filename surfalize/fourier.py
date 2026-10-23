@@ -190,10 +190,9 @@ class FourierTransform(CachedInstance):
         Calculates the texture direction parameter Std, the angle at which the angular spectrum is the largest. It
         represents the lay of the surface texture.
 
-        ISO 25178-2 (4.3.4) defines Std via the angular amplitude density fAAD. In practice the angular power density
-        fAPD (squared amplitude) is used here, which matches the behaviour of commercial software (e.g. MountainsMap).
-        The two only differ for surfaces with several competing lays of similar strength, where the texture direction
-        is intrinsically ambiguous; for a single dominant lay the result is identical.
+        ISO 25178-2 (4.3.4) defines Std via the angular amplitude density fAAD, which is used here. The angular power
+        density fAPD (squared amplitude, see angular_power_spectrum) weights strong narrow-band components more; the
+        two only differ for surfaces with several competing lays, for a single dominant lay the result is identical.
 
         Parameters
         ----------
@@ -204,7 +203,7 @@ class FourierTransform(CachedInstance):
         -------
         float
         """
-        angles, spectrum = self._angular_spectrum(angle_step, squared=True)
+        angles, spectrum = self._angular_spectrum(angle_step, squared=False)
         return angles[np.argmax(spectrum)]
 
     def plot(self, ax=None, log=True, hanning=False, subtract_mean=True, fxmax=None, fymax=None,
