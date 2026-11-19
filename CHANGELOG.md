@@ -1,3 +1,8 @@
+## Unreleased
+- Added the ISO 21920-2 profile feature parameters `Rpd`, `Rvd`, `Rmpc`, `Rmvc`, `R5p`, `R5v` and `R10z` to `Profile`,
+  computed by a wrapper around `featurecharacterization2d`, the reference implementation of the profile feature
+  characterization (Müller et al., 2025).
+- New dependency `featurecharacterization2d`, which requires `numpy>=2.0`, `scipy>=1.13` and `matplotlib>=3.9`.
 ## v0.19.2
 - Fixed the AL3D reader and writer for odd image widths and invalid pixels, and added masking of non-repeatable points. (contributed by [aschet](https://github.com/aschet))
 - Added vmin and vmax arguments to plot_3d and Surface.plot_3d, allowing users to customize the scalar color limits of 3D surface plots, like plot_2d. (contributed by [taki-climb](https://github.com/taki-climb))
