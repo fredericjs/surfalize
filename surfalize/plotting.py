@@ -40,9 +40,10 @@ def _create_colorbar(vmin, vmax, cmap, label='z (µm)', height=0.5):
     plt.close()
     return Image.open(buffer)
 
-def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
-            light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
-            level_of_detail=100, interactive=False, window_title='surfalize', perspective_projection=False):
+def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', vmin=None, vmax=None,
+            colorbar=True, show_grid=True, light=0.3, light_position=None, crop_white=True, cbar_pad=50,
+            cbar_height=0.5, scale=1, level_of_detail=100, interactive=False, window_title='surfalize',
+            perspective_projection=False):
     """
     Renders a surface object in 3d using pyvista.
 
@@ -58,6 +59,10 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
         Zoom factor of the surface render. Defaults to 1. Decreasing the value will zoom out the render.
     cmap : str
         Matplotlib colormap name. Defaults to jet.
+    vmin : float, default None
+        Minimum value of the colormap. If None, defaults to the minimum of the surface data.
+    vmax : float, default None
+        Maximum value of the colormap. If None, defaults to the maximum of the surface data.
     colorbar : bool
         Whether to show a colorbar. Defaults to True.
     show_grid : bool
@@ -114,13 +119,22 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
     grid = pv.StructuredGrid(x, y, z)
     grid.point_data["height"] = z.T.ravel()
 
+    if vmin is not None or vmax is not None:
+        c_min = np.nanmin(surface.data) if vmin is None else vmin
+        c_max = np.nanmax(surface.data) if vmax is None else vmax
+        if c_min >= c_max:
+            raise ValueError("vmin must be strictly less than vmax.")
+        clim = (c_min, c_max)
+    else:
+        clim = None
+
     # Initialize the PyVista plotter
     plotter = pv.Plotter(off_screen=not interactive, window_size=None if interactive else (1920, 1080))
     if not perspective_projection:
         plotter.enable_parallel_projection()
 
     # Add the surface plot to the plotter
-    plotter.add_mesh(grid, cmap=cmap, scalars="height", show_edges=False, show_scalar_bar=False)
+    plotter.add_mesh(grid, cmap=cmap, clim=clim, scalars="height", show_edges=False, show_scalar_bar=False)
 
     plotter.set_scale(zscale=scale)
 
@@ -178,7 +192,9 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
                 img = img.crop((bbox[0], 0, bbox[2], img.height))
 
         if colorbar:
-            cb = _create_colorbar(np.nanmin(surface.data), np.nanmax(surface.data), cmap, height=cbar_height)
+            cb_min = clim[0] if clim is not None else np.nanmin(surface.data)
+            cb_max = clim[1] if clim is not None else np.nanmax(surface.data)
+            cb = _create_colorbar(cb_min, cb_max, cmap, height=cbar_height)
             cb = cb.resize((int(cb.width * img.height / cb.height), img.height))
 
             composite = Image.new('RGB', (img.width + cb.width + cbar_pad, img.height), (255, 255, 255))

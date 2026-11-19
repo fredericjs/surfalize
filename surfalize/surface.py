@@ -930,10 +930,10 @@ class Surface(BaseTopography):
         xmax = int(nx - (nx - w)/2) - 1
         
         rotated_cropped = rotated[ymin:ymax+1, xmin:xmax+1]
-        width_um = (self.width_um * pre_comp_cos + self.height_um * pre_comp_sin) * w / nx
-        height_um = (self.width_um * pre_comp_sin + self.height_um * pre_comp_cos) * h / ny
-        step_y = height_um / rotated_cropped.shape[0]
-        step_x = width_um / rotated_cropped.shape[1]
+        # ndimage.rotate resamples in pixel space, so one output pixel spans one input pixel along the rotated axes.
+        # For square pixels the step is unchanged.
+        step_x = np.hypot(self.step_x * pre_comp_cos, self.step_y * pre_comp_sin)
+        step_y = np.hypot(self.step_x * pre_comp_sin, self.step_y * pre_comp_cos)
 
         if inplace:
             self._set_data(data=rotated_cropped, step_x=step_x, step_y=step_y)
@@ -1279,15 +1279,16 @@ class Surface(BaseTopography):
         -------
         projected area : float
         """
-        return (self.width_um - self.step_x) * (self.height_um - self.step_y)
+        # The area covered by the (nx-1)(ny-1) grid cells that surface_area sums over
+        return self.width_um * self.height_um
 
     @batch_method('parameter')
     @no_nonmeasured_points
     @cache
     def surface_area(self):
         """
-        Calculates the surface area of the surface according to the method proposed by ISO 25178 and used by
-        MountainsMap, whereby two triangles are spanned between four corner points.
+        Calculates the surface area of the surface according to ISO 25178-2:2021, D.3, eq. (D.15): each cell ABCD
+        is split into two triangles along both diagonals (ABC + ADC and ABD + CBD) and the two areas are averaged.
 
         Returns
         -------
@@ -1297,16 +1298,20 @@ class Surface(BaseTopography):
         dz_y = np.diff(self.data, axis=0)
         dz_x = np.diff(self.data, axis=1)
 
-        # Calculate cross products
-        cross_x = self.step_y * dz_y[:, :-1]
-        cross_y = self.step_x * dz_x[:-1, :]
-        cross_z = self.step_x * self.step_y
+        # The triangle at a cell corner is spanned by its x edge (step_x, 0, dz_x) and its y edge (0, step_y, dz_y),
+        # whose normal is (-step_y * dz_x, -step_x * dz_y, step_x * step_y). Each cell has two x edges (bottom, top)
+        # and two y edges (left, right); every corner pairs one of each.
+        cross_x_bottom = (self.step_y * dz_x[:-1, :]) ** 2
+        cross_x_top = (self.step_y * dz_x[1:, :]) ** 2
+        cross_y_left = (self.step_x * dz_y[:, :-1]) ** 2
+        cross_y_right = (self.step_x * dz_y[:, 1:]) ** 2
+        cross_z = (self.step_x * self.step_y) ** 2
 
-        # Calculate areas using vectorized operations
-        areas = 0.5 * np.sqrt(cross_x ** 2 + cross_y ** 2 + cross_z ** 2)
-
-        # Sum up all areas
-        total_area = 2 * np.sum(areas)  # Multiply by 2 for both triangles in each quad
+        # Each corner triangle has half the area of its normal, and the cell is the mean of the two triangulations,
+        # i.e. half the sum of the four corner triangles.
+        corners = (np.sqrt(cross_x_bottom + cross_y_left + cross_z) + np.sqrt(cross_x_bottom + cross_y_right + cross_z)
+                   + np.sqrt(cross_x_top + cross_y_right + cross_z) + np.sqrt(cross_x_top + cross_y_left + cross_z))
+        total_area = 0.25 * np.sum(corners)
 
         return total_area
 
@@ -1332,10 +1337,10 @@ class Surface(BaseTopography):
         -------
         Sdq : float
         """
-        A = self.size.y * self.size.x
+        # Each direction is averaged over its own differences: ny * (nx - 1) along x and (ny - 1) * nx along y
         diff_x = np.diff(self.data, axis=1) / self.step_x
         diff_y = np.diff(self.data, axis=0) / self.step_y
-        return np.sqrt((np.sum(diff_x**2) + np.sum(diff_y**2)) / A)
+        return np.sqrt(np.mean(diff_x**2) + np.mean(diff_y**2))
 
     # Spatial parameters ###############################################################################################
     @batch_method('parameter')
@@ -1815,8 +1820,9 @@ class Surface(BaseTopography):
 
     def Std(self, angle_step=0.5):
         """
-        Calculates the texture direction parameter, which is the angle at which the angular power spectrum is the
-        largest. It represents the lay of the surface texture.
+        Calculates the texture direction parameter, which is the angle at which the angular amplitude density (fAAD,
+        ISO 25178-2, 4.3.4) is the largest, counter-clockwise from the +x axis with y pointing up the map. It
+        represents the lay of the surface texture.
 
         Parameters
         ----------
@@ -2292,10 +2298,10 @@ class Surface(BaseTopography):
             fig.savefig(save_to, dpi=300, bbox_inches='tight')
         return fig, ax
 
-    def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', colorbar=True, show_grid=True,
-                light=0.3, light_position=None, crop_white=True, cbar_pad=50, cbar_height=0.5, scale=1,
-                level_of_detail=100, save_to=None, interactive=False, window_title='surfalize',
-                perspective_projection=True):
+    def plot_3d(self, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', vmin=None, vmax=None,
+                colorbar=True, show_grid=True, light=0.3, light_position=None, crop_white=True,
+                cbar_pad=50, cbar_height=0.5, scale=1, level_of_detail=100, save_to=None,
+                interactive=False, window_title='surfalize', perspective_projection=True):
         """
         Renders a surface object in 3d using pyvista.
 
@@ -2309,6 +2315,10 @@ class Surface(BaseTopography):
             Zoom factor of the surface render. Defaults to 1. Decreasing the value will zoom out the render.
         cmap : str
             Matplotlib colormap name. Defaults to jet.
+        vmin : float, default None
+            Minimum value of the colormap. If None, defaults to the minimum of the surface data.
+        vmax : float, default None
+            Maximum value of the colormap. If None, defaults to the maximum of the surface data.
         colorbar : bool
             Whether to show a colorbar. Defaults to True.
         show_grid : bool
@@ -2352,6 +2362,8 @@ class Surface(BaseTopography):
             horizontal_angle=horizontal_angle,
             zoom=zoom,
             cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
             colorbar=colorbar,
             show_grid=show_grid,
             light=light,

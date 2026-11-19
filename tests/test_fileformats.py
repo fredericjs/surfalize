@@ -324,3 +324,41 @@ def test_x3p_metadata():
     assert loaded.metadata['InstrumentModel'] == 'not available'
     assert loaded.metadata['ProbingSystemType'] == 'NonContacting'
     assert loaded.metadata['Comment'] == 'Some comment'
+
+
+@pytest.mark.parametrize('filename, quantum', [
+    ('test_int16.x3p', 1e-9),  # signed 16-bit integers with a z increment and a validity file
+    ('test_text.x3p', None),  # heights stored as text in the DataList
+])
+def test_x3p_reading_integers_and_text_heights(testfile_dir, filename, quantum):
+    # The files are written by x3pio (https://github.com/aschet/x3pio)
+    j, i = np.mgrid[0:16, 0:24]
+    expected = 1e-6 * (np.sin(0.4 * i) + 0.5 * np.cos(0.7 * j))
+    if quantum is not None:
+        expected = np.round(expected / quantum) * quantum
+    expected[3:6, 5:9] = np.nan
+    surface = Surface.load(testfile_dir / filename)
+    np.testing.assert_allclose(surface.data, expected * 1e6, rtol=1e-9, atol=1e-9, equal_nan=True)
+    assert surface.step_x == pytest.approx(1.0)
+
+
+# AL3D
+
+def test_al3d_reading_masks_invalid_and_unrepeatable_values(testfile_dir):
+    # The file has an odd width and a disc of invalid depths around (30, 30). The columns from x = 61 on are not
+    # repeatable enough.
+    data = Surface.load(testfile_dir / 'test_2.al3d').data
+    assert data.shape == (61, 101)
+    assert np.isnan(data[30, 30])
+    assert np.isnan(data[:, 61:]).all()
+    assert np.isfinite(data[0, :61]).all()
+
+def test_al3d_writing_and_reading_roundtrip_with_non_measured_points():
+    data = np.arange(15, dtype=float).reshape(3, 5)
+    data[1, 2] = np.nan
+    buffer = io.BytesIO()
+    Surface(data, 0.5, 0.25).save(buffer, format='.al3d')
+    buffer.seek(0)
+    loaded = Surface.load(buffer, format='.al3d')
+    np.testing.assert_allclose(loaded.data, data, equal_nan=True, atol=1e-6)
+    assert (loaded.step_x, loaded.step_y) == pytest.approx((0.5, 0.25))

@@ -33,11 +33,11 @@ def test_Sku(surface):
 
 
 def test_Sdr(surface):
-    assert surface.Sdr() == pytest.approx(276.112693, abs=EPSILON)
+    assert surface.Sdr() == pytest.approx(275.201045, abs=EPSILON)
 
 
 def test_Sdq(surface):
-    assert surface.Sdq() == pytest.approx(4.079605, abs=EPSILON)
+    assert surface.Sdq() == pytest.approx(4.082066, abs=EPSILON)
 
 
 def test_Sal(surface):
@@ -93,19 +93,19 @@ def test_Vvc(surface):
 
 
 def test_period(surface):
-    assert surface.period() == pytest.approx(19.98, abs=EPSILON)
+    assert surface.period() == pytest.approx(20.0, abs=EPSILON)
 
 
 def test_depth(surface):
-    assert surface.depth() == pytest.approx((1.870294, 0.058398), abs=EPSILON)
+    assert surface.depth() == pytest.approx((1.874714, 0.057617), abs=EPSILON)
 
 
 def test_aspect_ratio(surface):
-    assert surface.aspect_ratio() == pytest.approx(0.093608, abs=EPSILON)
+    assert surface.aspect_ratio() == pytest.approx(0.093736, abs=EPSILON)
 
 
 def test_homogeneity(surface):
-    assert surface.homogeneity() == pytest.approx(0.9985, abs=EPSILON)
+    assert surface.homogeneity() == pytest.approx(0.9986, abs=EPSILON)
 
 
 # Orientation and texture direction ###################################################################################
@@ -136,8 +136,32 @@ def test_orientation_invalid_method(grooved_surface):
         grooved_surface.orientation(method='nonsense')
 
 def test_Std(grooved_surface):
-    # Texture direction is the angle of maximum angular amplitude density
-    assert grooved_surface.Std() == pytest.approx(30, abs=2)
+    # Texture direction is the angle of maximum angular amplitude density. The wave vector points 30 degrees from +x
+    # towards increasing row index, i.e. down the map; counter-clockwise with y up (ISO 25178-2, 3.2.15.1) that is
+    # 150 degrees.
+    assert grooved_surface.Std() == pytest.approx(150, abs=2)
+
+def test_analytic_Std_orientation():
+    # A wave vector of (16, 16) cycles per field sits exactly on a DFT bin. It points towards +x and increasing row
+    # index (down the map), so its direction counter-clockwise from +x with y up is 135 degrees, and 45 degrees once
+    # the rows are flipped.
+    n = 256
+    x, y = np.meshgrid(np.arange(n), np.arange(n))
+    z = np.sin(2 * np.pi * 16 * (x + y) / n)
+    assert Surface(z, 1, 1).Std() == pytest.approx(135, abs=0.25)
+    assert Surface(z[::-1].copy(), 1, 1).Std() == pytest.approx(45, abs=0.25)
+
+def test_analytic_Std_amplitude_density():
+    # Two lays: one sinusoid of amplitude 1 with its wave vector along x (0 degrees), and nine sinusoids of amplitude
+    # 0.3 along y (90 degrees), all on DFT bins. The amplitude density (fAAD, which defines Std) is 1 against
+    # 9 * 0.3 = 2.7, the power density (fAPD) 1 against 9 * 0.3^2 = 0.81, so the two disagree.
+    n = 256
+    x, y = np.meshgrid(np.arange(n), np.arange(n))
+    z = np.sin(2 * np.pi * 16 * x / n) + sum(0.3 * np.sin(2 * np.pi * m * y / n) for m in range(10, 19))
+    s = Surface(z, 1, 1)
+    assert s.Std() == pytest.approx(90, abs=0.25)
+    angles, spectrum = s.get_fourier_transform().angular_power_spectrum()
+    assert angles[np.argmax(spectrum)] == pytest.approx(0, abs=0.25)
 
 
 # New ISO 25178-2:2021 parameters #####################################################################################
@@ -158,13 +182,22 @@ def test_Sdc(surface):
     assert surface.Sdc() == pytest.approx(1.168894, abs=EPSILON)
 
 def test_Ssw(surface):
-    assert surface.Ssw() == pytest.approx(19.98, abs=1e-2)
+    assert surface.Ssw() == pytest.approx(20.0, abs=EPSILON)
 
 def test_Sak1_equals_triangle_area(surface):
     assert surface.Sak1() == pytest.approx(0.5 * surface.Spk() * surface.Smr1(), abs=EPSILON)
 
 def test_Sak2_equals_triangle_area(surface):
     assert surface.Sak2() == pytest.approx(0.5 * surface.Svk() * (100 - surface.Smr2()), abs=EPSILON)
+
+def test_empty_peak_and_valley_zones():
+    # Uniformly distributed heights give a straight Abbott-Firestone curve: the core spans the whole curve, so the
+    # peak and valley zones are empty and their areas and reduced heights are 0 rather than 0 / 0 = NaN
+    ramp = Surface(np.linspace(0, 1, 100 * 200).reshape(100, 200), 1, 1)
+    assert ramp.Smr1() == pytest.approx(0, abs=1e-9)
+    assert ramp.Smr2() == pytest.approx(100, abs=1e-9)
+    for name in ('Sak1', 'Sak2', 'Spk', 'Svk'):
+        assert getattr(ramp, name)() == pytest.approx(0, abs=1e-9), name
 
 def test_Sdc_equals_Sxp_at_defaults(surface):
     assert surface.Sdc(2.5, 50) == pytest.approx(surface.Sxp(2.5, 50), abs=EPSILON)
@@ -226,8 +259,55 @@ def test_analytic_Sp_Sv_Sz(sinusoidal_surface):
     assert sinusoidal_surface.Sz() == pytest.approx(2 * ANALYTIC_AMPLITUDE, abs=1e-3)
 
 def test_analytic_period(sinusoidal_surface):
-    # lambda = samples_per_period * step = 200 * 0.1 = 20.0
-    assert sinusoidal_surface.period() == pytest.approx(20.0, abs=1e-2)
+    # lambda = samples_per_period * step = 200 * 0.1 = 20.0. The sinusoid has whole periods, so its frequency falls
+    # exactly on a DFT bin and the result is exact.
+    assert sinusoidal_surface.period() == pytest.approx(20.0, rel=1e-12)
+
+def test_analytic_Ssw(sinusoidal_surface):
+    assert sinusoidal_surface.Ssw() == pytest.approx(20.0, rel=1e-12)
+
+# A tilted plane z = a*x + b*y has a constant gradient, so its hybrid parameters are exact for any sampling:
+# Sdq = sqrt(a^2 + b^2) and Sdr = (sqrt(1 + a^2 + b^2) - 1) * 100.
+PLANE_SLOPE = (0.03, -0.02)
+
+def tilted_plane(step_x, step_y, nx=100, ny=80):
+    a, b = PLANE_SLOPE
+    x = np.arange(nx) * step_x
+    y = np.arange(ny) * step_y
+    x, y = np.meshgrid(x, y)
+    return Surface(a * x + b * y, step_x, step_y)
+
+def test_analytic_Sdr_flat():
+    assert Surface(np.zeros((50, 60)), 0.1, 0.1).Sdr() == pytest.approx(0, abs=1e-12)
+
+def test_analytic_Sdr_plane():
+    a, b = PLANE_SLOPE
+    assert tilted_plane(0.5, 0.5).Sdr() == pytest.approx((np.sqrt(1 + a**2 + b**2) - 1) * 100, rel=1e-9)
+
+def test_analytic_Sdr_plane_non_square_pixels():
+    a, b = PLANE_SLOPE
+    assert tilted_plane(0.5, 0.25).Sdr() == pytest.approx((np.sqrt(1 + a**2 + b**2) - 1) * 100, rel=1e-9)
+
+def test_analytic_Sdr_twisted_cell():
+    # A single cell with corner heights 0, 0, 0, 1 is not planar. Its two triangulations (ISO 25178-2 eq. D.15) have
+    # the areas 1/2 + sqrt(3)/2 (diagonal AC) and sqrt(2) (diagonal BD); the cell area is their mean.
+    expected = ((0.5 + np.sqrt(3) / 2 + np.sqrt(2)) / 2 - 1) * 100
+    assert Surface(np.array([[0., 0.], [0., 1.]]), 1, 1).Sdr() == pytest.approx(expected, rel=1e-12)
+
+def test_analytic_Sdr_saddle():
+    # On the saddle z = k*x*y every cell is twisted, but z is linear along every grid line, so every edge difference
+    # is exact: the triangle at a corner has area 1/2*dx*dy*sqrt(1 + |grad z|^2) with the gradient (k*y, k*x) at that
+    # corner. Summed over the cells, D.15 gives the trapezoid-weighted mean of sqrt(1 + k^2*(x^2 + y^2)) over the
+    # grid points.
+    k, nx, ny, dx, dy = 0.05, 41, 81, 0.5, 0.25
+    x, y = np.meshgrid(np.arange(nx) * dx, np.arange(ny) * dy)
+    w = np.outer(np.r_[0.5, np.ones(ny - 2), 0.5], np.r_[0.5, np.ones(nx - 2), 0.5])
+    expected = (np.sum(w * np.sqrt(1 + k**2 * (x**2 + y**2))) / ((nx - 1) * (ny - 1)) - 1) * 100
+    assert Surface(k * x * y, dx, dy).Sdr() == pytest.approx(expected, rel=1e-12)
+
+def test_analytic_Sdq_plane():
+    a, b = PLANE_SLOPE
+    assert tilted_plane(0.5, 0.25).Sdq() == pytest.approx(np.sqrt(a**2 + b**2), rel=1e-9)
 
 # Feature parameters (ISO 25178-2:2021, clause 5) ####################################################################
 

@@ -187,6 +187,27 @@ class AbbottFirestoneCurve(CachedInstance):
         return self.mr(self._ylower)
 
     @cache
+    def _peak_area(self):
+        """
+        Area enclosed above yupper between the y-axis (at x=0) and the Abbott-Firestone curve. 0 when the peak zone
+        is empty (mr1 = 0).
+        """
+        # For now we are using the closest value in the array to yupper
+        # This way, we are losing or gaining a bit of area. In the future we might use some
+        # additional interpolation. For now this is sufficient.
+        idx = argclosest(self._yupper, self._height)
+        return np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx]))
+
+    @cache
+    def _valley_area(self):
+        """
+        Area enclosed below ylower between the y-axis (at x=100) and the Abbott-Firestone curve. 0 when the valley
+        zone is empty (mr2 = 100).
+        """
+        idx = argclosest(self._ylower, self._height)
+        return np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:]))
+
+    @cache
     def pk(self):
         """
         Calculates the reduced peak height (Spk for surfaces, Rpk for profiles).
@@ -195,15 +216,9 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        # For now we are using the closest value in the array to ylower
-        # This way, we are losing or gaining a bit of area. In the future we might use some
-        # additional interpolation. For now this is sufficient.
-
-        # Area enclosed above yupper between y-axis (at x=0) and abbott-firestone curve
-        idx = argclosest(self._yupper, self._height)
-        A1 = np.abs(trapezoid(self._material_ratio[:idx], x=self._height[:idx]))
-        pk = 2 * A1 / self.mr1()
-        return pk
+        # An empty peak zone has no reduced peak height (instead of 0 / 0)
+        A1 = self._peak_area()
+        return 2 * A1 / self.mr1() if A1 > 0 else 0.0
 
     @cache
     def vk(self):
@@ -214,11 +229,9 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        # Area enclosed below ylower between y-axis (at x=100) and abbott-firestone curve
-        idx = argclosest(self._ylower, self._height)
-        A2 = np.abs(trapezoid(100 - self._material_ratio[idx:], x=self._height[idx:]))
-        vk = 2 * A2 / (100 - self.mr2())
-        return vk
+        # An empty valley zone has no reduced dale depth (instead of 0 / 0)
+        A2 = self._valley_area()
+        return 2 * A2 / (100 - self.mr2()) if A2 > 0 else 0.0
 
     @cache
     def pkx(self):
@@ -254,7 +267,8 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        return 0.5 * self.pk() * self.mr1()
+        # The area itself, which equals 0.5 * pk * mr1 but stays defined (0) when the peak zone is empty
+        return self._peak_area()
 
     @cache
     def ak2(self):
@@ -266,7 +280,8 @@ class AbbottFirestoneCurve(CachedInstance):
         -------
         float
         """
-        return 0.5 * self.vk() * (100 - self.mr2())
+        # The area itself, which equals 0.5 * vk * (100 - mr2) but stays defined (0) when the valley zone is empty
+        return self._valley_area()
 
     def dc(self, p, q):
         """
