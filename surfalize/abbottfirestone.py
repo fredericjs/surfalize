@@ -390,10 +390,10 @@ class AbbottFirestoneCurve(CachedInstance):
 
         height, material_ratio = self._get_material_ratio_curve()
 
-        ax.set_xlabel('Material distribution (%)')
-        ax.set_ylabel('z (µm)')
+        ax.set_xlabel('Material distribution / %')
+        ax.set_ylabel('z / µm')
         ax2 = ax.twiny()
-        ax2.set_xlabel('Material ratio (%)')
+        ax2.set_xlabel('Material ratio / %')
         ax.set_box_aspect(1)
         ax2.set_xlim(0, 100)
         ax.set_ylim(self._values.min(), self._values.max())
@@ -426,7 +426,7 @@ class AbbottFirestoneCurve(CachedInstance):
         ax.plot([self.mr1(), self.mr1()], [0, self._yupper], c='k', lw=1)
         ax.plot([self.mr2(), self.mr2()], [0, self._ylower], c='k', lw=1)
 
-        ax.set_xlabel('Material ratio (%)')
-        ax.set_ylabel('Height (µm)')
+        ax.set_xlabel('Material ratio / %')
+        ax.set_ylabel('Height / µm')
 
         return fig, ax

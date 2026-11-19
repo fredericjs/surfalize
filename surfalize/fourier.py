@@ -283,8 +283,8 @@ class FourierTransform(CachedInstance):
             vmin = fft.mean()
             vmax = 0.7 * fft.max()
 
-        ax.set_xlabel('Frequency [µm$^{-1}$]')
-        ax.set_ylabel('Frequency [µm$^{-1}$]')
+        ax.set_xlabel('Frequency / µm$^{-1}$')
+        ax.set_ylabel('Frequency / µm$^{-1}$')
         extent = (freq_x[ixmin], freq_x[ixmax], freq_y[iymax], freq_y[iymin])
 
         ax.imshow(fft, cmap=cmap, vmin=vmin, vmax=vmax, extent=extent)

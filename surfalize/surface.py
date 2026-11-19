@@ -2275,11 +2275,11 @@ class Surface(BaseTopography):
             raise ValueError(f'Layer {layer} does not exist.')
         im = ax.imshow(data, cmap=cmap, extent=(0, self.width_um, 0, self.height_um), vmin=vmin, vmax=vmax)
         if show_cbar:
-            fig.colorbar(im, cax=cax, label='z [µm]')
+            fig.colorbar(im, cax=cax, label='z / µm')
         else:
             cax.axis('off')
-        ax.set_xlabel('x [µm]')
-        ax.set_ylabel('y [µm]')
+        ax.set_xlabel('x / µm')
+        ax.set_ylabel('y / µm')
         if layer == 'Topography' and self.has_masked_points:
             # Translucent overlay so the underlying height still shows through the masked region.
             overlay = np.zeros((self.size.y, self.size.x, 4))

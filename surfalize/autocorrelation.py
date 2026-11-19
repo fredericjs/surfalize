@@ -244,10 +244,10 @@ class AutocorrelationFunction(CachedInstance):
         extent_y = self.center[0] * self._surface.step_y
         im = ax.imshow(self.data, cmap=cmap, extent=(-extent_x, extent_x, -extent_y, extent_y))
         if show_cbar:
-            fig.colorbar(im, cax=cax, label='z [µm²]')
+            fig.colorbar(im, cax=cax, label='z / µm²')
         else:
             cax.axis('off')
-        ax.set_xlabel('lag x [µm]')
-        ax.set_ylabel('lag y [µm]')
+        ax.set_xlabel('lag x / µm')
+        ax.set_ylabel('lag y / µm')
 
         return fig, ax
