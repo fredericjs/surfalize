@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageChops
 from scipy import ndimage
 
-def _create_colorbar(vmin, vmax, cmap, label='z (µm)', height=0.5):
+def _create_colorbar(vmin, vmax, cmap, label='z / µm', height=0.5):
     """
     Creates a PIL image of a colorbar using matplotlib.
 
@@ -17,7 +17,7 @@ def _create_colorbar(vmin, vmax, cmap, label='z (µm)', height=0.5):
     cmap : str
         Matplotlib colormap name.
     label : str
-        Label of the colorbar. Defaults to z (µm).
+        Label of the colorbar. Defaults to z / µm.
     height : float
         Height of the colorbar as a fraction of the image height.
 
@@ -161,9 +161,9 @@ def plot_3d(surface, vertical_angle=50, horizontal_angle=0, zoom=1, cmap='jet', 
             color='black',
             grid='back',
             location='outer',
-            xtitle='X (µm)',
-            ytitle='Y (µm)',
-            ztitle='Z (µm)',
+            xtitle='X / µm',
+            ytitle='Y / µm',
+            ztitle='Z / µm',
             font_family='arial',
             use_2d=False,
             use_3d_text=False,

@@ -512,7 +512,7 @@ class FeatureParameters(CachedInstance):
         cax = divider.append_axes("right", size="5%", pad=0.05)
         extent = (0, self._surface.width_um, 0, self._surface.height_um)
         im = ax.imshow(self._data, cmap=cmap, extent=extent, origin='lower')
-        fig.colorbar(im, cax=cax, label='z [µm]')
+        fig.colorbar(im, cax=cax, label='z / µm')
         # Draw the ridge/course lines as the boundaries between adjacent motifs.
         ax.contour(motifs, levels=np.arange(motifs.max() + 1) + 0.5, colors='k', linewidths=0.5, extent=extent,
                    origin='lower')
@@ -523,7 +523,7 @@ class FeatureParameters(CachedInstance):
             marker = 'v' if kind == 'dale' else '^'
             ax.scatter(xs, ys, c='white', edgecolors='k', marker=marker, s=20,
                        label='pits' if kind == 'dale' else 'peaks')
-        ax.set_xlabel('x [µm]')
-        ax.set_ylabel('y [µm]')
+        ax.set_xlabel('x / µm')
+        ax.set_ylabel('y / µm')
         ax.legend(loc='upper right', fontsize=6)
         return fig, ax

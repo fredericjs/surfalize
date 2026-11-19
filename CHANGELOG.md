@@ -1,3 +1,7 @@
+## Unreleased
+- Changed all axis and colorbar labels to the quantity / unit notation of ISO 80000-1 (e.g. `x / µm` instead of
+  `x [µm]` or `x (µm)`).
+
 ## v0.19.2
 - Fixed the AL3D reader and writer for odd image widths and invalid pixels, and added masking of non-repeatable points. (contributed by [aschet](https://github.com/aschet))
 - Added vmin and vmax arguments to plot_3d and Surface.plot_3d, allowing users to customize the scalar color limits of 3D surface plots, like plot_2d. (contributed by [taki-climb](https://github.com/taki-climb))
