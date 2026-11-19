@@ -805,9 +805,9 @@ class Profile(BaseTopography):
         else:
             fig = ax.figure
         ax.set_xlim(0, self.length_um)
-        ax.set_xlabel('x / µm')
-        ax.set_ylabel('z / µm')
-        ax.plot(np.arange(self._data.size) * self.step, self.data, c='k', lw=1)
+        ax.set_xlabel('x [µm]')
+        ax.set_ylabel('z [µm]')
+        ax.plot(np.linspace(0, self.length_um, self.data.size), self.data, c='k', lw=1)
         return fig, ax
 
     def show(self):
